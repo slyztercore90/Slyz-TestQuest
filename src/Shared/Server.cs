@@ -406,7 +406,7 @@ namespace Melia.Shared
 		/// <param name="ex"></param>
 		private void DisplayScriptErrors(CompilerErrorException ex)
 		{
-			foreach (System.CodeDom.Compiler.CompilerError err in ex.Errors)
+			foreach (var err in ex.Errors)
 			{
 				if (string.IsNullOrWhiteSpace(err.FileName))
 				{
