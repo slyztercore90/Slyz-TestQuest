@@ -1,4 +1,5 @@
-﻿using Melia.Shared.Network;
+﻿using System;
+using Melia.Shared.Network;
 using Melia.Shared.Network.Helpers;
 using Melia.Zone.Skills.Combat;
 
@@ -14,7 +15,7 @@ namespace Melia.Zone.Network.Helpers
 		public static void AddSkillHitInfo(this Packet packet, SkillHitInfo skillHitInfo)
 		{
 			packet.PutByte(0);
-			packet.PutByte(4); // attack type?
+			packet.PutByte((byte)skillHitInfo.AttackType); // attack type?
 			packet.PutByte(0);
 			packet.PutByte(0);
 
@@ -28,7 +29,7 @@ namespace Melia.Zone.Network.Helpers
 			packet.PutByte(0);
 			packet.PutShort((short)skillHitInfo.SkillHitDelay.TotalMilliseconds); // Skill Hit Delay? Adds pause in attack animation?
 			packet.PutByte((byte)skillHitInfo.HitEffect);
-			packet.PutByte(0);
+			packet.PutByte(0); // Was 1, but after melia update, was set to 0.
 			packet.PutInt(0);
 			packet.PutInt(skillHitInfo.ForceId); // This being set to anything causes a delay in the dagger damage animation
 			packet.PutShort(0);

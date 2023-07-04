@@ -20,6 +20,16 @@ namespace Melia.Shared.Data.Database
 		private readonly HashSet<string> _classNames = new HashSet<string>();
 
 		/// <summary>
+		/// Check's if a dialog exists with a certain class name.
+		/// </summary>
+		/// <param name="className"></param>
+		/// <returns></returns>
+		public bool Exists(string className)
+		{
+			return _classNames.Contains(className);
+		}
+
+		/// <summary>
 		/// Reads given entry and adds it to the database.
 		/// </summary>
 		/// <param name="entry"></param>
@@ -29,7 +39,7 @@ namespace Melia.Shared.Data.Database
 
 			var data = new DialogData();
 
-			data.ClassId = entry.ReadInt("DialogId");
+			data.ClassId = entry.ReadInt("classId");
 			data.ClassName = entry.ReadString("className");
 
 			this.Add(data);

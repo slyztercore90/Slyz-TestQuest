@@ -8,14 +8,17 @@ using Melia.Shared.L10N;
 using Melia.Shared.Network;
 using Melia.Shared.Network.Helpers;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Properties;
 using Melia.Shared.World;
 using Melia.Zone.Events;
 using Melia.Zone.Network.Helpers;
 using Melia.Zone.Scripting;
 using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.Skills;
 using Melia.Zone.Skills.Handlers.Base;
 using Melia.Zone.World;
 using Melia.Zone.World.Actors;
+using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Monsters;
@@ -97,17 +100,15 @@ namespace Melia.Zone.Network
 
 			character.Connection = conn;
 			conn.SelectedCharacter = character;
+			conn.Party = ZoneServer.Instance.World.GetParty(character.PartyId);
+			conn.Guild = ZoneServer.Instance.World.GetGuild(character.GuildId);
 
 			ZoneServer.Instance.ServerEvents.OnPlayerLoggedIn(character);
 
 			map.AddCharacter(character);
 			conn.LoggedIn = true;
 
-			Send.ZC_STANCE_CHANGE(character);
 			Send.ZC_CONNECT_OK(conn, character);
-			Send.ZC_NORMAL.AdventureBook(conn);
-			Send.ZC_SET_CHATBALLOON_SKIN(conn);
-			Send.ZC_NORMAL.Unknown_1B4(character);
 		}
 
 		/// <summary>
@@ -118,7 +119,7 @@ namespace Melia.Zone.Network
 		[PacketHandler(Op.CZ_GAME_READY)]
 		public void CZ_GAME_READY(IZoneConnection conn, Packet packet)
 		{
-			var guildId = packet.GetShort();
+			var serverId = packet.GetShort();
 
 			var character = conn.SelectedCharacter;
 			var gameReadyArgs = new PlayerGameReadyEventArgs(character);
@@ -126,6 +127,10 @@ namespace Melia.Zone.Network
 			ZoneServer.Instance.ServerEvents.OnPlayerGameReady(gameReadyArgs);
 			if (gameReadyArgs.CancelHandling)
 				return;
+
+			Send.ZC_STANCE_CHANGE(character);
+			Send.ZC_NORMAL.AdventureBook(conn);
+			Send.ZC_SET_CHATBALLOON_SKIN(conn);
 
 			Send.ZC_IES_MODIFY_LIST(conn);
 			Send.ZC_ITEM_INVENTORY_DIVISION_LIST(character);
@@ -144,22 +149,38 @@ namespace Melia.Zone.Network
 			Send.ZC_ITEM_EQUIP_LIST(character);
 			Send.ZC_SKILL_LIST(character);
 			Send.ZC_ABILITY_LIST(character);
-			Send.ZC_NORMAL.Unknown_DA(character);
+			Send.ZC_COOLDOWN_LIST(character, null);
+			Send.ZC_NORMAL.ItemCollectionList(character);
 			Send.ZC_NORMAL.Unknown_E4(character);
+			Send.ZC_NORMAL.Unknown_134(character);
 			Send.ZC_OBJECT_PROPERTY(conn, character);
 			character.SendPCEtcProperties(); // Quick Hack to send required packets
 			Send.ZC_START_GAME(conn);
 			Send.ZC_UPDATE_ALL_STATUS(character, 0);
+			Send.ZC_SET_WEBSERVICE_URL(conn);
 			Send.ZC_MOVE_SPEED(character);
 			Send.ZC_STAMINA(character, character.Stamina);
 			Send.ZC_UPDATE_SP(character, character.Sp, false);
 			Send.ZC_LOGIN_TIME(conn, DateTime.Now);
 			Send.ZC_MYPC_ENTER(character);
-			Send.ZC_NORMAL.Unknown_1B4(character);
+
+			if (conn.Party != null)
+			{
+				Send.ZC_PARTY_INFO(character, conn.Party);
+				Send.ZC_PARTY_LIST(conn.Party);
+				conn.Party.UpdateMember(character);
+			}
+			if (conn.Guild != null)
+			{
+				Send.ZC_PARTY_INFO(character, conn.Guild);
+				Send.ZC_PARTY_LIST(conn.Guild);
+				conn.Guild.UpdateMember(character);
+			}
+
+			Send.ZC_NORMAL.UsedMedalTotal(conn, conn.Account.Medals);
 			Send.ZC_CASTING_SPEED(character);
-			Send.ZC_ANCIENT_CARD_RESET(conn);
 			Send.ZC_QUICK_SLOT_LIST(character);
-			Send.ZC_NORMAL.Unknown_EF(character);
+			Send.ZC_NORMAL.JobCount(character);
 			Send.ZC_UPDATED_PCAPPEARANCE(character);
 			Send.ZC_NORMAL.HeadgearVisibilityUpdate(character);
 			Send.ZC_ADDITIONAL_SKILL_POINT(character);
@@ -177,6 +198,20 @@ namespace Melia.Zone.Network
 			// that have an overheat count.
 			var skillUpdateList = character.Skills.GetList(a => a.Data.OverheatCount > 0);
 			Send.ZC_UPDATE_SKL_SPDRATE_LIST(character, skillUpdateList);
+
+			if (character.HasCompanions)
+			{
+				foreach (var companion in character.GetCompanions())
+				{
+					Send.ZC_NORMAL.Pet_AssociateHandleWorldId(character, companion);
+					Send.ZC_OBJECT_PROPERTY(conn, companion);
+					if (companion.IsActivated)
+						companion.SetCompanionState(companion.IsActivated);
+				}
+				Send.ZC_NORMAL.PetInfo(character);
+			}
+
+			Send.ZC_ANCIENT_CARD_RESET(conn);
 
 			// Send updates for the buffs loaded from db, so the client
 			// will display the restored buffs
@@ -549,6 +584,45 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Request to enchant an item.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PREMIUM_ENCHANTCHIP)]
+		public void CZ_PREMIUM_ENCHANTCHIP(IZoneConnection conn, Packet packet)
+		{
+			var itemId = packet.GetLong();
+			var enchantId = packet.GetLong();
+
+			var character = conn.SelectedCharacter;
+
+			if (character.Inventory.TryGetItem(itemId, out var item))
+			{
+				Log.Warning("CZ_PREMIUM_ENCHANTCHIP: User '{0}' tried to enchant a non-existent item.", conn.Account.Name);
+				return;
+			}
+			if (character.Inventory.TryGetItem(enchantId, out var enchantItem))
+			{
+				Log.Warning("CZ_PREMIUM_ENCHANTCHIP: User '{0}' tried to enchant with a non-existent item.", conn.Account.Name);
+				return;
+			}
+
+			// TODO: Validate Enchant Item as "CLIENT_ENCHANTCHIP".
+			// TODO: Validate Item as correct type to enchant.
+
+			// Item Lock
+			Send.ZC_EXEC_CLIENT_SCP(conn, string.Format(ClientScripts.REINFORCE_131014_ITEM_LOCK, itemId, "YES"));
+			// Do something to generate random options
+			//item.GenerateRandomHatOptions();
+			Send.ZC_OBJECT_PROPERTY(character.Connection, item);
+			// Reset Item Lock
+			Send.ZC_EXEC_CLIENT_SCP(conn, string.Format(ClientScripts.REINFORCE_131014_ITEM_LOCK, "None", "YES"));
+			var succeeded = true;
+			if (succeeded)
+				Send.ZC_EXEC_CLIENT_SCP(conn, string.Format(ClientScripts.HAIRENCHANT_SUCCESS, itemId, enchantItem.DbId));
+		}
+
+		/// <summary>
 		/// Request to save a chat macro.
 		/// </summary>
 		/// <param name="conn"></param>
@@ -620,6 +694,29 @@ namespace Melia.Zone.Network
 			// TODO: Add cooldown?
 
 			character.Inventory.Sort(order);
+		}
+
+		/// <summary>
+		/// Extend Team Storage Slot
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_EXTEND_WAREHOUSE)]
+		public void CZ_EXTEND_WAREHOUSE(IZoneConnection conn, Packet packet)
+		{
+			var account = conn.Account;
+			var character = conn.SelectedCharacter;
+			var prop = account.Properties.GetFloat(PropertyName.AccountWareHouseExtend, 0);
+			var fixedCost = (int)(200000 * (prop + 1));
+
+			if (character.Inventory.CountItem(ItemId.Silver) >= fixedCost)
+			{
+				character.RemoveItem(ItemId.Silver, fixedCost);
+				account.Properties.Modify(PropertyName.AccountWareHouseExtend, 1);
+				Send.ZC_NORMAL.AccountPropertyUpdate(conn, account.Properties.GetSelect(PropertyName.AccountWareHouseExtend));
+				Send.ZC_ADDON_MSG(character, AddonMessage.ACCOUNT_WAREHOUSE_ITEM_LIST);
+				Send.ZC_ADDON_MSG(character, AddonMessage.ACCOUNT_UPDATE);
+			}
 		}
 
 		/// <summary>
@@ -781,6 +878,9 @@ namespace Melia.Zone.Network
 				// Remove consumeable items on success
 				if (item.Data.Type == ItemType.Consume)
 					character.Inventory.Remove(item, 1, InventoryItemRemoveMsg.Used);
+
+				if (item.Data.HasCooldown && item.CooldownData != null)
+					character.Components.Get<CooldownComponent>().Start(item.CooldownData.Id, item.CooldownData.OverheatResetTime);
 
 				Send.ZC_ITEM_USE(character, item.Id);
 			}
@@ -997,7 +1097,7 @@ namespace Melia.Zone.Network
 			// Check cooldown
 			if (skill.IsOnCooldown)
 			{
-				Log.Warning("CZ_SKILL_GROUND: User '{0}' tried to use a skill that's on cooldown ({1}).", conn.Account.Name, skillId);
+				Log.Warning("CZ_CLIENT_HIT_LIST: User '{0}' tried to use a skill that's on cooldown ({1}).", conn.Account.Name, skillId);
 				character.ServerMessage(Localization.Get("You may not use this yet."));
 				return;
 			}
@@ -1089,7 +1189,7 @@ namespace Melia.Zone.Network
 			// Check cooldown
 			if (skill.IsOnCooldown)
 			{
-				Log.Warning("CZ_SKILL_GROUND: User '{0}' tried to use a skill that's on cooldown ({1}).", conn.Account.Name, skillId);
+				Log.Warning("CZ_SKILL_TARGET: User '{0}' tried to use a skill that's on cooldown ({1}).", conn.Account.Name, skillId);
 				character.ServerMessage(Localization.Get("You may not use this yet."));
 				return;
 			}
@@ -1144,7 +1244,11 @@ namespace Melia.Zone.Network
 			// in that case, but we probably don't want to execute the skill
 			// handler.
 			if (skillId == 0)
+			{
+				// Cancel the attack
+				Send.ZC_NORMAL.AttackCancel(character);
 				return;
+			}
 
 			// Check skill
 			if (!character.Skills.TryGet(skillId, out var skill))
@@ -1300,12 +1404,25 @@ namespace Melia.Zone.Network
 		[PacketHandler(Op.CZ_DYNAMIC_CASTING_START)]
 		public void CZ_DYNAMIC_CASTING_START(IZoneConnection conn, Packet packet)
 		{
-			var skillId = packet.GetInt();
-			var f1 = packet.GetFloat();
+			var skillId = (SkillId)packet.GetInt();
+			var maxCastTime = packet.GetFloat();
 
 			var character = conn.SelectedCharacter;
 
-			//character.ServerMessage("Skill attacks haven't been implemented yet.");
+			// Check skill
+			if (!character.Skills.TryGet(skillId, out var skill))
+			{
+				Log.Warning("CZ_DYNAMIC_CASTING_START: User '{0}' tried to use a skill they don't have ({1}).", conn.Account.Name, skillId);
+				return;
+			}
+
+			if (!ZoneServer.Instance.SkillHandlers.TryGetHandler<IDynamicCastSkillHandler>(skillId, out var handler))
+			{
+				character.ServerMessage(Localization.Get("This skill has not been implemented yet."));
+				Log.Warning("CZ_DYNAMIC_CASTING_START: No handler for skill '{0}' found.", skillId);
+				return;
+			}
+			handler.HandleCastStart(skill, character, maxCastTime);
 		}
 
 		/// <summary>
@@ -1316,10 +1433,25 @@ namespace Melia.Zone.Network
 		[PacketHandler(Op.CZ_DYNAMIC_CASTING_END)]
 		public void CZ_DYNAMIC_CASTING_END(IZoneConnection conn, Packet packet)
 		{
-			var skillId = packet.GetInt();
-			var f1 = packet.GetFloat(); // Max Cast Hold Time?
+			var skillId = (SkillId)packet.GetInt();
+			var castTime = packet.GetFloat(); // Max Cast Hold Time?
 
 			var character = conn.SelectedCharacter;
+
+			// Check skill
+			if (!character.Skills.TryGet(skillId, out var skill))
+			{
+				Log.Warning("CZ_DYNAMIC_CASTING_END: User '{0}' tried to use a skill they don't have ({1}).", conn.Account.Name, skillId);
+				return;
+			}
+
+			if (!ZoneServer.Instance.SkillHandlers.TryGetHandler<IDynamicCastSkillHandler>(skillId, out var handler))
+			{
+				character.ServerMessage(Localization.Get("This skill has not been implemented yet."));
+				Log.Warning("CZ_DYNAMIC_CASTING_END: No handler for skill '{0}' found.", skillId);
+				return;
+			}
+			handler.HandleCastEnd(skill, character, castTime);
 		}
 
 		/// <summary>
@@ -1542,7 +1674,7 @@ namespace Melia.Zone.Network
 
 
 			// Need to keep track of items sold, server sends this list to the client
-			Send.ZC_SOLD_ITEM_DIVISION_LIST(character, 3, itemsSold);
+			Send.ZC_SOLD_ITEM_DIVISION_LIST(character, InventoryType.Sold, itemsSold);
 		}
 
 		/// <summary>
@@ -1566,6 +1698,7 @@ namespace Melia.Zone.Network
 		{
 			var destination = packet.GetString();
 			var parameter = packet.GetString(); // [i373230]
+			var character = conn.SelectedCharacter;
 
 			switch (destination)
 			{
@@ -1573,11 +1706,12 @@ namespace Melia.Zone.Network
 				case "Barrack":
 				case "Channel":
 				case "Exit":
-					//Send.ZC_ADDON_MSG(conn.SelectedCharacter, AddonMessage.EXPIREDITEM_ALERT_OPEN, destination);
+					if (conn.SelectedCharacter.Inventory.HasExpiringItems)
+					{
+						Send.ZC_ADDON_MSG(character, AddonMessage.EXPIREDITEM_ALERT_OPEN, 0, destination);
+					}
 
-					// What we sent here caused the client to send this
-					// packet in an infinite loop in i218535. The following
-					// seems to be correct for now.
+					var combat = character.Components.Get<CombatComponent>();
 
 					Send.ZC_ADDON_MSG(conn.SelectedCharacter, "GAMEEXIT_TIMER_END", 0, "None");
 					break;
@@ -1587,6 +1721,47 @@ namespace Melia.Zone.Network
 			}
 
 			Log.Info("User '{0}' is transferring to '{1}' state.", conn.Account.Name, destination);
+		}
+
+		/// <summary>
+		/// Sent when a player tries to join a guild (self invite).
+		/// Dummy Handler
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_SELF_INVITE_NEWBIE_GUILD)]
+		public void CZ_SELF_INVITE_NEWBIE_GUILD(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+
+			Send.ZC_SYSTEM_MSG(character, 102502);
+		}
+
+		/// <summary>
+		/// Sent when a player tries to take a screenshot.
+		/// Dummy Handler
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_SCREENSHOT_HASH)]
+		public void CZ_SCREENSHOT_HASH(IZoneConnection conn, Packet packet)
+		{
+			var account = conn.SelectedCharacter;
+			// Track screenshot meta data (where/when it was taken)?
+		}
+
+		/// <summary>
+		/// Sent when a player tries to enter instance dungeon via UI.
+		/// Dummy Handler
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_MOVE_TO_INDUN)]
+		public void CZ_REQ_MOVE_TO_INDUN(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+
+			Send.ZC_SYSTEM_MSG(character, 134089);
 		}
 
 		/// <summary>
@@ -1664,6 +1839,109 @@ namespace Melia.Zone.Network
 		public void CZ_EXCHANGE_REQUEST(IZoneConnection conn, Packet packet)
 		{
 			var targetHandle = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+
+			if (character == null)
+				return;
+
+			var targetCharacter = character.Map.GetCharacter(targetHandle);
+
+			if (targetCharacter == null)
+				return;
+			Trade.RequestTrade(character, targetCharacter);
+		}
+
+		/// <summary>
+		/// Indicates an accepted request from the client to trade with another character.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_EXCHANGE_ACCEPT)]
+		public void CZ_EXCHANGE_ACCEPT(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+
+			if (character.Trade != null)
+				character.Trade.Start();
+			else
+			{
+				Log.Warning("CZ_EXCHANGE_ACCEPT:  User '{0}' tried to accept a non-existent trade.", conn.Account.Name);
+			}
+		}
+
+		/// <summary>
+		/// Request to offer an item for trade
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_EXCHANGE_OFFER)]
+		public void CZ_EXCHANGE_OFFER(IZoneConnection conn, Packet packet)
+		{
+			var i1 = packet.GetInt();
+			var worldId = packet.GetLong();
+			var amount = packet.GetInt();
+			var i3 = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+
+			if (character == null)
+				return;
+
+			if (!character.IsTrading)
+			{
+				Log.Warning("CZ_EXCHANGE_OFFER: User '{0}' tried to trade without actually trading.", conn.Account.Name);
+				return;
+			}
+			character.Trade.Offer(character, worldId, amount);
+		}
+
+		/// <summary>
+		/// Initial trade agreement request
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_EXCHANGE_AGREE)]
+		public void CZ_EXCHANGE_AGREE(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+
+			if (character == null)
+				return;
+
+			character.Trade.Confirm(character);
+		}
+
+		/// <summary>
+		/// Final trade agreement request
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_EXCHANGE_FINALAGREE)]
+		public void CZ_EXCHANGE_FINALAGREE(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+
+			if (character == null)
+				return;
+
+			character.Trade.FinalConfirm(character);
+		}
+
+		/// <summary>
+		/// Cancel trade request
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_EXCHANGE_CANCEL)]
+		public void CZ_EXCHANGE_CANCEL(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+
+			if (character == null)
+				return;
+			if (character.IsTrading)
+				character.Trade.Cancel();
 		}
 
 		/// <summary>
@@ -1798,6 +2076,46 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Sent when checking for attendance rewards
+		/// Dummy
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_ATTENDANCE_REWARD_CLICK)]
+		public void CZ_ATTENDANCE_REWARD_CLICK(IZoneConnection conn, Packet packet)
+		{
+			var rewardId = packet.GetInt();
+			var character = conn.SelectedCharacter;
+
+			// TODO: Check if user is eligible for rewards
+			Send.ZC_ATTENDANCE_RECEIPT_REWARD(conn, rewardId);
+		}
+
+		/// <summary>
+		/// Create guild by web?
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_CREATE_GUILD_BY_WEB)]
+		public void CZ_CREATE_GUILD_BY_WEB(IZoneConnection conn, Packet packet)
+		{
+			var name = packet.GetString();
+			var character = conn.SelectedCharacter;
+
+			if (conn.Guild != null)
+			{
+				Log.Warning("CZ_CREATE_GUILD_BY_WEB: User '{0}' already has a guild.", conn.Account.Name);
+				return;
+			}
+
+			if (ZoneServer.Instance.World.Guilds.Create(character, name) != null)
+			{
+				character.SystemMessage("CreateGuildSuccess");
+				Send.ZC_DECREASE_SILVER(character, 1000000);
+			}
+		}
+
+		/// <summary>
 		/// Sent when (un)locking an item.
 		/// </summary>
 		/// <param name="conn"></param>
@@ -1860,6 +2178,20 @@ namespace Melia.Zone.Network
 		public void CZ_CLEAR_INDUN_REG(IZoneConnection conn, Packet packet)
 		{
 			// No parameters
+		}
+
+		/// <summary>
+		/// Fishing rank request
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_FISHING_RANK)]
+		public void CZ_REQ_FISHING_RANK(IZoneConnection conn, Packet packet)
+		{
+			var type = packet.GetString(64);
+
+			if (type == "SuccessCount" || type == "GoldenFish" || type == "FishRubbing")
+				Send.ZC_NORMAL.FishingRankData(conn, type);
 		}
 
 		/// <summary>
@@ -2068,14 +2400,18 @@ namespace Melia.Zone.Network
 		[PacketHandler(Op.CZ_REQUEST_GUILD_INDEX)]
 		public void CZ_REQUEST_GUILD_INDEX(IZoneConnection conn, Packet packet)
 		{
-			var l1 = packet.GetLong();
-			var guildId = (ushort)packet.GetShort();
+			var accountId = packet.GetLong();
 
-			var character = conn.SelectedCharacter;
+			var account = ZoneServer.Instance.World.GetCharacter(c => c.AccountDbId == accountId);
+			if (account != null)
+			{
+				var character = account.Connection.SelectedCharacter;
+				var guild = conn.Guild;
 
-			// ...
+				// ...
 
-			Send.ZC_RESPONSE_GUILD_INDEX(character);
+				Send.ZC_RESPONSE_GUILD_INDEX(conn, character, guild);
+			}
 		}
 
 		/// <summary>
@@ -2182,7 +2518,81 @@ namespace Melia.Zone.Network
 		[PacketHandler(Op.CZ_REQ_PCBANG_SHOP_UI)]
 		public void CZ_REQ_PCBANG_SHOP_UI(IZoneConnection conn, Packet packet)
 		{
-			Send.ZC_PCBANG_SHOP_COMMON(conn);
+			var character = conn.SelectedCharacter;
+
+			Send.ZC_PCBANG_SHOP_POINTSHOP_CATALOG(character);
+			Send.ZC_PCBANG_SHOP_COMMON(character);
+			Send.ZC_PCBANG_SHOP_POINTSHOP_BUY_COUNT(character);
+		}
+
+		/// <summary>
+		/// Sent on purchasing an item from the Popo Shop
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_PCBANG_SHOP_PURCHASE)]
+		public void CZ_REQ_PCBANG_SHOP_PURCHASE(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+			// If can afford send ZC_PCBANG_POINT otherwise send
+			// Not enough Popo Points
+			Send.ZC_SYSTEM_MSG(character, 21302);
+		}
+
+		/// <summary>
+		/// Sent on Popo Shop Refreshing
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_PCBANG_SHOP_REFRESH)]
+		public void CZ_REQ_PCBANG_SHOP_REFRESH(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+			Send.ZC_PCBANG_SHOP_POINTSHOP_CATALOG(character);
+			Send.ZC_PCBANG_SHOP_COMMON(character);
+			Send.ZC_PCBANG_SHOP_POINTSHOP_BUY_COUNT(character);
+		}
+
+		/// <summary>
+		/// Sent on opening Beauty Shop
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_BEAUTYSHOP_INFO)]
+		public void CZ_REQ_BEAUTYSHOP_INFO(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+			Send.ZC_RES_BEAUTYSHOP_PURCHASED_HAIR_LIST(character);
+		}
+
+		/// <summary>
+		/// Sent on opening Beauty Shop Try New Items
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_SEND_BEAUTYSHOP_TRYITON_LIST)]
+		public void CZ_SEND_BEAUTYSHOP_TRYITON_LIST(IZoneConnection conn, Packet packet)
+		{
+			var size = packet.GetShort();
+			var count = packet.GetInt();
+
+			BeautyStyle[] beautyStyles;
+			if (count > 0)
+			{
+				beautyStyles = new BeautyStyle[count];
+				for (var i = 0; i < count; i++)
+				{
+					beautyStyles[i] = new BeautyStyle
+					{
+						StyleName = packet.GetString(256),
+						StyleMod = packet.GetString(256),
+						StyleType = packet.GetString(256),
+						Value = packet.GetInt()
+					};
+				}
+			}
+			var character = conn.SelectedCharacter;
+			//Send.ZC_RES_BEAUTYSHOP_PURCHASED_HAIR_LIST(character);
 		}
 
 		/// <summary>
@@ -2199,6 +2609,9 @@ namespace Melia.Zone.Network
 		[PacketHandler(Op.CZ_STOP_TIMEACTION)]
 		public void CZ_STOP_TIMEACTION(IZoneConnection conn, Packet packet)
 		{
+			var character = conn.SelectedCharacter;
+
+			character.TimedEvents.Get("timeaction")?.Cancel();
 		}
 
 		/// <summary>
@@ -2210,6 +2623,28 @@ namespace Melia.Zone.Network
 		public void CZ_REQ_COMMANDER_INFO(IZoneConnection conn, Packet packet)
 		{
 			Send.ZC_TRUST_INFO(conn);
+		}
+
+		/// <summary>
+		/// Sent on attempting to create a guild
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_CHECK_USE_NAME)]
+		public void CZ_CHECK_USE_NAME(IZoneConnection conn, Packet packet)
+		{
+			var type = packet.GetString(58);
+			var name = packet.GetString(64);
+			var character = conn.SelectedCharacter;
+
+			switch (type)
+			{
+				case "GuildName":
+					// TODO: Validate Name versus database
+					if (!ZoneServer.Instance.Database.GuildNameExists(name))
+						Send.ZC_ADDON_MSG(character, AddonMessage.ENABLE_CREATE_GUILD_NAME, 0, name);
+					break;
+			}
 		}
 
 		/// <summary>
@@ -2239,7 +2674,7 @@ namespace Melia.Zone.Network
 			if (character != null)
 			{
 				character.GreetingMessage = message;
-				Send.ZC_NORMAL.SetGreetingMessage(character);
+				//Send.ZC_NORMAL.SetGreetingMessage(character);
 			}
 		}
 
@@ -2388,7 +2823,7 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// ?
+		/// Viewing another character's equipment
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="packet"></param>
@@ -2396,8 +2831,8 @@ namespace Melia.Zone.Network
 		public void CZ_PROPERTY_COMPARE(IZoneConnection conn, Packet packet)
 		{
 			var handle = packet.GetInt();
-			var b1 = packet.GetByte();
-			var b2 = packet.GetByte();
+			var isView = packet.GetByte() == 1;
+			var isLike = packet.GetByte() == 1;
 
 			var character = conn.SelectedCharacter.Map.GetCharacter(handle);
 			if (character == null)
@@ -2407,6 +2842,10 @@ namespace Melia.Zone.Network
 			}
 
 			Send.ZC_PROPERTY_COMPARE(conn, character);
+			if (isLike)
+			{
+				//TODO Send poses and rotate?
+			}
 		}
 
 		/// <summary>
@@ -2431,21 +2870,212 @@ namespace Melia.Zone.Network
 		[PacketHandler(Op.CZ_REGISTER_AUTOSELLER)]
 		public void CZ_REGISTER_AUTOSELLER(IZoneConnection conn, Packet packet)
 		{
+			var size = packet.GetShort();
 			var shopName = packet.GetString(64);
 			var itemCount = packet.GetInt();
 			var group = packet.GetInt();
-			var i1 = packet.GetInt();
-
-			// for itemCount
-			//   int itemId
-			//   int amount
-			//   int price
-			//   byte unk1[264]
 
 			var character = conn.SelectedCharacter;
-			character.MsgBox("This feature has not been implemented yet.");
 
-			Log.Debug("CZ_REGISTER_AUTOSELLER: {0}, {1} item(s)", shopName, itemCount);
+			if (character.Connection.ShopCreated != null)
+			{
+				if (itemCount != -1)
+				{
+					Log.Warning("CZ_REGISTER_AUTOSELLER: Already has a shop open.");
+					return;
+				}
+				var shop = character.Connection.ShopCreated;
+				shop.IsClosed = true;
+				Send.ZC_AUTOSELLER_LIST(character);
+				Send.ZC_AUTOSELLER_TITLE(character);
+				Send.ZC_NORMAL.ShopAnimation(conn, character, "Squire_Repair", 1, 0);
+				character.Connection.ShopCreated = null;
+			}
+			else
+			{
+				var shop = new ShopData
+				{
+					Name = shopName,
+					EffectId = group
+				};
+				switch (group)
+				{
+					case 440007:
+						shop.Type = PersonalShopType.Buff;
+						break;
+					case 1240082:
+						shop.Type = PersonalShopType.ItemAwakening;
+						break;
+					case 690006:
+						shop.Type = PersonalShopType.Repair;
+						break;
+					case 1770085:
+						shop.Type = PersonalShopType.Portal;
+						break;
+					default:
+						shop.Type = PersonalShopType.Personal;
+						break;
+				}
+				// for itemCount
+				//   int itemId
+				//   int amount
+				//   int price
+				//   byte unk1[264]
+				for (var i = 0; i < itemCount; i++)
+				{
+					var itemId = packet.GetInt();
+					var index = packet.GetInt();
+					var requiredAmount = packet.GetInt();
+					var price = packet.GetInt();
+					var amount = packet.GetInt();
+					packet.GetBin(260); // Read Additional Data (Unsure if used or not)
+					var product = new ProductData();
+					product.ItemId = itemId;
+					product.Cost = price;
+					product.Amount = amount;
+					product.RequiredAmount = requiredAmount;
+					shop.Products.Add(index, product);
+				}
+				character.Connection.ShopCreated = shop;
+				Send.ZC_AUTOSELLER_LIST(conn, character);
+				// Instead of using fixed values 690006 = Repair Shop
+				Send.ZC_NORMAL.Shop_Unknown11C(conn, shop.EffectId, (int)shop.Type);
+				// TODO: Replace with values from the UserShopPrice file or make a db with it.
+				Send.ZC_NORMAL.ShopAnimation(conn, character, "Squire_Repair", 1, 1);
+				Send.ZC_AUTOSELLER_TITLE(character);
+				//character.MsgBox("This feature has not been implemented yet.");
+
+				Log.Debug("CZ_REGISTER_AUTOSELLER: {0}, {1} item(s)", shopName, itemCount);
+			}
+		}
+
+		/// <summary>
+		/// Request to "purchase" an item from a player shop.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_OPEN_AUTOSELLER)]
+		public void CZ_OPEN_AUTOSELLER(IZoneConnection conn, Packet packet)
+		{
+			var shopType = packet.GetInt();
+			var shopOwnerHandle = packet.GetInt();
+			var optionSelected = packet.GetInt();
+			var amount = packet.GetInt(); // 1?
+			var character = conn.SelectedCharacter;
+			var shopOwner = character.Map.GetCharacter(shopOwnerHandle);
+
+			// Check distance, if too far from seller, send system message
+			// "You're too far away from the distribution table..."
+			if (shopOwner == null || !shopOwner.Position.InRange2D(character.Position, 25))
+			{
+				character.SystemMessage("FarFromFoodTable");
+				return;
+			}
+			if (shopOwner.Connection.ShopCreated == null)
+			{
+				Log.Warning("CZ_OPEN_AUTOSELLER: {0} has no shop open.", conn.Account.Name);
+				return;
+			}
+			var shop = conn.ActiveShop = shopOwner.Connection.ShopCreated;
+			var product = shop.GetProduct(optionSelected);
+			// If you've already eaten the buff from sandwich shop.
+			// Send.ZC_SYSTEM_MSG(conn.Character, 200022);
+			Send.ZC_AUTOSELLER_LIST(conn, shopOwner);
+		}
+
+		/// <summary>
+		/// Request to "purchase" an item from a player shop.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_BUY_AUTOSELLER_ITEMS)]
+		public void CZ_BUY_AUTOSELLER_ITEMS(IZoneConnection conn, Packet packet)
+		{
+			var size = packet.GetShort();
+			var shopType = packet.GetInt();
+			var shopOwnerHandle = packet.GetInt();
+			var itemCount = packet.GetInt(); // 1?
+			var character = conn.SelectedCharacter;
+			var shopOwner = character.Map.GetCharacter(shopOwnerHandle);
+
+			// Check distance, if too far from seller, send system message
+			// "You're too far away from the distribution table..."
+			if (shopOwner == null || !shopOwner.Position.InRange2D(character.Position, 25))
+			{
+				character.SystemMessage("FarFromFoodTable");
+				return;
+			}
+			if (shopOwner.Connection.ShopCreated == null)
+			{
+				Log.Warning("CZ_BUY_AUTOSELLER_ITEMS: {0} has no shop open.", conn.Account.Name);
+				return;
+			}
+			var shop = conn.ActiveShop = shopOwner.Connection.ShopCreated;
+			for (var i = 0; i < itemCount; i++)
+			{
+				var index = packet.GetInt();
+				var itemId = packet.GetLong();
+				var itemAmount = packet.GetInt();
+				var i0 = packet.GetInt();
+				var product = shop.GetProduct(index);
+				if (character.Inventory.TryGetItem(itemId, out var item) && product.RequiredAmount >= itemAmount)
+				{
+					var sellerSilver = shopOwner.Inventory.CountItem(ItemId.Silver);
+					var totalCost = product.Cost * itemAmount;
+					if (sellerSilver >= totalCost && character.Inventory.Remove(itemId, itemAmount) == InventoryResult.Success
+							&& shopOwner.RemoveItem(ItemId.Silver, totalCost) == totalCost)
+					{
+						product.RequiredAmount -= itemAmount;
+						character.AddItem(ItemId.Silver, totalCost);
+						shopOwner.AddItem(item.Id, itemAmount);
+						Send.ZC_AUTOSELLER_LIST(shopOwner);
+					}
+				}
+			}
+			// If you've already eaten the buff from sandwich shop.
+			// Send.ZC_SYSTEM_MSG(conn.Character, 200022);
+			Send.ZC_AUTOSELLER_LIST(conn, shopOwner);
+		}
+
+		/// <summary>
+		/// Request to close an open player shop.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_AUTTOSELLER_BUYER_CLOSE)]
+		public void CZ_AUTOSELLER_BUYER_CLOSE(IZoneConnection conn, Packet packet)
+		{
+			var shopType = packet.GetInt();
+			var shopOwnerHandle = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+
+			if (conn.ActiveShop == null)
+			{
+				Log.Warning("CZ_AUTOSELLER_BUYER_CLOSE: {0} has no shop open.", conn.Account.Name);
+				return;
+			}
+			var shop = conn.ActiveShop;
+			var shopOwner = character.Map.GetCharacter(shopOwnerHandle);
+
+			if (shop != shopOwner.Connection.ShopCreated)
+			{
+				Log.Warning("CZ_AUTOSELLER_BUYER_CLOSE: {0} tried to close a different shop than the one open.", conn.Account.Name);
+				return;
+			}
+
+			conn.ShopCreated = null;
+			Send.ZC_ENABLE_CONTROL(conn, "AUTOSELLER", true);
+			Send.ZC_LOCK_KEY(character, "AUTOSELLER", false);
+			switch (shopType)
+			{
+				case 2:
+					Send.ZC_EXEC_CLIENT_SCP(conn, ClientScripts.SQUIRE_REPAIR_CANCEL);
+					break;
+				default:
+					Log.Warning("CZ_AUTOSELLER_BUYER_CLOSE: {0} shop type close not implemented.", shopType);
+					break;
+			}
 		}
 
 		/// <summary>
@@ -2487,6 +3117,29 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Sent when clicking Confirm in a shop, with items in the "Sold" list.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_ITEM_LIST)]
+		public void CZ_REQ_ITEM_LIST(IZoneConnection conn, Packet packet)
+		{
+			var type = (InventoryType)packet.GetByte(); // 1 = Personal Storage, 6 = Team Storage
+
+			var character = conn.SelectedCharacter;
+
+			if (!Enum.IsDefined(typeof(InventoryType), type))
+			{
+				Log.Warning("CZ_REQ_ITEM_LIST: Unknown type requested '{0}'.", type);
+				return;
+			}
+
+			// ToDo load list of warehouse items and send them
+			// Currently sending an empty list
+			Send.ZC_SOLD_ITEM_DIVISION_LIST(character, type, new List<Item>());
+		}
+
+		/// <summary>
 		/// Request for the latest channel traffic data, sent when the
 		/// player opens the channel selection in-game.
 		/// </summary>
@@ -2522,7 +3175,7 @@ namespace Melia.Zone.Network
 		public void CZ_HARDCODED_ITEM(IZoneConnection conn, Packet packet)
 		{
 			var s1 = packet.GetShort();
-			var itemObjectId = packet.GetLong();
+			var itemId = packet.GetLong();
 
 			// Do something with this information? It sends the id of
 			// the sub-weapon, so perhaps the client is telling us which
@@ -2533,7 +3186,581 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// Sent upon login.
+		/// Sent when transferring item between Warehouse and Inventory
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_WAREHOUSE_CMD)]
+		public void CZ_WAREHOUSE_CMD(IZoneConnection conn, Packet packet)
+		{
+			var b1 = packet.GetByte();
+			var worldId = packet.GetLong();
+			var i1 = packet.GetInt();
+			var amount = packet.GetInt();
+			var unkInt = packet.GetInt();
+			var warehouseCommandType = packet.GetByte(); // 0 = IN 1 = OUT
+
+			var character = conn.SelectedCharacter;
+
+			// Get item
+			if (!character.Inventory.TryGetItem(worldId, out var item))
+			{
+				Log.Warning("CZ_WAREHOUSE_CMD: User '{0}' tried to store a non-existent item.", conn.Account.Name);
+				return;
+			}
+
+			// Check amount
+			if (item.Amount < amount)
+			{
+				Log.Warning("CZ_WAREHOUSE_CMD: User '{0}' tried to store more of an item than they own.", conn.Account.Name);
+				return;
+			}
+
+			// Charge Player 20 silver for use
+			character.Inventory.Remove(ItemId.Silver, 20, InventoryItemRemoveMsg.Given); // Fixed Cost
+
+			if (warehouseCommandType == 0)
+			{
+				// Try to remove item from inventory
+				if (character.Inventory.Remove(item, amount, InventoryItemRemoveMsg.Sold) != InventoryResult.Success)
+				{
+					Log.Warning("CZ_WAREHOUSE_CMD: Failed to remove an item from user '{0}' inventory.", conn.Account.Name);
+					return;
+				}
+				// Try to add item to warehouse
+				character.Inventory.Add(item, InventoryAddType.New, InventoryType.Warehouse);
+			}
+			else
+			{
+				// Try to remove item
+				if (character.Inventory.Remove(item.ObjectId, amount, InventoryItemRemoveMsg.Sold, InventoryType.Warehouse) != InventoryResult.Success)
+				{
+					Log.Warning("CZ_WAREHOUSE_CMD: Failed to remove an item from user '{0}' inventory.", conn.Account.Name);
+					return;
+				}
+				// Try to add item to inventory
+				character.Inventory.Add(item);
+			}
+		}
+
+		/// <summary>
+		/// When resurrect is selected from the dialog
+		/// </summary>
+		/// <remarks>
+		/// Currently broken because visually character stays on in dead stance
+		/// </remarks>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_RESURRECT)]
+		public void CZ_RESURRECT(IZoneConnection conn, Packet packet)
+		{
+			var command = packet.GetByte();
+
+			var character = conn.SelectedCharacter;
+			if (command == 1)
+			{
+				//Send.ZC_RESET_VIEW(conn);
+				character.Warp(character.MapId, character.Position);
+				Send.ZC_RESURRECT_SAVE_POINT_ACK(character);
+				Send.ZC_ENTER_PC(conn, character);
+				Send.ZC_NORMAL.Revive(character);
+				Send.ZC_RESURRECT(character, character.Hp, character.MaxHp);
+				character.Heal(character.MaxHp / 2, character.Sp);
+			}
+		}
+
+		/// <summary>
+		/// When warping from warp function
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.ZC_CLIENT_DIRECT)]
+		public void ZC_CLIENT_DIRECT(IZoneConnection conn, Packet packet)
+		{
+			var command = packet.GetByte();
+
+			// ZC_SET_POS
+			// ZC_RESET_VIEW
+			// ZC_ENTER_PC
+			// ZC_ADD_HP
+			// ZC_UPDATE_SP
+			// ZC_RESURRECT_SAVE_POINT_ACK
+			var character = conn.SelectedCharacter;
+			if (command == 1)
+			{
+				Send.ZC_RESET_VIEW(conn);
+				Send.ZC_SET_POS(character);
+				Send.ZC_ENTER_PC(conn, character);
+				Send.ZC_NORMAL.Revive(character);
+				character.Heal();
+				//character.Heal(HealType.Hp, character.MaxHp / 2);
+				//character.Heal(HealType.Sp, character.Sp);
+				Send.ZC_RESURRECT_SAVE_POINT_ACK(character);
+
+			}
+		}
+
+		/// <summary>
+		/// When visiting a player house
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_POST_HOUSE_WARP)]
+		public void CZ_HOUSING_REQUEST_POST_HOUSE_WARP(IZoneConnection conn, Packet packet)
+		{
+			var accountId = packet.GetLong(); // characterId?
+			var character = conn.SelectedCharacter;
+
+			//Send.ZC_SYSTEM_MSG(character, 519083);
+			character.EtcProperties.SetString(PropertyName.PersonalHousingPrevZoneName, character.Map.Id.ToString());
+			character.EtcProperties.SetFloat(PropertyName.PersonalHousingPrevZonePos_x, character.Position.X);
+			character.EtcProperties.SetFloat(PropertyName.PersonalHousingPrevZonePos_y, character.Position.Y);
+			character.EtcProperties.SetFloat(PropertyName.PersonalHousingPrevZonePos_z, character.Position.Z);
+			Send.ZC_PC_PROP_UPDATE(character, (short)PropertyTable.GetId("PCEtc", PropertyName.PersonalHousingPrevZonePos_x), 1);
+			Send.ZC_PC_PROP_UPDATE(character, (short)PropertyTable.GetId("PCEtc", PropertyName.PersonalHousingPrevZonePos_y), 1);
+			Send.ZC_PC_PROP_UPDATE(character, (short)PropertyTable.GetId("PCEtc", PropertyName.PersonalHousingPrevZonePos_z), 1);
+			Send.ZC_SAVE_INFO(conn);
+			// Warp to personal house
+			character.Warp(7000, new Position(200, 2200, 1000));
+		}
+
+		/// <summary>
+		/// Accepting a party invite
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PARTY_INVITE_ACCEPT)]
+		public void CZ_PARTY_INVITE_ACCEPT(IZoneConnection conn, Packet packet)
+		{
+			var b1 = packet.GetByte();
+			var teamName = packet.GetString();
+			var character = conn.SelectedCharacter;
+			var sender = ZoneServer.Instance.World.GetCharacterByTeamName(teamName);
+
+			if (sender != null)
+			{
+				var party = sender.Connection.Party;
+				if (party == null)
+				{
+					party = ZoneServer.Instance.World.Parties.Create(sender);
+				}
+				party.AddMember(character);
+			}
+		}
+
+		/// <summary>
+		/// Rejecting a party invite
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PARTY_INVITE_CANCEL)]
+		public void CZ_PARTY_INVITE_CANCEL(IZoneConnection conn, Packet packet)
+		{
+			var b1 = packet.GetByte();
+			var teamName = packet.GetString();
+
+			var character = conn.SelectedCharacter;
+			var partyInviter = ZoneServer.Instance.World.GetCharacterByTeamName(teamName);
+
+			if (partyInviter != null)
+			{
+				Send.ZC_ADDON_MSG(partyInviter, AddonMessage.PARTY_INVITE_CANCEL, 0, character.TeamName);
+			}
+		}
+
+		/// <summary>
+		/// Leaving a party
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PARTY_OUT)]
+		public void CZ_PARTY_OUT(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+			var party = character.Connection.Party;
+
+			if (party != null)
+			{
+				party.RemoveMember(character);
+				if (party.MemberCount == 0)
+					ZoneServer.Instance.World.Parties.Delete(party);
+			}
+		}
+
+		/// <summary>
+		/// Changing Party Settings
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PARTY_PROP_CHANGE)]
+		public void CZ_PARTY_PROP_CHANGE(IZoneConnection conn, Packet packet)
+		{
+			var b1 = packet.GetByte();
+			var type = packet.GetInt();
+			var b2 = packet.GetByte();
+			var b3 = packet.GetByte();
+			var s1 = packet.GetShort();
+			var value = packet.GetString();
+
+			var character = conn.SelectedCharacter;
+			var party = character.Connection.Party;
+
+			if (party != null && party.LeaderDbId == character.DbId)
+			{
+				party.UpdateSetting(type, value);
+			}
+		}
+
+		[PacketHandler(Op.CZ_REQ_MARKET_REGISTER)]
+		public void CZ_REQ_MARKET_REGISTER(IZoneConnection conn, Packet packet)
+		{
+			var itemWorldId = packet.GetLong();
+			var itemAmount = packet.GetInt();
+			var itemId = packet.GetInt();
+			var itemPrice = packet.GetLong();
+			var s1 = packet.GetShort();
+			var s2 = packet.GetShort();
+			var i1 = packet.GetInt();
+			var saleLength = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+			var fee = 0;
+			var commissionFee = 0f;
+			var item = character.Inventory.GetItem(itemWorldId);
+
+			if (item == null)
+			{
+				Log.Warning("CZ_REQ_MARKET_REGISTER: User '{0}' tried to sell a non-existent item.", conn.Account.Name);
+				return;
+			}
+
+			switch (saleLength)
+			{
+				case 1:
+					commissionFee = 0.005f;
+					break;
+				case 3:
+					commissionFee = 0.0075f;
+					break;
+				case 5:
+					commissionFee = 0.01f;
+					break;
+				default:
+					commissionFee = 0.0125f;
+					break;
+			}
+			fee += (int)Math.Truncate(itemPrice * commissionFee);
+
+			if (!character.HasItem(ItemId.Silver, fee))
+			{
+				Log.Warning("CZ_REQ_MARKET_REGISTER: User '{0}' failed to remove registration fee.", conn.Account.Name);
+				return;
+			}
+
+			Send.ZC_OBJECT_PROPERTY(character.Connection, item);
+			Send.ZC_ADDON_MSG(conn.SelectedCharacter, AddonMessage.MARKET_REGISTER, 0, "None");
+
+			//Remove Item and Cost from Inventory
+			if (character.Inventory.Remove(itemWorldId, itemAmount, InventoryItemRemoveMsg.Given) != InventoryResult.Success)
+			{
+				Log.Warning("CZ_REQ_MARKET_REGISTER: User '{0}' failed to remove item.", conn.Account.Name);
+				return;
+			}
+
+			character.RemoveItem(ItemId.Silver, fee);
+			ZoneServer.Instance.Database.SaveMarketItem(character, item, itemPrice, saleLength);
+			Send.ZC_RELOAD_SELL_LIST(character);
+		}
+
+		[PacketHandler(Op.CZ_REQ_MARKET_MINMAX_INFO)]
+		public void CZ_REQ_MARKET_MINMAX_INFO(IZoneConnection conn, Packet packet)
+		{
+			var itemWorldId = packet.GetLong();
+			var character = conn.SelectedCharacter;
+
+			if (!character.Inventory.TryGetItem(itemWorldId, out var item))
+			{
+				Log.Warning("CZ_REQ_MARKET_MINMAX_INFO: User '{0}' tried to sell a non-existent item.", conn.Account.Name);
+				return;
+			}
+
+			Send.ZC_SYSTEM_MSG(character, 10322);
+			// TODO: Calculate Market Min/Max Price
+			Send.ZC_NORMAL.MarketMinMaxInfo(character, true, 113, 56, 453, 2265, 283);
+		}
+
+		[PacketHandler(Op.CZ_REQ_MARKET_BUY)]
+		public void CZ_REQ_MARKET_BUY(IZoneConnection conn, Packet packet)
+		{
+			var size = packet.GetShort();
+			var count = packet.GetInt();
+			var marketWorldId = packet.GetLong();
+			var itemAmount = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+			if (!ZoneServer.Instance.Database.GetMarketItem(marketWorldId, out var item))
+			{
+				Log.Warning("CZ_REQ_MARKET_BUY: User '{0}' failed to find market item {1}.", conn.Account.Name, marketWorldId);
+				return;
+			}
+
+			if (itemAmount > item.Count || itemAmount <= 0)
+			{
+				Log.Warning("CZ_REQ_MARKET_BUY: User '{0}' not enough quantity of the market item {1} - {2} > {3}.", conn.Account.Name, marketWorldId, itemAmount, item.Count);
+				return;
+			}
+
+			var totalPrice = item.SellPrice * itemAmount;
+			var remainAmount = item.Count - itemAmount;
+			if (!character.HasItem(ItemId.Silver, totalPrice))
+				return;
+			Send.ZC_NORMAL.MarketBuyItem(character, marketWorldId, remainAmount, 0);
+			character.RemoveItem(ItemId.Silver, totalPrice);
+			ZoneServer.Instance.Database.ModifyItemAmount(item.ItemGuid, -itemAmount);
+			ZoneServer.Instance.Database.UpdateMarketItemBuyer(marketWorldId, character.DbId);
+			Send.ZC_NORMAL.MarketRetrieveItem(character, item.ItemGuid);
+
+		}
+
+		[PacketHandler(Op.CZ_REQ_CABINET_LIST)]
+		public void CZ_REQ_CABINET_LIST(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+			var items = ZoneServer.Instance.Database.GetMarketItems(character);
+
+			Send.ZC_NORMAL.MarketRetrievalItems(character, items);
+		}
+
+		[PacketHandler(Op.CZ_REQ_GET_CABINET_ITEM)]
+		public void CZ_REQ_GET_CABINET_ITEM(IZoneConnection conn, Packet packet)
+		{
+			var itemWorldId = packet.GetLong();
+			var itemId = packet.GetInt();
+			var itemAmount = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+			if (!ZoneServer.Instance.Database.GetMarketItem(character.DbId, itemWorldId, out var item))
+			{
+				Log.Warning("CZ_REQ_GET_CABINET_ITEM: User '{0}' failed to find market item {1}.", conn.Account.Name, itemWorldId);
+				return;
+			}
+
+			if (item.ItemType != itemId || item.Count != itemAmount)
+			{
+				Log.Warning("CZ_REQ_GET_CABINET_ITEM: User '{0}' market item found doesn't match {1} - {2}:{3} != {4}:{5}.", conn.Account.Name, itemWorldId, item.ItemType, item.Count, itemId, itemAmount);
+				return;
+			}
+			if (!item.HasReceivedItem)
+			{
+				var retrievedItem = new Item(item.ItemGuid, item.ItemType, item.Count);
+				if (!character.Inventory.Add(retrievedItem))
+				{
+					Log.Warning("CZ_REQ_GET_CABINET_ITEM: User '{0}' failed to add item to inventory.", conn.Account.Name, itemWorldId, item.ItemType, item.Count, itemId, itemAmount);
+					return;
+				}
+				item.Status = MarketItemStatus.ItemReceived;
+				ZoneServer.Instance.Database.UpdateMarketItemStatus(character.DbId, item.Status);
+				Send.ZC_NORMAL.MarketRetrieveItem(character, item.ItemGuid);
+			}
+			else if (character.DbId == item.SellerId && item.IsSold && !item.HasReceivedSilver)
+			{
+				var retrievedSilver = new Item(ItemId.Silver, item.SellPrice);
+				if (!character.Inventory.Add(retrievedSilver))
+				{
+					Log.Warning("CZ_REQ_GET_CABINET_ITEM: User '{0}' failed to add item to inventory.", conn.Account.Name, itemWorldId, item.ItemType, item.Count, itemId, itemAmount);
+					return;
+				}
+				item.Status = MarketItemStatus.SilverReceived;
+				ZoneServer.Instance.Database.UpdateMarketItemStatus(character.DbId, item.Status);
+				Send.ZC_NORMAL.MarketRetrieveItem(character, item.ItemGuid);
+			}
+		}
+
+		[PacketHandler(Op.CZ_REQ_CANCEL_MARKET_ITEM)]
+		public void CZ_REQ_CANCEL_MARKET_ITEM(IZoneConnection conn, Packet packet)
+		{
+			var marketWorldId = packet.GetLong();
+			var character = conn.SelectedCharacter;
+
+			if (!ZoneServer.Instance.Database.CancelMarketItem(character, marketWorldId))
+			{
+				Log.Warning("CZ_REQ_CANCEL_MARKET_ITEM: User '{0}' failed to cancel market item {1}.", conn.Account.Name, marketWorldId);
+				return;
+			}
+			Send.ZC_NORMAL.MarketCancelItem(character, marketWorldId);
+			Send.ZC_RELOAD_SELL_LIST(character);
+		}
+
+		/// <summary>
+		/// Client request to summon a companion
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_SUMMON_PET)]
+		public void CZ_SUMMON_PET(IZoneConnection conn, Packet packet)
+		{
+			var companionId = packet.GetLong();
+			var petId = packet.GetInt();
+			var i1 = packet.GetInt();
+
+			if (companionId != 0)
+			{
+				var character = conn.SelectedCharacter;
+				var companion = character.GetCompanion(companionId);
+
+				if (companion != null && companion.ObjectId == companionId)
+					companion.SetCompanionState(!companion.IsActivated);
+			}
+		}
+
+		/// <summary>
+		/// Ride pet request
+		/// </summary>
+		[PacketHandler(Op.CZ_VEHICLE_RIDE)]
+		public void CZ_VEHICLE_RIDE(IZoneConnection conn, Packet packet)
+		{
+			var petHandle = packet.GetInt();
+			var isRiding = packet.GetByte() == 1;
+
+			var character = conn.SelectedCharacter;
+			var monster = character.Map.GetMonster(petHandle);
+
+			if (monster is Companion companion && companion.Owner.ObjectId == character.ObjectId)
+			{
+				if (isRiding)
+				{
+					character.Components.Get<BuffComponent>()?.Start(BuffId.RidingCompanion);
+					companion.Components.Get<BuffComponent>()?.Start(BuffId.TakingOwner);
+					// This is buff logic
+					character.Properties.Modify(PropertyName.MSPD_BM, 4f);
+					character.Properties.Modify(PropertyName.DR_BM, 3f);
+					character.Properties.Modify(PropertyName.DEF_BM, 12f);
+					Send.ZC_OBJECT_PROPERTY(character, PropertyName.MSPD, PropertyName.MSPD_BM,
+						PropertyName.DR, PropertyName.DR_BM, PropertyName.MHP, PropertyName.MHP_RATE_BM,
+						PropertyName.DEF, PropertyName.DEF_BM);
+					Send.ZC_MOVE_SPEED(character);
+				}
+				else
+				{
+					character.Components.Get<BuffComponent>()?.Remove(BuffId.RidingCompanion);
+					companion.Components.Get<BuffComponent>()?.Remove(BuffId.TakingOwner);
+					character.Properties.Modify(PropertyName.MSPD_BM, -4f);
+					character.Properties.Modify(PropertyName.DR_BM, -3f);
+					character.Properties.Modify(PropertyName.DEF_BM, -12f);
+					Send.ZC_OBJECT_PROPERTY(character, PropertyName.MSPD, PropertyName.MSPD_BM,
+						PropertyName.DR, PropertyName.DR_BM, PropertyName.MHP, PropertyName.MHP_RATE_BM,
+						PropertyName.DEF, PropertyName.DEF_BM);
+					Send.ZC_MOVE_SPEED(character);
+				}
+				companion.IsRiding = isRiding;
+				Send.ZC_NORMAL.PetIsInactive(conn, companion);
+				Send.ZC_NORMAL.RidePet(character, companion);
+			}
+		}
+
+		/// <summary>
+		/// Client requests to "Equip" an achievement title
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_ACHIEVE_EQUIP)]
+		public void CZ_ACHIEVE_EQUIP(IZoneConnection conn, Packet packet)
+		{
+			var achievementId = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+
+			// TODO check if character has achievementUnlocked
+			Send.ZC_ACHIEVE_EQUIP(character, achievementId);
+		}
+
+		/// <summary>
+		/// Client requests to continue a track (cutscene)
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_DIRECTION_PROCESS)]
+		public void CZ_DIRECTION_PROCESS(IZoneConnection conn, Packet packet)
+		{
+			var i1 = packet.GetInt();
+			var handle = packet.GetInt();
+			var frame = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+
+			if (character != null && character.Handle == handle && character.Tracks.ActiveTrack != null)
+			{
+				// Need to get all possible quest dialogs based on quest state
+				var track = character.Tracks.ActiveTrack;
+				character.Tracks.Progress(track.Id, frame);
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_DIRECTION_MOVE_STATE)]
+		public void CZ_DIRECTION_MOVE_STATE(IZoneConnection conn, Packet packet)
+		{
+			var packetSize = packet.GetShort();
+			int count = ((packet.Length - 24) / 28) - 2;
+
+			var character = conn.SelectedCharacter;
+			var track = character.Tracks.ActiveTrack;
+			if (character != null && track != null)
+			{
+				// Need to get all possible quest dialogs based on quest state
+				track.Frame = -2;
+				Send.ZC_NORMAL.SetTrackFrame(character, track.Frame);
+				if (count != track.Actors.Count())
+				{
+					Log.Warning("CZ_DIRECTION_MOVE_STATE: Count mismatch {0} != {1}", count, track.Actors.Count());
+				}
+				foreach (var entity in track.Actors)
+				{
+					var direction = packet.GetDirection();
+					var position = packet.GetPosition();
+					var f1 = packet.GetFloat();
+					var f2 = packet.GetFloat();
+
+					//if (entity.Direction != Direction.South && position != Position.Zero)
+					//	entity.SetDirection(direction);
+					if (position != Position.Zero)
+					{
+						if (entity is Character character1)
+						{
+							character1.SetPosition(position);
+							Send.ZC_SET_POS(character1);
+						}
+					}
+				}
+				Send.ZC_NORMAL.SetupCutscene(character, false, false, true);
+				//character.Tracks.Progress(track.Id, frame);
+			}
+		}
+
+		/// <summary>
+		/// Check quest state for NPCs
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_QUEST_NPC_STATE_CHECK)]
+		public void CZ_QUEST_NPC_STATE_CHECK(IZoneConnection conn, Packet packet)
+		{
+			var questId = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+
+			if (character != null)
+			{
+				//character.HasQuest(questId)
+			}
+		}
+
+		/// <summary>
+		/// Rank System Time Table ?
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="packet"></param>
@@ -2542,9 +3769,511 @@ namespace Melia.Zone.Network
 		{
 			var i1 = packet.GetInt();
 
-			// The purpose of this packet is currently unknown. Based on
-			// the name it's probably related to jobs, but that's about
-			// all we got on it. Ignore for now.
+			Send.ZC_RESPONSE_RANK_SYSTEM_TIME_TABLE(conn);
+		}
+
+		/// <summary>
+		/// Request Current Week # for Weekly Boss
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQUEST_WEEKLY_BOSS_NOW_WEEK_NUM)]
+		public void CZ_REQUEST_WEEKLY_BOSS_NOW_WEEK_NUM(IZoneConnection conn, Packet packet)
+		{
+			Send.ZC_WEEKLY_BOSS_NOW_WEEK_NUM(conn, 1);
+		}
+
+		/// <summary>
+		/// Request Current Week # for Guild Raid (Boruta)
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQUEST_BORUTA_NOW_WEEK_NUM)]
+		public void CZ_REQUEST_BORUTA_NOW_WEEK_NUM(IZoneConnection conn, Packet packet)
+		{
+			Send.ZC_RESPONSE_BORUTA_NOW_WEEK_NUM(conn, 1);
+		}
+
+		/// <summary>
+		/// Weekly Boss Start Time
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQUEST_WEEKLY_BOSS_END_TIME)]
+		public void CZ_REQUEST_WEEKLY_BOSS_START_TIME(IZoneConnection conn, Packet packet)
+		{
+			var weekNum = packet.GetInt();
+
+			//TODO check date time by weekNum
+			Send.ZC_WEEKLY_BOSS_START_TIME(conn.SelectedCharacter);
+		}
+
+		/// <summary>
+		/// Weekly Boss End Time
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQUEST_WEEKLY_BOSS_END_TIME)]
+		public void CZ_REQUEST_WEEKLY_BOSS_END_TIME(IZoneConnection conn, Packet packet)
+		{
+			var weekNum = packet.GetInt();
+
+			//TODO check date time by weekNum
+			Send.ZC_WEEKLY_BOSS_END_TIME(conn.SelectedCharacter);
+		}
+
+
+		[PacketHandler(Op.CZ_HOUSING_OPEN_EDIT_MODE)]
+		public void CZ_HOUSING_OPEN_EDIT_MODE(IZoneConnection conn, Packet packet)
+		{
+			if (conn.ActiveHouse == null)
+				return;
+			conn.ActiveHouse.SetEditMode(true);
+		}
+
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_GRID_ARRANGED_FURNITURE)]
+		public void CZ_HOUSING_REQUEST_GRID_ARRANGED_FURNITURE(IZoneConnection conn, Packet packet)
+		{
+			if (conn.ActiveHouse == null)
+				return;
+			var character = conn.SelectedCharacter;
+
+			conn.ActiveHouse.ShowGrid(character);
+		}
+
+		/// <summary>
+		/// Dummy (Unknown Purpose)
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_ARRANGED_FURNITURE)]
+		public void CZ_HOUSING_REQUEST_ARRANGED_FURNITURE(IZoneConnection conn, Packet packet)
+		{
+			if (conn.ActiveHouse == null)
+				return;
+		}
+
+		[PacketHandler(Op.CZ_HOUSING_CLOSE_EDIT_MODE)]
+		public void CZ_HOUSING_CLOSE_EDIT_MODE(IZoneConnection conn, Packet packet)
+		{
+			if (conn.ActiveHouse == null)
+				return;
+			conn.ActiveHouse.SetEditMode(false);
+		}
+
+		/// <summary>
+		/// Housing Request Group List?
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PERSONAL_HOUSING_REQUEST_GROUP_LIST)]
+		public void CZ_PERSONAL_HOUSING_REQUEST_GROUP_LIST(IZoneConnection conn, Packet packet)
+		{
+			if (conn.ActiveHouse == null)
+				return;
+			var character = conn.SelectedCharacter;
+
+			Send.ZC_PERSONAL_HOUSING_ANSWER_GROUP_LIST(character);
+		}
+
+		[PacketHandler(Op.CZ_CANCEL_PAIR_ANIMATION)]
+		public void CZ_CANCEL_PAIR_ANIMATION(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+			if (character.IsPaired)
+			{
+				character.IsPaired = false;
+				Send.ZC_ENABLE_CONTROL(conn, "MOVE_PC", true);
+				Send.ZC_PLAY_PAIR_ANIMATION(character, "None", false);
+				Send.ZC_FLY(character);
+			}
+		}
+
+		/// <summary>
+		/// Requests the server to perform various commands upon a dummy PC.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_DUMMYPC_INFO)]
+		public void CZ_REQ_DUMMYPC_INFO(IZoneConnection conn, Packet packet)
+		{
+			var handle = packet.GetInt();
+			var command = packet.GetInt();
+
+			var targetCharacter = conn.SelectedCharacter.Map.GetCharacter(handle);
+			switch (command)
+			{
+				case 4:
+					Send.ZC_DIALOG_SELECT(conn, targetCharacter.Name + "*@* ", "@dicID_^*$ETC_20170313_027457$*^", "@dicID_^*$ETC_20150317_004134$*^", "@dicID_^*$ETC_20150317_004148$*^");
+					break;
+			}
+		}
+
+		[PacketHandler(Op.CZ_VISIT_BARRACK)]
+		public void CZ_VISIT_BARRACK(IZoneConnection conn, Packet packet)
+		{
+			var teamName = packet.GetString();
+			var character = ZoneServer.Instance.World.GetCharacterByTeamName(teamName);
+
+			if (character == null)
+			{
+				Log.Warning("CZ_VISIT_BARRACK: Failed to find character with team name {0}, for account {1}.", teamName, conn.Account.Name);
+				return;
+			}
+			Send.ZC_SAVE_INFO(conn);
+			Send.ZC_MOVE_BARRACK(conn);
+		}
+
+		/// <summary>
+		/// Request player fight (DUMMY)
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_FRIENDLY_FIGHT)]
+		public void CZ_REQ_FRIENDLY_FIGHT(IZoneConnection conn, Packet packet)
+		{
+			var handle = packet.GetInt();
+			var b1 = packet.GetByte();
+
+			var receiver = conn.SelectedCharacter;
+			if (receiver == null)
+			{
+				Log.Warning("CZ_REQ_FRIENDLY_FIGHT: User '{0}'s character not found.", conn.Account.Name);
+				return;
+			}
+
+			var requester = receiver.Map.GetCharacter(handle);
+			if (requester == null)
+			{
+				Log.Warning("CZ_REQ_FRIENDLY_FIGHT: User '{0}' tried to respond to a player with handle ({1}) that doesn't exist on the map.", conn.Account.Name, handle);
+				return;
+			}
+
+			// If they accept
+			Send.ZC_FRIENDLY_STATE(conn, true);
+			Send.ZC_NORMAL.FightState(conn, requester, true);
+			Send.ZC_CHANGE_RELATION(conn, handle, true);
+
+			Send.ZC_FRIENDLY_STATE(requester.Connection, true);
+			Send.ZC_NORMAL.FightState(conn, requester, true);
+			Send.ZC_CHANGE_RELATION(requester.Connection, handle, true);
+		}
+
+		/// <summary>
+		/// Leave personal house (DUMMY)
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PERSONAL_HOUSING_REQUEST_LEAVE)]
+		public void CZ_PERSONAL_HOUSING_REQUEST_LEAVE(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+			var house = conn.ActiveHouse;
+			if (house != null)
+			{
+				conn.ActiveHouse = null;
+				var lastMapId = (int)character.EtcProperties.GetFloat(PropertyName.LastWarpMapID);
+				if (lastMapId == 0)
+					lastMapId = 1001;
+				//if (ZoneServer.Instance.World.Maps.TryGet(lastMapId, out var map) && map.Ground.TryGetRandomPosition(out var rndPos))
+				//	character.Warp(map.Id, rndPos);
+			}
+		}
+
+		/// <summary>
+		/// Solo Dungeon Enter (DUMMY)
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_SOLO_INDUN_ENTER)]
+		public void CZ_SOLO_INDUN_ENTER(IZoneConnection conn, Packet packet)
+		{
+			var dungeonId = packet.GetInt(); // 202
+			var i1 = packet.GetInt(); // 1
+			var i2 = packet.GetInt(); // 0
+
+			//var dungeon = ZoneServer.Instance.Data.InstanceDungeonDb.Find(dungeonId);
+			// TODO Check Entry Qualifications
+			//if (dungeon == null)
+			{
+				Log.Warning("CZ_SOLO_INDUN_ENTER: User '{0}' tried to enter dungeon with id ({1}) that doesn't exist.", conn.Account.Name, dungeonId);
+			}
+		}
+
+		[PacketHandler(Op.CZ_QUEST_CHECK_SAVE)]
+		public void CZ_QUEST_CHECK_SAVE(IZoneConnection conn, Packet packet)
+		{
+			var questId = packet.GetInt();
+			//var quest = ZoneServer.Instance.Data.QuestDb.Find(questId);
+
+			//if (quest == null)
+			{
+				//Log.Warning("CZ_QUEST_CHECK_SAVE: User '{0}' tried to save non-existent quest with Id: {1}.", conn.Account.Name, questId);
+			}
+			// TODO Do something with this?
+		}
+
+		/// <summary>
+		/// Request Used Medal Total
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQUEST_USED_MEDAL_TOTAL)]
+		public void CZ_REQUEST_USED_MEDAL_TOTAL(IZoneConnection conn, Packet packet)
+		{
+			var medals = conn.Account.Medals;
+
+			Send.ZC_NORMAL.UsedMedalTotal(conn, medals);
+		}
+
+		/// <summary>
+		/// Sent when offering to Goddess Grace Event
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_BID_FIELDBOSS_WORLD_EVENT)]
+		public void CZ_BID_FIELDBOSS_WORLD_EVENT(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+			var fixedCost = 50000;
+			if (character.Inventory.CountItem(ItemId.Silver) < fixedCost)
+			{
+				Send.ZC_SYSTEM_MSG(character, 10236);
+				return;
+			}
+			// Pick a random item based on weights?
+			/**
+			var possibleItems = new List<WeightedListItem<string>>
+			{
+				new WeightedListItem<string>("VakarineCertificateCoin_100p", 10),
+				new WeightedListItem<string>("VakarineCertificateCoin_1000p", 1),
+			};
+			var weightedItems = new WeightedList<string>(possibleItems);
+			var itemClassName = weightedItems.Next();
+			var itemData = ZoneServer.Instance.Data.ItemDb.FindByClass(itemClassName);
+			if (itemData != null)
+			{
+				Send.ZC_NORMAL.SteamAchievement(character, SteamAchievement.TOS_STEAM_ACHIEVEMENT_GOD_PROTECTION);
+				character.RemoveItem(ItemId.Silver, fixedCost);
+				character.AddItem(itemData.Id);
+				Send.ZC_LOSE_FIELDBOSS_WORLD_EVENT_ITEM(character, itemData.Id);
+			}
+			**/
+		}
+
+		[PacketHandler(Op.CZ_REQ_SOLO_DUNGEON_REWARD)]
+		public void CZ_REQ_SOLO_DUNGEON_REWARD(IZoneConnection conn, Packet packet)
+		{
+			var character = conn.SelectedCharacter;
+
+			// If no rewards send message
+			Send.ZC_SYSTEM_MSG(character, 513007);
+		}
+
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_GUILD_AGIT_INFO)]
+		public void CZ_HOUSING_REQUEST_GUILD_AGIT_INFO(IZoneConnection conn, Packet packet)
+		{
+			var guildId = packet.GetLong();
+			var addonMessage = packet.GetString(128);
+			// Get Guild Info
+			var guildMapId = 6000;
+			var guildLevel = 1;
+
+			Send.ZC_HOUSING_ANSWER_GUILD_AGIT_INFO(conn, guildId, guildMapId, guildLevel);
+			Send.ZC_ADDON_MSG(conn.SelectedCharacter, AddonMessage.RECEIVE_OTHER_GUILD_AGIT_INFO, 0, guildId.ToString());
+		}
+
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_PREVIEW)]
+		public void CZ_HOUSING_REQUEST_PREVIEW(IZoneConnection conn, Packet packet)
+		{
+			var guildId = packet.GetLong();
+			var l1 = packet.GetLong();
+			// Get Guild Info
+			var guildMapId = 6000;
+
+			Send.ZC_HOUSING_ANSWER_PREVIEW(conn, guildId, guildMapId);
+		}
+
+		/// <summary>
+		/// Request to arrange furniture (place furniture)
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_ARRANGEMENT_FURNITURE)]
+		public void CZ_HOUSING_REQUEST_ARRANGEMENT_FURNITURE(IZoneConnection conn, Packet packet)
+		{
+			var packetSize = packet.GetShort();
+			var personalHouse = conn.ActiveHouse;
+
+			if (personalHouse == null)
+			{
+				Log.Warning("User '{0}' doesn't have an active house.", conn.Account.Name);
+				return;
+			}
+
+			var character = conn.SelectedCharacter;
+			var direction = (CardinalDirection)packet.GetByte();
+			var column = packet.GetInt();
+			var row = packet.GetInt();
+			var cellCount = packet.GetInt();
+			var usedCells = new List<int>();
+			for (var i = 0; i < cellCount; i++)
+			{
+				usedCells.Add(packet.GetInt());
+			}
+			personalHouse.AddFurniture(character, direction, column, row, cellCount, usedCells);
+		}
+
+		/// <summary>
+		/// Cancel request to place furniture
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_HOUSING_CANCEL_ARRANGEMENT_FURNITURE)]
+		public void CZ_HOUSING_CANCEL_ARRANGEMENT_FURNITURE(IZoneConnection conn, Packet packet)
+		{
+			var personalHouse = conn.ActiveHouse;
+			var character = conn.SelectedCharacter;
+
+			if (personalHouse == null)
+			{
+				Log.Warning("User '{0}' doesn't have an active house.", conn.Account.Name);
+				return;
+			}
+			personalHouse.CancelFurnitureArrangement(character);
+		}
+
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_MOVE_FURNITURE)]
+		public void CZ_HOUSING_REQUEST_MOVE_FURNITURE(IZoneConnection conn, Packet packet)
+		{
+			var packetSize = packet.GetShort();
+			var personalHouse = conn.ActiveHouse;
+
+			if (personalHouse == null)
+			{
+				Log.Warning("User '{0}' doesn't have an active house.", conn.Account.Name);
+				return;
+			}
+
+			var character = conn.SelectedCharacter;
+			var furnitureId = packet.GetInt();
+			var furnitureHandle = packet.GetInt();
+			var direction = (CardinalDirection)packet.GetByte();
+			var column = packet.GetInt();
+			var row = packet.GetInt();
+			var cellCount = packet.GetInt();
+			var usedCells = new List<int>();
+			for (var i = 0; i < cellCount; i++)
+			{
+				usedCells.Add(packet.GetInt());
+			}
+			personalHouse.MoveFurniture(character, furnitureId, furnitureHandle, direction, column, row, cellCount, usedCells);
+		}
+
+		/// <summary>
+		/// Remove furniture(s)
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_REMOVE_FURNITURE_ALOT)]
+		public void CZ_HOUSING_REQUEST_REMOVE_FURNITURE_ALOT(IZoneConnection conn, Packet packet)
+		{
+			var packetSize = packet.GetShort();
+			var personalHouse = conn.ActiveHouse;
+
+			if (personalHouse == null)
+			{
+				Log.Warning("User '{0}' doesn't have an active house.", conn.Account.Name);
+				return;
+			}
+
+			var character = conn.SelectedCharacter;
+			var furnitureCount = packet.GetInt();
+			for (var i = 0; i < furnitureCount; i++)
+			{
+				var furnitureId = packet.GetInt();
+				var furnitureHandle = packet.GetInt();
+				personalHouse.RemoveFurniture(character, furnitureId, furnitureHandle);
+			}
+		}
+
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_REMOVE_ALL_FURNITURE)]
+		public void CZ_HOUSING_REQUEST_REMOVE_ALL_FURNITURE(IZoneConnection conn, Packet packet)
+		{
+			var personalHouse = conn.ActiveHouse;
+
+			if (personalHouse == null)
+			{
+				Log.Warning("User '{0}' doesn't have an active house.", conn.Account.Name);
+				return;
+			}
+			var character = conn.SelectedCharacter;
+
+			personalHouse.RemoveAllFurniture(character);
+		}
+
+		[PacketHandler(Op.CZ_HOUSING_REQUEST_ENABLE_MOVE_FURNITURE)]
+		public void CZ_HOUSING_REQUEST_ENABLE_MOVE_FURNITURE(IZoneConnection conn, Packet packet)
+		{
+			var personalHouse = conn.ActiveHouse;
+
+			if (personalHouse == null)
+			{
+				Log.Warning("CZ_HOUSING_REQUEST_ENABLE_MOVE_FURNITURE: User '{0}' doesn't have an active house.", conn.Account.Name);
+				return;
+			}
+
+			var character = conn.SelectedCharacter;
+			var furnitureId = packet.GetInt();
+			var furnitureHandle = packet.GetInt();
+
+			personalHouse.EnableMoveFurniture(character, furnitureId, furnitureHandle);
+		}
+
+		/// <summary>
+		/// Skills which require the user to select a cell list.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_SKILL_CELL_LIST)]
+		public void CZ_SKILL_CELL_LIST(IZoneConnection conn, Packet packet)
+		{
+			var s1 = packet.GetShort(); // 64
+			var castPosition = packet.GetPosition();
+			var castDirection = packet.GetDirection();
+			var cellCount = packet.GetInt();
+
+			var character = conn.SelectedCharacter;
+
+			if (character == null)
+			{
+				Log.Warning("CZ_SKILL_CELL_LIST: Account '{0}' tried to use a non-existing character.", conn.Account.Name);
+				return;
+			}
+
+			character.Variables.Temp.Set("SkillCellCastPosition", castPosition);
+			character.Variables.Temp.Set("SkillCellCastDirection", castDirection);
+			character.Variables.Temp.SetInt("SkillCellCount", cellCount);
+			var cells = new List<SkillCellPosition>();
+			for (var index = 0; index < cellCount; ++index)
+			{
+				var cellZ = packet.GetInt();
+				var cellX = packet.GetInt();
+				cells.Add(new SkillCellPosition(cellX, cellZ));
+			}
+			character.Variables.Temp.Set("SkillCellList", cells);
+		}
+
+		/// <summary>
+		/// Garbage Packet sent on Death
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PC_DEATH)]
+		public void CZ_PC_DEATH(IZoneConnection conn, Packet packet)
+		{
+			if (conn.SelectedCharacter.IsDead)
+				Send.ZC_RESURRECT_DIALOG(conn);
 		}
 	}
 }

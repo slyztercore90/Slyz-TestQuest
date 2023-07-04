@@ -43,7 +43,7 @@ typedef struct
     }
 
     int buffHandle2;
-    int64 l1;
+    int64 partyId; // 554643486671500
 
     if (elements1Count > 0)
         BuffElement1 elements1[elements1Count];
@@ -69,7 +69,7 @@ typedef struct
     string casterName; // Real
     int casterHandle;
     int buffHandle;
-    int64 l1;
+    int64 partyId; // 554643486671500
     byte b1;
     byte b2;
 }

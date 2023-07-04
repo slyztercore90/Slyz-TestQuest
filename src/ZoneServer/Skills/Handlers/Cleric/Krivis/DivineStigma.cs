@@ -1,0 +1,62 @@
+using System;
+using Melia.Shared.L10N;
+using Melia.Shared.Tos.Const;
+using Melia.Shared.World;
+using Melia.Zone.Buffs;
+using Melia.Zone.Network;
+using Melia.Zone.Skills.Combat;
+using Melia.Zone.Skills.Handlers.Base;
+using Melia.Zone.World.Actors;
+using Melia.Zone.World.Actors.CombatEntities.Components;
+using Yggdrasil.Logging;
+
+namespace Melia.Zone.Skills.Handlers.Kriwi
+{
+	/// <summary>
+	/// Handler for the Kriwi skill Divine Stigma.
+	/// </summary>
+	[SkillHandler(SkillId.Kriwi_DivineStigma)]
+	public class DivineStigma : IGroundSkillHandler
+	{
+		/// <summary>
+		/// Handles skill behavior
+		/// </summary>
+		/// <param name="skill"></param>
+		/// <param name="caster"></param>
+		/// <param name="originPos"></param>
+		/// <param name="farPos"></param>
+		/// <param name="designatedTarget"></param>
+		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity designatedTarget)
+		{
+			if (!caster.TrySpendSp(skill))
+			{
+				caster.ServerMessage(Localization.Get("Not enough SP."));
+				return;
+			}
+
+			skill.IncreaseOverheat();
+			caster.TurnTowards(designatedTarget);
+			caster.Components.Get<CombatComponent>().SetAttackState(true);
+
+			var radius = (int)skill.Data.SplashRange * 2;
+			var targets = caster.Map.GetAttackableEntitiesInRange(caster, farPos, radius);
+			Send.ZC_NORMAL.UpdateSkillEffect(caster, 0, caster.Position, caster.Direction, Position.Zero);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, null);
+
+
+			foreach (var currentTarget in targets.LimitBySDR(caster, skill))
+			{
+				Send.ZC_NORMAL.Skill_Unknown_C7(caster, currentTarget);
+				var divineStigmaDamageBuff = new Buff(BuffId.DivineStigma_Damage_Debuff, 0, 0, TimeSpan.FromSeconds(6), currentTarget, caster);
+				//divineStigmaDamageBuff.Skill = skill;
+				var brillianceDebuff = new Buff(BuffId.Luminosity_Debuff, 0, 0, TimeSpan.FromSeconds(10), currentTarget, caster);
+				//brillianceDebuff.Skill = skill;
+				var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
+				Send.ZC_SYNC_START(caster, skillHandle, 1);
+				currentTarget.Components.Get<BuffComponent>()?.AddOrUpdate(divineStigmaDamageBuff, brillianceDebuff);
+				Send.ZC_SYNC_END(caster, skillHandle, 0);
+				Send.ZC_SYNC_EXEC_BY_SKILL_TIME(caster, skillHandle, TimeSpan.FromMilliseconds(200));
+			}
+		}
+	}
+}

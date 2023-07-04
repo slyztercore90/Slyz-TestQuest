@@ -148,6 +148,23 @@ namespace Melia.Shared.Database
 		}
 
 		/// <summary>
+		/// Returns true if a guild with the given name exists.
+		/// </summary>
+		/// <param name="name"></param>
+		/// <returns></returns>
+		public bool GuildNameExists(string name)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT `guildId` FROM `guild` WHERE `name` = @name", conn))
+			{
+				cmd.Parameters.AddWithValue("@name", name);
+
+				using (var reader = cmd.ExecuteReader())
+					return reader.HasRows;
+			}
+		}
+
+		/// <summary>
 		/// Changes team name for account.
 		/// </summary>
 		/// <param name="account"></param>
@@ -172,7 +189,7 @@ namespace Melia.Shared.Database
 		/// <param name="idName"></param>
 		/// <param name="id"></param>
 		/// <param name="properties"></param>
-		protected void LoadProperties(string databaseName, string idName, long id, Properties properties)
+		protected bool LoadProperties(string databaseName, string idName, long id, Properties properties)
 		{
 			using (var conn = this.GetConnection())
 			using (var cmd = new MySqlCommand($"SELECT * FROM `{databaseName}` WHERE `{idName}` = @id", conn))
@@ -225,6 +242,7 @@ namespace Melia.Shared.Database
 							property.Deserialize(valueStr);
 						}
 					}
+					return reader.HasRows;
 				}
 			}
 		}
@@ -264,6 +282,38 @@ namespace Melia.Shared.Database
 				}
 
 				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Saves properties to the given database, with the id.
+		/// </summary>
+		/// <param name="databaseName"></param>
+		/// <param name="idName"></param>
+		/// <param name="id"></param>
+		/// <param name="properties"></param>
+		protected void SaveProperties(string databaseName, string idName, long id, Properties properties, MySqlConnection conn, MySqlTransaction trans)
+		{
+			using (var cmd = new MySqlCommand($"DELETE FROM `{databaseName}` WHERE `{idName}` = @id", conn))
+			{
+				cmd.Parameters.AddWithValue("@id", id);
+				cmd.ExecuteNonQuery();
+			}
+
+			foreach (var property in properties.GetAll())
+			{
+				var typeStr = property is FloatProperty ? "f" : "s";
+				var valueStr = property.Serialize();
+
+				using (var cmd = new InsertCommand($"INSERT INTO `{databaseName}` {{0}}", conn))
+				{
+					cmd.Set(idName, id);
+					cmd.Set("name", property.Ident);
+					cmd.Set("type", typeStr);
+					cmd.Set("value", valueStr);
+
+					cmd.Execute();
+				}
 			}
 		}
 	}

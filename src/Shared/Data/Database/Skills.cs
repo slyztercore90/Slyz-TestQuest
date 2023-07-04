@@ -113,7 +113,54 @@ namespace Melia.Shared.Data.Database
 		Missile,
 		Magic,
 		Responsive,
+		TrueDamage,
 	}
+
+	public enum AttackType
+	{
+		None = 0,
+		Fire = 1,
+		Ice = 2,
+		Lightning = 3,
+		Earth = 4,
+		Poison = 5,
+		Dark = 6,
+		Holy = 7,
+		Soul = 8,
+		Melee = 9,
+		Slash = 101,
+		Aries = 102,
+		Strike = 103,
+		Arrow = 104,
+		Gun = 105,
+		Cannon = 106,
+		Missile = 301,
+		Cleric_Cure = 501,
+	}
+
+	/**
+	public enum AttackType
+	{
+		None = 0,
+		Fire = 1,
+		Ice = 2,
+		Lightning = 3,
+		Earth = 4,
+		Poison = 5,
+		Dark = 6,
+		Holy = 7,
+		Soul = 8,
+		Melee = 9,
+		Slash = 101,
+		Aries = 102,
+		Strike = 103,
+		Arrow = 104,
+		Gun = 105,
+		Cannon = 106,
+		Missile = 301,
+		Cleric_Cure = 501,
+	}
+	**/
 
 	/// <summary>
 	/// Skill database, indexed by skill id.

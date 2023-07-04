@@ -22,40 +22,9 @@ namespace Melia.Barracks.Network
 				var packet = new Packet(Op.BC_NORMAL);
 				packet.PutInt(NormalOp.Barrack.SetBarrackCharacter);
 
-				packet.PutLong(conn.Account.Id);
-				packet.PutLong(conn.Account.Id);
+				packet.PutLong(conn.Account.ObjectId);
+				packet.PutLong(conn.Account.ObjectId);
 				packet.AddBarrackPc(character);
-
-				conn.Send(packet);
-			}
-
-			/// <summary>
-			/// Sets the barrack, but not working for some reason.
-			/// Use the account property to do this.
-			/// </summary>
-			/// <param name="conn"></param>
-			/// <param name="mapId"></param>
-			public static void SetBarrack(IBarracksConnection conn, int mapId)
-			{
-				var packet = new Packet(Op.BC_NORMAL);
-				packet.PutInt(NormalOp.Barrack.SetBarrack);
-				packet.PutLong(conn.Account.Id);
-				packet.PutInt(mapId);
-				packet.PutByte(1);
-				packet.PutInt(0);
-				conn.Send(packet);
-			}
-
-			/// <summary>
-			/// Purpose unknown. Related to buying themas and appears to
-			/// sometimes send the player back to the character selection
-			/// screen.
-			/// </summary>
-			/// <param name="conn"></param>
-			public static void UnkThema1(IBarracksConnection conn)
-			{
-				var packet = new Packet(Op.BC_NORMAL);
-				packet.PutInt(NormalOp.Barrack.UnkThema1);
 
 				conn.Send(packet);
 			}
@@ -70,11 +39,107 @@ namespace Melia.Barracks.Network
 			{
 				var packet = new Packet(Op.BC_NORMAL);
 				packet.PutInt(NormalOp.Barrack.SetPosition);
-				packet.PutLong(conn.Account.Id);
+				packet.PutLong(conn.Account.ObjectId);
 				packet.PutByte(index);
 				packet.PutFloat(position.X);
 				packet.PutFloat(position.Y);
 				packet.PutFloat(position.Z);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Sets the barrack, but not working for some reason.
+			/// Use the account property to do this.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="mapId"></param>
+			public static void SetBarrack(IBarracksConnection conn, int mapId)
+			{
+				var packet = new Packet(Op.BC_NORMAL);
+				packet.PutInt(NormalOp.Barrack.SetBarrack);
+				packet.PutLong(conn.Account.ObjectId);
+				packet.PutInt(mapId);
+				packet.PutByte(1);
+				packet.PutInt(0);
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Moves a companion in the barrack.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="companionId"></param>
+			/// <param name="position"></param>
+			public static void SetCompanionPosition(IBarracksConnection conn, long companionId, Position position)
+			{
+				var packet = new Packet(Op.BC_NORMAL);
+				packet.PutInt(NormalOp.Barrack.SetCompanionPosition);
+
+				packet.PutLong(conn.Account.ObjectId);
+				packet.PutLong(companionId);
+				packet.PutFloat(position.X);
+				packet.PutFloat(position.Y);
+				packet.PutFloat(position.Z);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Adds companions in the barrack.
+			/// </summary>
+			/// <param name="conn"></param>
+			public static void CompanionInfo(IBarracksConnection conn)
+			{
+				var allCompanions = conn.Account.GetCompanions();
+				var layerCompanions = allCompanions.Where(x => x.BarracksLayer == conn.Account.SelectedBarrackLayer);
+				var companionCount = layerCompanions.Count();
+				if (companionCount == 0)
+					return;
+				var packet = new Packet(Op.BC_NORMAL);
+				packet.PutInt(NormalOp.Barrack.CompanionInfo);
+
+				packet.PutLong(conn.Account.ObjectId);
+				packet.PutInt(companionCount);
+				foreach (var companion in layerCompanions)
+				{
+					packet.AddCompanion(companion);
+				}
+				packet.PutInt(companionCount);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Set a companion's associated character in the barrack.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="companionId"></param>
+			/// <param name="characterId"></param>
+			public static void SetCompanion(IBarracksConnection conn, long companionId, long characterId)
+			{
+				var packet = new Packet(Op.BC_NORMAL);
+				packet.PutInt(NormalOp.Barrack.SetCompanion);
+
+				packet.PutLong(conn.Account.ObjectId);
+				packet.PutLong(companionId);
+				packet.PutLong(characterId);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Deletes a companion in the barrack.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="companionId"></param>
+			public static void DeleteCompanion(IBarracksConnection conn, long companionId)
+			{
+				var packet = new Packet(Op.BC_NORMAL);
+				packet.PutInt(NormalOp.Barrack.DeleteCompanion);
+
+				packet.PutLong(conn.Account.ObjectId);
+				packet.PutLong(companionId);
 
 				conn.Send(packet);
 			}
@@ -85,11 +150,9 @@ namespace Melia.Barracks.Network
 			/// <param name="conn"></param>
 			public static void TeamUI(IBarracksConnection conn)
 			{
-				var characters = conn.Account.GetCharacters();
-
 				var packet = new Packet(Op.BC_NORMAL);
 				packet.PutInt(NormalOp.Barrack.TeamUI);
-				packet.PutLong(conn.Account.Id);
+				packet.PutLong(conn.Account.ObjectId);
 				packet.PutShort(conn.Account.AdditionalSlotCount);
 				packet.PutInt(conn.Account.TeamExp);
 				packet.PutShort(conn.Account.CharacterCount);
@@ -144,7 +207,7 @@ namespace Melia.Barracks.Network
 
 							for (var channelId = 0; channelId < availableZoneServers.Length; ++channelId)
 							{
-								var zoneServerInfo = availableZoneServers[channelId];
+								var zoneServerInfo = availableZoneServers[(int)channelId];
 
 								// The client uses the "channelId" as part of the
 								// channel name. For example, id 0 becomes "Ch 1",
@@ -153,10 +216,71 @@ namespace Melia.Barracks.Network
 								// a sequential number starting from 0 to match
 								// official behavior.
 
-								zpacket.PutShort(channelId);
+								zpacket.PutShort((int)channelId);
 								zpacket.PutShort(zoneServerInfo.CurrentPlayers);
 								zpacket.PutShort(zoneServerInfo.MaxPlayers);
 							}
+						}
+					}
+				});
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Invokes a lua function.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="str"></param>
+			public static void Run(IBarracksConnection conn, string str)
+			{
+				var packet = new Packet(Op.BC_NORMAL);
+				packet.PutInt(NormalOp.Barrack.Run);
+				packet.PutLpString(str);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Mailbox
+			/// </summary>
+			/// <param name="conn"></param>
+			public static void Mailbox(IBarracksConnection conn)
+			{
+				var packet = new Packet(Op.BC_NORMAL);
+				packet.PutInt(NormalOp.Barrack.Mailbox);
+
+				packet.Zlib(true, zpacket =>
+				{
+					var mailBox = conn.Account.Mailbox;
+					zpacket.PutByte(mailBox.HasMessages);
+					zpacket.PutInt(mailBox.ReadMessages);
+					zpacket.PutInt(mailBox.UnreadMesages);
+					zpacket.PutInt(mailBox.MessageCount); //Message Count?
+
+					foreach (var message in mailBox.Mail)
+					{
+						zpacket.PutLpString(message.Sender);
+						zpacket.PutLpString(message.Subject);
+						zpacket.PutLpString(message.Message);
+						zpacket.PutDate(message.StartDate); // Date Sent?
+						zpacket.PutDate(message.ExpirationDate); // Expiration
+						zpacket.PutDate(message.CreatedDate);
+						zpacket.PutLong(message.Id); // Message Id
+						zpacket.PutByte(message.IsRead);
+						zpacket.PutShort(message.Items.Count);
+						zpacket.PutByte(0); // Changes Visibility?
+						zpacket.PutByte(0);
+						zpacket.PutByte(1);
+						zpacket.PutShort(0);
+						zpacket.PutInt(message.Items.Count); // Message Item Count
+
+						foreach (var item in message.Items)
+						{
+							zpacket.PutInt(item.Id);
+							zpacket.PutInt(item.ItemId);
+							zpacket.PutInt(item.Amount);
+							zpacket.PutInt(item.IsReceived ? 1 : 0);
 						}
 					}
 				});
@@ -173,7 +297,7 @@ namespace Melia.Barracks.Network
 			public static void UpdatePostBoxState(IBarracksConnection conn, long messageId, PostBoxMessageState state)
 			{
 				var packet = new Packet(Op.BC_NORMAL);
-				packet.PutInt(NormalOp.Barrack.PostBoxState);
+				packet.PutInt(NormalOp.Barrack.MailboxState);
 				packet.PutLong(messageId);
 				packet.PutByte((byte)state);
 
@@ -181,15 +305,26 @@ namespace Melia.Barracks.Network
 			}
 
 			/// <summary>
-			/// Invokes a lua function.
+			/// Mail Update
 			/// </summary>
 			/// <param name="conn"></param>
-			/// <param name="str"></param>
-			public static void Run(IBarracksConnection conn, string str)
+			public static void MailUpdate(IBarracksConnection conn, MailMessage message)
 			{
 				var packet = new Packet(Op.BC_NORMAL);
-				packet.PutInt(NormalOp.Barrack.Run);
-				packet.PutLpString(str);
+				packet.PutInt(NormalOp.Barrack.MailUpdate);
+
+				packet.PutLong(message.Id);
+				packet.PutByte((byte)message.State);
+				packet.PutInt(7);
+				packet.PutInt(message.Items.Count); // Message Item Count
+
+				foreach (var item in message.Items)
+				{
+					packet.PutInt(item.Id);
+					packet.PutInt(item.ItemId);
+					packet.PutInt(item.Amount);
+					packet.PutInt(item.IsReceived ? 1 : 0);
+				}
 
 				conn.Send(packet);
 			}
@@ -234,38 +369,15 @@ namespace Melia.Barracks.Network
 			}
 
 			/// <summary>
-			/// Mailbox
+			/// Purpose unknown. Related to buying themas and appears to
+			/// sometimes send the player back to the character selection
+			/// screen.
 			/// </summary>
 			/// <param name="conn"></param>
-			public static void MESSAGE_MAIL(IBarracksConnection conn)
+			public static void ThemaSuccess(IBarracksConnection conn)
 			{
 				var packet = new Packet(Op.BC_NORMAL);
-				packet.PutInt(NormalOp.Barrack.Message);
-
-				packet.Zlib(true, zpacket =>
-				{
-					zpacket.PutByte(1);
-					zpacket.PutInt(0);
-					zpacket.PutInt(1); //Message Count?
-
-					var sender = "GM.";
-					var title = "Compensation on for Temporary Maintenance";
-					var message = "";
-
-					zpacket.PutLpString(sender);
-					zpacket.PutLpString(title);
-					zpacket.PutLpString(message);
-					zpacket.PutDate(DateTime.Now); // Date Sent?
-					zpacket.PutDate(DateTime.Now); // Expiration
-					zpacket.PutDate(DateTime.Now);
-					zpacket.PutLong(1); // Message Id
-					zpacket.PutByte(0);
-					zpacket.PutShort(3);
-					zpacket.PutShort(0);
-					zpacket.PutShort(1);
-					zpacket.PutByte(0);
-					zpacket.PutInt(0); // Message Item Count
-				});
+				packet.PutInt(NormalOp.Barrack.ThemaSuccess);
 
 				conn.Send(packet);
 			}
@@ -281,11 +393,11 @@ namespace Melia.Barracks.Network
 				var packet = new Packet(Op.BC_NORMAL);
 				packet.PutInt(NormalOp.Barrack.CharacterInfo);
 
-				packet.PutLong(conn.Account.Id);
+				packet.PutLong(conn.Account.ObjectId);
 				packet.PutInt(characters.Length);
 				foreach (var character in characters)
 				{
-					packet.PutLong(character.Id);
+					packet.PutLong(character.ObjectId);
 					packet.PutString(character.Name, 64);
 					packet.PutEmptyBin(24);
 				}

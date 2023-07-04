@@ -6,18 +6,18 @@
 	public enum NpcState
 	{
 		/// <summary>
+		/// Used for opened chests, when they disappear.
+		/// </summary>
+		Invisible = -1,
+
+		/// <summary>
 		/// Presumed default state.
 		/// </summary>
 		Normal = 0,
 
 		/// <summary>
-		/// Unknown state used for certain monsters.
+		/// Make's NPC visible on the minimap
 		/// </summary>
-		Unknown1 = 1,
-
-		/// <summary>
-		/// Used for opened chests, when they disappear.
-		/// </summary>
-		Invisible = -1,
+		Highlighted = 1,
 	}
 }

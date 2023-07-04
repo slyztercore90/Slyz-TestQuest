@@ -40,14 +40,14 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 
 			caster.Components.Get<BuffComponent>().Start(BuffId.Smite_Buff, TimeSpan.FromSeconds(60));
 
+			Send.ZC_SKILL_READY(caster, skill, originPos, farPos);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
+
 			var height = skill.Properties.GetFloat(PropertyName.WaveLength);
 			var width = height / 2;
 			originPos = caster.Position;
 			farPos = originPos.GetRelative(caster.Direction, height);
 			var splashArea = new Square(originPos, caster.Direction, height, width);
-
-			Send.ZC_SKILL_READY(caster, skill, originPos, farPos);
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, null);
 
 			this.Attack(skill, caster, splashArea);
 		}

@@ -20,7 +20,7 @@ namespace Melia.Shared.Network.Helpers
 			packet.PutString(appearancePc.Name, 65);
 			packet.PutString(appearancePc.TeamName, 65);
 			packet.PutEmptyBin(6);
-			packet.PutLong(appearancePc.AccountId);
+			packet.PutLong(appearancePc.AccountObjectId);
 			packet.PutInt(appearancePc.Stance);
 			packet.PutShort((short)appearancePc.JobId);
 			packet.PutByte((byte)appearancePc.Gender);
@@ -95,7 +95,12 @@ namespace Melia.Shared.Network.Helpers
 		/// <summary>
 		/// Returns the character's account id.
 		/// </summary>
-		long AccountId { get; }
+		long AccountDbId { get; }
+
+		/// <summary>
+		/// Returns the character's account id.
+		/// </summary>
+		long AccountObjectId { get; }
 
 		/// <summary>
 		/// Returns the character's name.

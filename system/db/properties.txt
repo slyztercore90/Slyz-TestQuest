@@ -28115,7 +28115,7 @@
 	{ namespace: "Skill", name: "CastingCategory", type: "String", id: 105402 },
 	{ namespace: "Skill", name: "ExpandSkillTooltip", type: "String", id: 111176 },
 	{ namespace: "Skill", name: "Frame", type: "Number", id: 112068 },
-	{ namespace: "Skill", name: "CaptionRatio4", type: "Number", id: 113846 },
+	{ namespace: "Skill", name: "CaptionRatio4", type: "Calculated", id: 113846 },
 ]},
 { namespace: "ZoneObject", properties: [
 	{ namespace: "ZoneObject", name: "UNDERF593_TYPED_2", type: "Number", id: 69 },

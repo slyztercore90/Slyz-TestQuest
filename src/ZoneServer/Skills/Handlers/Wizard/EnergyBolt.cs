@@ -38,13 +38,7 @@ namespace Melia.Zone.Skills.Handlers.Wizard
 
 			if (designatedTarget == null)
 			{
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
-				return;
-			}
-
-			if (!caster.Position.InRange2D(designatedTarget.Position, skill.Data.MaxRange))
-			{
-				caster.ServerMessage(Localization.Get("Too far away."));
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 

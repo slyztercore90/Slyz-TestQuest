@@ -1,0 +1,21 @@
+//------------------------------------------------
+//--- 010 Editor v13.0.2 Binary Template
+//
+//      File: CS_FRIEND_CMD.bt
+//   Authors: Salman T. Khan
+//   Version: i373765
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+
+#include "inc/common.bt"
+
+ClientHeaderFixedOld header;
+
+int i1; // 20
+short s1; // 0
+int64 accountId; // friend's account id?
+FriendState state; // 2

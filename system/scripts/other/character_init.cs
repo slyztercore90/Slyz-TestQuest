@@ -193,6 +193,7 @@ public class CharacterInitializationScript : GeneralScript
 
 			EquipItem(character, EquipSlot.RightHand, ItemId.DAG01_113);
 			GiveItem(character, ItemId.PST01_111, 1);
+			GiveItem(character, ItemId.DAG01_109, 1);
 		}
 		else
 		{

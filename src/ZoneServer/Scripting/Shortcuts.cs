@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Threading.Tasks;
 using Melia.Shared.Configuration.Files;
 using Melia.Shared.L10N;
@@ -10,6 +11,7 @@ using Melia.Zone.Network;
 using Melia.Zone.Scripting.Dialogues;
 using Melia.Zone.World;
 using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.Components;
 using Melia.Zone.World.Actors.Monsters;
 using Yggdrasil.Extensions;
 using Yggdrasil.Geometry;
@@ -126,6 +128,95 @@ namespace Melia.Zone.Scripting
 		}
 
 		/// <summary>
+		/// Adds new NPC to the world.
+		/// </summary>
+		/// <param name="monsterId"></param>
+		/// <param name="name"></param>
+		/// <param name="map"></param>
+		/// <param name="x"></param>
+		/// <param name="z"></param>
+		/// <param name="direction"></param>
+		/// <param name="dialogFuncName"></param>
+		/// <exception cref="ArgumentException"></exception>
+		public static Npc AddNpc(int monsterId, string name, string map, double x, double z, double direction, string dialogFuncName, string enterFuncName = "", string leaveFuncName = "", double range = 100)
+		{
+			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
+				throw new ArgumentException($"Map '{map}' not found.");
+
+			var pos = new Position((float)x, 0, (float)z);
+			if (mapObj.Ground.TryGetHeightAt(pos, out var height))
+				pos.Y = height;
+
+			// Wrap name in localization code if applicable
+			if (Dialog.IsLocalizationKey(name))
+			{
+				name = Dialog.WrapLocalizationKey(name);
+			}
+			// Insert line breaks in tagged NPC names that don't have one
+			else if (name.StartsWith("[") && !name.Contains("{nl}"))
+			{
+				var endIndex = name.LastIndexOf("] ");
+				if (endIndex != -1)
+				{
+					// Remove space and insert new line instead.
+					name = name.Remove(endIndex + 1, 1);
+					name = name.Insert(endIndex + 1, "{nl}");
+				}
+			}
+
+			var location = new Location(mapObj.Id, pos);
+			var dir = new Direction(direction);
+			ZoneServer.Instance.DialogFunctions.TryGet(dialogFuncName, out var dialog);
+			ZoneServer.Instance.DialogFunctions.TryGet(enterFuncName, out var enter);
+			ZoneServer.Instance.DialogFunctions.TryGet(leaveFuncName, out var leave);
+
+			var monster = new Npc(monsterId, name, location, dir);
+			if (dialog != null)
+				monster.SetClickTrigger(dialogFuncName, dialog);
+			if (enter != null || leave != null)
+			{
+				monster.SetTriggerArea(Spot(monster.Position.X, monster.Position.Z, range));
+			}
+			if (enter != null)
+			{
+				monster.SetEnterTrigger(enterFuncName, enter);
+				/**
+				monster.Triggers.Add("EnterHook", TriggerType.Enter, Spot(monster.Position.X, monster.Position.Z, range), character =>
+				{
+					if (character.Triggers.Has(monster.LeaveName + "_LeaveHook"))
+						character.Triggers.Remove(monster.LeaveName + "_LeaveHook");
+					if (!character.Triggers.Has(monster.EnterName + "_EnterHook"))
+					{
+						character.Triggers.Add(monster.EnterName + "_EnterHook", TriggerType.Enter, null, null);
+						Send.ZC_ENTER_HOOK(character, monster.ClassId);
+						monster.OnEnterFunc.Invoke(new Dialog(character, monster));
+					}
+				});
+				**/
+			}
+			if (leave != null)
+			{
+				monster.SetLeaveTrigger(leaveFuncName, leave);
+				/**
+				monster.Triggers.Add("LeaveHook", TriggerType.Leave, Spot(monster.Position.X, monster.Position.Z, range), character =>
+				{
+					if (!character.Triggers.Has(monster.EnterName + "_LeaveHook") && character.Triggers.Has(monster.EnterName + "_EnterHook"))
+					{
+						character.Triggers.Remove(monster.EnterName + "_EnterHook");
+						character.Triggers.Add(monster.LeaveName + "_LeaveHook", TriggerType.Leave, null, null);
+						Send.ZC_LEAVE_HOOK(character, monster.ClassId);
+						monster.OnLeaveFunc.Invoke(new Dialog(character, monster));
+					}
+				});
+				**/
+			}
+
+			mapObj.AddMonster(monster);
+
+			return monster;
+		}
+
+		/// <summary>
 		/// Creates a warp.
 		/// </summary>
 		/// <param name="warpName"></param>
@@ -161,16 +252,15 @@ namespace Melia.Zone.Scripting
 		/// <param name="respawn"></param>
 		/// <param name="map"></param>
 		/// <param name="area"></param>
-		/// <param name="propertyOverrides"></param>
 		/// <returns></returns>
 		/// <exception cref="ArgumentException"></exception>
-		//public static MonsterSpawner AddSpawner(string monsterClassName, int amount, TimeSpan respawn, string map, IShape area, PropertyOverrides propertyOverrides = null)
-		//{
-		//	if (!ZoneServer.Instance.Data.MonsterDb.TryFind(a => a.ClassName == monsterClassName, out var monsterData))
-		//		throw new ArgumentException($"Monster '{monsterClassName}' not found.");
+		public static MonsterSpawner AddSpawner(string monsterClassName, int maxAmount, TimeSpan respawn, string map, IShapeF area)
+		{
+			if (!ZoneServer.Instance.Data.MonsterDb.TryFind(a => a.ClassName == monsterClassName, out var monsterData))
+				throw new ArgumentException($"Monster '{monsterClassName}' not found.");
 
-		//	return AddSpawner(monsterData.Id, amount, respawn, map, area, tendency, propertyOverrides);
-		//}
+			return AddSpawner(monsterData.Id, maxAmount, respawn, map, area, TendencyType.Peaceful, null);
+		}
 
 		/// <summary>
 		/// Adds monster spawner to the world.
@@ -182,7 +272,7 @@ namespace Melia.Zone.Scripting
 		/// <param name="area"></param>
 		/// <returns></returns>
 		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShape area)
+		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShapeF area)
 			=> AddSpawner(monsterClassId, maxAmount, respawn, map, area, TendencyType.Peaceful, null);
 
 		/// <summary>
@@ -196,7 +286,7 @@ namespace Melia.Zone.Scripting
 		/// <param name="tendency"></param>
 		/// <returns></returns>
 		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShape area, TendencyType tendency)
+		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShapeF area, TendencyType tendency)
 			=> AddSpawner(monsterClassId, maxAmount, respawn, map, area, tendency, null);
 
 		/// <summary>
@@ -210,7 +300,7 @@ namespace Melia.Zone.Scripting
 		/// <param name="propertyOverrides"></param>
 		/// <returns></returns>
 		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShape area, PropertyOverrides propertyOverrides)
+		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShapeF area, PropertyOverrides propertyOverrides)
 			=> AddSpawner(monsterClassId, maxAmount, respawn, map, area, TendencyType.Peaceful, propertyOverrides);
 
 		/// <summary>
@@ -225,7 +315,7 @@ namespace Melia.Zone.Scripting
 		/// <param name="propertyOverrides"></param>
 		/// <returns></returns>
 		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShape area, TendencyType tendency, PropertyOverrides propertyOverrides)
+		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShapeF area, TendencyType tendency, PropertyOverrides propertyOverrides)
 		{
 			var initialSpawnDelay = TimeSpan.FromSeconds(0);
 			var minRespawnDelay = Math2.Max(TimeSpan.FromSeconds(3), respawn);
@@ -250,7 +340,7 @@ namespace Melia.Zone.Scripting
 		/// <param name="propertyOverrides"></param>
 		/// <returns></returns>
 		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int minAmount, int maxAmount, TimeSpan initialSpawnDelay, TimeSpan minRespawnDelay, TimeSpan maxRespawnDelay, string map, IShape area, TendencyType tendency, PropertyOverrides propertyOverrides)
+		public static MonsterSpawner AddSpawner(int monsterClassId, int minAmount, int maxAmount, TimeSpan initialSpawnDelay, TimeSpan minRespawnDelay, TimeSpan maxRespawnDelay, string map, IShapeF area, TendencyType tendency, PropertyOverrides propertyOverrides)
 		{
 			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
 				throw new ArgumentException($"Map '{map}' not found.");
@@ -286,7 +376,7 @@ namespace Melia.Zone.Scripting
 		/// <example>
 		/// Area(0, 0, 0, 10, 10, 10, 10, 0) // 10x10 square
 		/// </example>
-		public static IShape Area(params double[] coordinates)
+		public static IShapeF Area(params double[] coordinates)
 		{
 			if (coordinates.Length == 0 || coordinates.Length % 2 != 0)
 				throw new ArgumentException("Expected an even amount of coordinates for area.");
@@ -294,42 +384,43 @@ namespace Melia.Zone.Scripting
 			if (coordinates.Length < 3)
 				throw new ArgumentException("Needs at least 3 points (6 X/Y coordinates).");
 
-			var points = new List<Vector2>();
+			var points = new List<Vector2F>();
 			for (var i = 0; i < coordinates.Length;)
 			{
-				var point = new Vector2((int)coordinates[i++], (int)coordinates[i++]);
+				var point = new Vector2F((int)coordinates[i++], (int)coordinates[i++]);
 				points.Add(point);
 			}
 
-			return new Polygon(points);
+			return new PolygonF(points);
 		}
 
 		/// <summary>
 		/// Returns a circular shape with the given coordinates and radius.
 		/// </summary>
 		/// <param name="x"></param>
-		/// <param name="y"></param>
+		/// <param name="z"></param>
 		/// <param name="radius"></param>
 		/// <returns></returns>
-		public static IShape Spot(double x, double y, double radius = 0)
+		public static IShapeF Spot(double x, double z, double radius = 0)
 		{
-			var center = new Vector2((int)x, (int)y);
-			return new Yggdrasil.Geometry.Shapes.Circle(center, (int)radius);
+			var center = new Vector2F((int)x, (int)z);
+			return new CircleF(center, (int)radius);
 		}
 
 		/// <summary>
-		/// Returns a rectangular shape with the given coordinates and radius.
+		/// Returns a rectangle centered at the given coordinates, height and width.
+		/// If width is set to 0 returns a square.
 		/// </summary>
 		/// <param name="x"></param>
-		/// <param name="y"></param>
-		/// <param name="width"></param>
+		/// <param name="z"></param>
 		/// <param name="height"></param>
+		/// <param name="width"></param>
 		/// <returns></returns>
-		public static IShape Rectangle(double x, double y, double width, double height = 0)
+		public static IShapeF Rectangle(double x, double z, double height, double width = 0)
 		{
-			var center = new Vector2((int)x, (int)y);
-			var size = new Vector2((int)width, (int)(height != 0 ? height : width));
-			return Yggdrasil.Geometry.Shapes.Rectangle.Centered(center, size);
+			var center = new Vector2F((float)x, (float)z);
+			var size = new Vector2F((float)height, (float)(width != 0 ? width : height));
+			return Yggdrasil.Geometry.Shapes.RectangleF.Centered(center, size);
 		}
 
 		/// <summary>
@@ -497,6 +588,17 @@ namespace Melia.Zone.Scripting
 		{
 			ZoneServer.Instance.ChatCommands.Add(command, usage, description, func);
 			ZoneServer.Instance.Conf.Commands.CommandLevels[command] = new CommandAuthLevels(auth, targetAuth);
+		}
+		
+		/// <summary>
+		/// Returns a random element from the array.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="values"></param>
+		/// <returns></returns>
+		public static T RandomElement<T>(params T[] values)
+		{
+			return values[RandomProvider.Next(values.Length)];
 		}
 	}
 

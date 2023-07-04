@@ -5,9 +5,11 @@ using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting.AI;
+using Melia.Zone.Skills.Combat;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Items;
+using Mysqlx.Expr;
 using Yggdrasil.Composition;
 using Yggdrasil.Logging;
 using Yggdrasil.Scheduling;
@@ -44,6 +46,11 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// Monster ID in database.
 		/// </summary>
 		public int Id { get; set; }
+
+		/// <summary>
+		/// Monster Class Name in database.
+		/// </summary>
+		public string ClassName => this.Data.ClassName ?? null;
 
 		/// <summary>
 		/// ?
@@ -111,12 +118,12 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// <summary>
 		/// Gets or sets the mob's level.
 		/// </summary>
-		public int Level { get; set; } = 1;
+		public int Level => (int)this.Properties.GetFloat(PropertyName.Level);
 
 		/// <summary>
 		/// Gets or sets the mob's AoE Defense Ratio.
 		/// </summary>
-		public float SDR { get; set; } = 1;
+		public float SDR => this.Properties.GetFloat(PropertyName.SDR);
 
 		/// <summary>
 		/// Returns the mob's current HP.
@@ -172,6 +179,21 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// A higher value indicates the latest HP amount.
 		/// </summary>
 		public int HpChangeCounter { get; private set; }
+
+		/// <summary>
+		/// Gets or sets whether the monster is a prop.
+		/// </summary>
+		public bool IsProp { get; set; }
+
+		/// <summary>
+		/// If set, an owner exists
+		/// </summary>
+		public int OwnerHandle { get; set; }
+
+		/// <summary>
+		/// If set, a handle is associated on ZC_ENTER_MONSTER
+		/// </summary>
+		public int AssociatedHandle { get; set; }
 
 		/// <summary>
 		/// Returns the monster's property collection.
@@ -231,6 +253,7 @@ namespace Melia.Zone.World.Actors.Monsters
 
 			this.Defense = this.Data.PhysicalDefense;
 			this.Faction = this.Data.Faction;
+			this.DialogName = this.Data.Dialog;
 
 			this.InitProperties();
 		}
@@ -303,13 +326,27 @@ namespace Melia.Zone.World.Actors.Monsters
 			if (killer is Character characterKiller)
 			{
 				this.DropItems(characterKiller);
+				this.DistributeExp(characterKiller, exp, classExp);
 				characterKiller?.GiveExp(exp, classExp, this);
 			}
 
 			this.Died?.Invoke(this, killer);
 			ZoneServer.Instance.ServerEvents.OnEntityKilled(this, killer);
 
-			Send.ZC_DEAD(this);
+			Send.ZC_DEAD(this, killer);
+		}
+
+		/// <summary>
+		/// Distributes experience
+		/// </summary>
+		private void DistributeExp(Character character, long exp, long classExp)
+		{
+			var party = character.Connection.Party;
+
+			if (party != null)
+				party.GiveExp(character, exp, classExp, this);
+			else
+				character.GiveExp(exp, classExp, this);
 		}
 
 		/// <summary>
@@ -353,7 +390,12 @@ namespace Melia.Zone.World.Actors.Monsters
 				}
 				else
 				{
-					killer.Inventory.Add(dropItem, InventoryAddType.PickUp);
+					var party = killer.Connection.Party;
+
+					if (party != null)
+						party.GiveItem(killer, dropItem, InventoryAddType.PickUp);
+					else
+						killer.Inventory.Add(dropItem, InventoryAddType.PickUp);
 				}
 			}
 		}
@@ -403,7 +445,7 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// Updates monster and its components.
 		/// </summary>
 		/// <param name="elapsed"></param>
-		public void Update(TimeSpan elapsed)
+		public virtual void Update(TimeSpan elapsed)
 		{
 			this.Components.Update(elapsed);
 		}
@@ -421,6 +463,16 @@ namespace Melia.Zone.World.Actors.Monsters
 			this.HpChangeCounter++;
 
 			Send.ZC_UPDATE_ALL_STATUS(this, this.HpChangeCounter);
+		}
+
+		public float GetWeaponSpeed()
+		{
+			return 1f;
+		}
+
+		public float GetMoveSpeed()
+		{
+			return this.Properties.GetFloat(PropertyName.MSPD);
 		}
 	}
 }

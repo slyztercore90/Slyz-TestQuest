@@ -119,15 +119,20 @@ namespace Melia.Barracks.Network
 		{
 			var unkByte = packet.GetByte();
 			var serviceNation = packet.GetString(64); // [i373230 (2023-05-10)] Might've been added before
+			var socialServers = BarracksServer.Instance.ServerList.GetSocialServers();
 
 			Send.BC_IES_MODIFY_LIST(conn);
-			Send.BC_SERVER_ENTRY(conn, "127.0.0.1", 9001, "127.0.0.1", 9002);
-			//Send.BC_NORMAL.SetBarrack(conn, conn.Account.SelectedBarrack);
+			if (socialServers.Length >= 2)
+				Send.BC_SERVER_ENTRY(conn, socialServers[0].Ip, socialServers[0].Port, socialServers[1].Ip, socialServers[1].Port);
+			else if (socialServers.Length == 1)
+				Send.BC_SERVER_ENTRY(conn, socialServers[0].Ip, socialServers[0].Port, socialServers[0].Ip, socialServers[0].Port);
+			Send.BC_NORMAL.SetBarrack(conn, conn.Account.SelectedBarrack);
 			Send.BC_COMMANDER_LIST(conn);
 			Send.BC_NORMAL.CharacterInfo(conn);
+			Send.BC_NORMAL.CompanionInfo(conn);
 			Send.BC_NORMAL.TeamUI(conn);
 			Send.BC_NORMAL.ZoneTraffic(conn);
-			//Send.BC_NORMAL.MESSAGE_MAIL(conn);
+			Send.BC_NORMAL.Mailbox(conn);
 
 			// Update account properties with Lua code to send scripts
 			// to the client
@@ -186,7 +191,7 @@ namespace Melia.Barracks.Network
 
 			// Set team name
 			conn.Account.TeamName = name;
-			BarracksServer.Instance.Database.UpdateTeamName(conn.Account.Id, name);
+			BarracksServer.Instance.Database.UpdateTeamName(conn.Account.DbId, name);
 
 			Send.BC_BARRACKNAME_CHANGE(conn, TeamNameChangeResult.Okay, name);
 
@@ -271,7 +276,7 @@ namespace Melia.Barracks.Network
 			}
 
 			// Check name
-			if (BarracksServer.Instance.Database.CharacterExists(conn.Account.Id, name))
+			if (BarracksServer.Instance.Database.CharacterExists(conn.Account.DbId, name))
 			{
 				Send.BC_MESSAGE(conn, MsgType.NameAlreadyExists);
 				return;
@@ -379,8 +384,8 @@ namespace Melia.Barracks.Network
 			var x = packet.GetFloat();
 			var y = packet.GetFloat();
 			var z = packet.GetFloat();
-			var d1 = packet.GetFloat();
-			var d2 = packet.GetFloat();
+			var cos = packet.GetFloat(); // ?
+			var sin = packet.GetFloat(); // ?
 
 			// On a new character creation, this packet is sent with the index as this byte.
 			if (index == 0xFF)
@@ -399,7 +404,7 @@ namespace Melia.Barracks.Network
 
 			// Move
 			character.BarracksPosition = new Position(x, y, z);
-			character.BarracksDirection = new Direction(d1, d2);
+			character.BarracksDirection = new Direction(cos, sin);
 
 			Send.BC_NORMAL.SetPosition(conn, index, character.BarracksPosition);
 		}
@@ -413,7 +418,7 @@ namespace Melia.Barracks.Network
 		{
 			var channelId = packet.GetShort();
 			var characterIndex = packet.GetByte();
-			var b1 = packet.GetByte();
+			var companionIndex = packet.GetByte();
 
 			// Get character
 			var character = conn.Account.GetCharacterByIndex(characterIndex);
@@ -486,7 +491,7 @@ namespace Melia.Barracks.Network
 			//   as well.
 
 			Send.BC_ACCOUNT_PROP(conn, conn.Account);
-			Send.BC_NORMAL.UnkThema1(conn);
+			Send.BC_NORMAL.ThemaSuccess(conn);
 			Send.BC_NORMAL.SetBarrack(conn, newMapId);
 
 			Send.BC_COMMANDER_LIST(conn);
@@ -567,15 +572,28 @@ namespace Melia.Barracks.Network
 		}
 
 		/// <summary>
-		/// Pets!
+		/// Assign or remove a companion from a character
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="packet"></param>
 		[PacketHandler(Op.CB_PET_PC)]
 		public void CB_PET_PC(IBarracksConnection conn, Packet packet)
 		{
-			var petGuid = packet.GetLong();
+			var companionId = packet.GetLong();
 			var characterId = packet.GetLong();
+
+			var companion = conn.Account.GetCompanionById(companionId);
+			var character = conn.Account.GetCharacterById(characterId);
+
+			if (companion == null)
+			{
+				Log.Warning("CB_PET_PC: Companion not found by id '{0}' received from '{1}'.", companionId, conn.Account.Name);
+				return;
+			}
+
+			companion.CharacterDbId = character?.DbId ?? 0;
+			BarracksServer.Instance.Database.SetCompanionCharacter(companion.DbId, companion.CharacterDbId);
+			Send.BC_NORMAL.SetCompanion(conn, companion.DbId, character?.DbId ?? 0);
 		}
 
 		/// <summary>
@@ -586,9 +604,29 @@ namespace Melia.Barracks.Network
 		[PacketHandler(Op.CB_PET_COMMAND)]
 		public void CB_PET_COMMAND(IBarracksConnection conn, Packet packet)
 		{
-			var petGuid = packet.GetLong();
+			var companionId = packet.GetLong();
 			var characterId = packet.GetLong();
 			var command = packet.GetByte(); // 0 : revive request; 1 : delete pet request.
+
+			var companion = conn.Account.GetCompanionById(companionId);
+			if (companion == null)
+			{
+				Log.Warning("CB_PET_COMMAND: Companion not found by id '{0}' received from '{1}'.", companionId, conn.Account.Name);
+				return;
+			}
+
+			companion.CharacterDbId = characterId;
+			switch (command)
+			{
+				// Delete
+				case 1:
+					if (BarracksServer.Instance.Database.DeleteCompanion(companion.DbId))
+					{
+						Send.BC_NORMAL.DeleteCompanion(conn, companionId);
+						Send.BC_NORMAL.TeamUI(conn);
+					}
+					break;
+			}
 		}
 
 		/// <summary>
@@ -602,9 +640,93 @@ namespace Melia.Barracks.Network
 			var dbType = packet.GetByte();
 			var messageId = packet.GetLong();
 			var state = (PostBoxMessageState)packet.GetByte();
+			var account = conn.Account;
+			var mailbox = account.Mailbox;
 
-			// TODO: Implement use of changing state.
-			Send.BC_MESSAGE(conn, "Updating mail isn't working yet.");
+			if (mailbox != null)
+			{
+				var mail = mailbox.Get(messageId);
+				if (mail == null)
+				{
+					Log.Warning("CB_REQ_CHANGE_POSTBOX_STATE: Mail not found by id '{0}' received from '{1}'.", messageId, conn.Account.Name);
+					return;
+				}
+				mail.State = state;
+				Send.BC_NORMAL.UpdatePostBoxState(conn, mail.Id, mail.State);
+			}
+		}
+
+		/// <summary>
+		/// Request to get item from mail box
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CB_REQ_GET_POSTBOX_ITEM)]
+		public void CB_REQ_GET_POSTBOX_ITEM(IBarracksConnection conn, Packet packet)
+		{
+			var dbType = packet.GetByte();
+			var messageId = packet.GetLong();
+			var characterId = packet.GetLong();
+			var items = packet.GetString();
+
+
+			var mailbox = conn.Account.Mailbox;
+			var character = conn.Account.GetCharacterById(characterId);
+
+			if (character == null)
+			{
+				Log.Warning("CB_REQ_GET_POSTBOX_ITEM: Character not found by id '{0}' received from '{1}'.", characterId, conn.Account.Name);
+				return;
+			}
+			if (mailbox == null)
+			{
+				Send.BC_MESSAGE(conn, "Updating mail isn't working yet.");
+				return;
+			}
+
+			var mail = mailbox.Get(messageId);
+			if (mail == null)
+			{
+				Log.Warning("CB_REQ_GET_POSTBOX_ITEM: Mail not found by id '{0}' received from '{1}'.", messageId, conn.Account.Name);
+				return;
+			}
+			if (items.Contains("/"))
+			{
+				var splitItems = items.Split('/');
+				foreach (var itemStr in splitItems)
+				{
+					if (int.TryParse(itemStr, out var mailItemId))
+					{
+						if (!mail.TryGetItem(mailItemId, out var item) || item.IsReceived)
+							continue;
+						BarracksServer.Instance.Database.SaveItem(character.DbId, item.ItemId, item.Amount);
+						item.IsReceived = true;
+					}
+				}
+			}
+			else
+			{
+				if (int.TryParse(items, out var mailItemId) && mail.TryGetItem(mailItemId, out var item) && !item.IsReceived)
+				{
+					BarracksServer.Instance.Database.SaveItem(character.DbId, item.ItemId, item.Amount);
+					item.IsReceived = true;
+				}
+			}
+			mail.State = PostBoxMessageState.Read;
+			Send.BC_NORMAL.MailUpdate(conn, mail);
+		}
+
+		/// <summary>
+		/// Request to get items from multiple mail.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		public void CB_REQ_GET_POSTBOX_ITEM_LIST(IBarracksConnection conn, Packet packet)
+		{
+			var count = packet.GetInt();
+
+			// TODO: Implement postbox message paging.
+			Send.BC_MESSAGE(conn, "Fetching multiple mail isn't working yet.");
 		}
 
 		/// <summary>
@@ -617,7 +739,7 @@ namespace Melia.Barracks.Network
 			var count = packet.GetInt();
 
 			// TODO: Implement postbox message paging.
-			Send.BC_MESSAGE(conn, "Fetching mail isn't working yet.");
+			Send.BC_MESSAGE(conn, "Fetching paged mail isn't working yet.");
 		}
 
 		/// <summary>
@@ -709,7 +831,7 @@ namespace Melia.Barracks.Network
 			var character = conn.Account.GetCharacterById(characterId);
 
 			if (character != null)
-				Send.BC_RETURN_PC_MARKET_REGISTERED(conn, character.Id);
+				Send.BC_RETURN_PC_MARKET_REGISTERED(conn, character.DbId);
 		}
 
 		/// <summary>
@@ -753,6 +875,88 @@ namespace Melia.Barracks.Network
 
 			Send.BC_CHARACTER_SLOT_SWAP_SUCCESS(conn);
 			Send.BC_COMMANDER_LIST(conn);
+		}
+
+		/// <summary>
+		/// Sent when a companion requests to move in barracks
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CB_COMPANION_MOVE)]
+		public void CB_COMPANION_MOVE(IBarracksConnection conn, Packet packet)
+		{
+			var companionId = packet.GetLong();
+			var position = packet.GetPosition();
+			var direction = packet.GetDirection();
+
+			var companion = conn.Account.GetCompanionById(companionId);
+			if (companion != null)
+			{
+				companion.BarracksPosition = position;
+				companion.BarracksDirection = direction;
+				Send.BC_NORMAL.SetCompanionPosition(conn, companionId, position);
+			}
+		}
+
+
+		/// <summary>
+		/// Sent when a companion requests to jump in barracks
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CB_JUMP)]
+		public void CB_JUMP(IBarracksConnection conn, Packet packet)
+		{
+			var accountId = packet.GetLong();
+			var account = conn.Account;
+
+			if (account.DbId == accountId)
+				Send.BC_JUMP(conn);
+		}
+
+		[PacketHandler(Op.CB_REQ_SLOT_PRICE)]
+		public void CB_REQ_SLOT_PRICE(IBarracksConnection conn, Packet packet)
+		{
+			// TODO: Move this out to conf or db value?
+			var characterSlotPrice = 33;
+
+			Send.BC_REQ_SLOT_PRICE(conn, characterSlotPrice);
+		}
+
+		// Channel Packets
+		/// <summary>
+		/// Sent when chatting publically.
+		/// </summary>
+		/// <remarks>
+		/// Sent together with CZ_CHAT_LOG.
+		/// </remarks>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_CHAT)]
+		public void CZ_CHAT(IBarracksConnection conn, Packet packet)
+		{
+			var len = packet.GetShort(); // length of payload, without garbage
+			var msg = packet.GetString();
+
+			//BarracksServer.Instance.ChatCommands.TryExecute(conn, msg);
+		}
+
+		/// <summary>
+		/// Sent when chatting.
+		/// </summary>
+		/// <remarks>
+		/// Sent together with CZ_CHAT.
+		/// When whispering only this one is sent?
+		/// </remarks>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_CHAT_LOG)]
+		public void CZ_CHAT_LOG(IBarracksConnection conn, Packet packet)
+		{
+			var len = packet.GetShort();
+			var msg = packet.GetString();
+
+			// ...
 		}
 	}
 }

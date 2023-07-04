@@ -1,13 +1,22 @@
 ﻿using System;
+using System.Collections.Generic;
 using Melia.Shared.Data.Database;
 using Melia.Shared.Network;
 using Melia.Shared.Network.Helpers;
+using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Const.Web;
+using Melia.Shared.Util;
 using Melia.Shared.World;
+using Melia.Zone.Network.Helpers;
 using Melia.Zone.Skills;
+using Melia.Zone.World;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Monsters;
+using Melia.Zone.World.Groups;
+using Melia.Zone.World.Items;
+using Yggdrasil.Logging;
 
 namespace Melia.Zone.Network
 {
@@ -16,77 +25,41 @@ namespace Melia.Zone.Network
 		public static class ZC_NORMAL
 		{
 			/// <summary>
-			/// Updates the number of purchased character slots.
+			/// Timed Action (Worship, Talk)
 			/// </summary>
-			/// <param name="conn"></param>
-			/// <param name="count"></param>
-			public static void BarrackSlotCount(IZoneConnection conn, int count)
+			/// <param name="character"></param>
+			/// <param name="dialog"></param>
+			/// <param name="type"></param>
+			/// <param name="duration"></param>
+			/// <param name="isOn"></param>
+			/// <param name="buttonText"></param>
+			public static void TimeAction(Character character, string dialog, string type, float duration, bool isOn = true, string buttonText = "None")
 			{
-				var packet = new Packet(Op.BC_NORMAL);
-				packet.PutInt(NormalOp.Zone.BarrackSlotCount);
-				packet.PutInt(count);
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.TimeAction);
 
-				conn.Send(packet);
+				packet.PutInt(character.Handle);
+				packet.PutLpString(dialog);
+				packet.PutLpString(type);
+				packet.PutFloat(duration);
+				packet.PutByte(isOn);
+				packet.PutLpString(buttonText);
+
+				character.Connection.Send(packet);
 			}
 
 			/// <summary>
-			/// Attaches effect to actor.
+			/// Timed Action State (Worship, Talk)
 			/// </summary>
 			/// <param name="actor"></param>
-			public static void AttachEffect(IActor actor, string packetString, float scale = 1)
-			{
-				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStringData))
-					throw new ArgumentException($"Packet string '{packetString}' not found.");
-
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.AttachEffect);
-
-				packet.PutInt(actor.Handle);
-				packet.PutInt(packetStringData.Id);
-				packet.PutFloat(scale);
-				packet.PutInt(3);
-				packet.PutFloat(0);
-				packet.PutFloat(0);
-				packet.PutFloat(0);
-				packet.PutFloat(0);
-
-				actor.Map.Broadcast(packet, actor);
-			}
-
-			/// <summary>
-			/// Removes all effects from actor.
-			/// </summary>
-			/// <param name="actor"></param>
-			public static void ClearEffects(IActor actor)
+			/// <param name="isCompleted"></param>
+			public static void TimeActionState(IActor actor, bool isCompleted)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.ClearEffects);
-				packet.PutInt(actor.Handle);
-
-				actor.Map.Broadcast(packet, actor);
-			}
-
-			/// <summary>
-			/// Plays given effect on actor.
-			/// </summary>
-			/// <param name="actor"></param>
-			/// <param name="packetString"></param>
-			/// <param name="scale"></param>
-			public static void PlayEffect(IActor actor, string packetString, float scale = 1)
-			{
-				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStringData))
-					throw new ArgumentException($"Packet string '{packetString}' not found.");
-
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.PlayEffect);
+				packet.PutInt(NormalOp.Zone.TimeActionState);
 
 				packet.PutInt(actor.Handle);
-				packet.PutByte(1);
-				packet.PutInt(2);
-				packet.PutByte(0);
-				packet.PutFloat(scale);
-				packet.PutInt(packetStringData.Id);
-				packet.PutInt(0);
+				packet.PutByte(isCompleted);
 
 				actor.Map.Broadcast(packet, actor);
 			}
@@ -131,6 +104,371 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
+			/// Plays an animation of an effect getting thrown from the
+			/// entity to the position, where a second effect is played
+			/// for the impact.
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="position"></param>
+			/// <param name="animationName1"></param>
+			/// <param name="duration1"></param>
+			/// <param name="animationName2"></param>
+			/// <param name="duration2"></param>
+			/// <param name="size"></param>
+			/// <param name="scale"></param>
+			public static void Skill_MissileThrow(IActor actor, Position position, string animationName1, float duration1, string animationName2, float duration2, float size, float scale)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName1, out var packetString1) ||
+					!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName2, out var packetString2))
+				{
+					Log.Warning("Skill_MissileThrow: Unable to find packet string {0} or {1}", animationName1, animationName2);
+					return;
+				}
+				Skill_MissileThrow(actor, position, packetString1.Id, duration1, packetString2.Id, duration2, size, scale);
+			}
+
+			/// <summary>
+			/// Plays an animation of an effect getting thrown from the
+			/// entity to the position, where a second effect is played
+			/// for the impact.
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="position"></param>
+			/// <param name="animationId1"></param>
+			/// <param name="duration1"></param>
+			/// <param name="animationId2"></param>
+			/// <param name="duration2"></param>
+			/// <param name="size"></param>
+			/// <param name="scale"></param>
+			public static void Skill_MissileThrow(IActor actor, Position position, int animationId1, float duration1, int animationId2, float duration2, float size, float scale)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_MissileThrow);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt(animationId1);
+				packet.PutFloat(duration1);
+				packet.PutInt(animationId2);
+				packet.PutFloat(duration2);
+				packet.PutFloat(position.X);
+				packet.PutFloat(position.Y);
+				packet.PutFloat(position.Z);
+				packet.PutFloat(size);
+				packet.PutFloat(scale);
+				packet.PutFloat(0);
+				packet.PutFloat(0);
+				packet.PutFloat(1);
+				packet.PutLong(0);
+				packet.PutLpString("None");
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Skill Related ZC_Normal Packet
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="str"></param>
+			/// <param name="str2"></param>
+			/// <param name="position"></param>
+			/// <param name="animationName"></param>
+			/// <param name="scale"></param>
+			/// <param name="tossScale"></param>
+			/// <param name="hangScale"></param>
+			/// <param name="speed"></param>
+			/// <param name="f5"></param>
+			/// <param name="f6"></param>
+			/// <param name="f7"></param>
+			/// <param name="itemScale"></param>
+			/// <param name="itemAppearOnFloorDuration"></param>
+			public static void Skill_ItemToss(IActor character, string str, string str2, Position position, string animationName,
+				float scale, float tossScale, float hangScale, float speed, float f5, float f6, float f7, float itemScale = 0, float itemAppearOnFloorDuration = 0)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var packetString))
+				{
+					Log.Warning("Skill_ItemToss: Unable to find packet string {0}", animationName);
+					return;
+				}
+				Skill_ItemToss(character, str, str2, position, packetString.Id, scale, tossScale, hangScale, speed, f5, f6, f7, itemScale, itemAppearOnFloorDuration);
+			}
+
+			/// <summary>
+			/// Skill Related ZC_Normal Packet
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="str"></param>
+			/// <param name="str2"></param>
+			/// <param name="position"></param>
+			/// <param name="animationId"></param>
+			/// <param name="scale"></param>
+			/// <param name="tossScale"></param>
+			/// <param name="hangScale"></param>
+			/// <param name="speed"></param>
+			/// <param name="f5"></param>
+			/// <param name="f6"></param>
+			/// <param name="f7"></param>
+			/// <param name="itemScale"></param>
+			/// <param name="itemAppearOnFloorDuration"></param>
+			public static void Skill_ItemToss(IActor character, string str, string str2, Position position, int animationId,
+				float scale, float tossScale, float hangScale, float speed, float f5, float f6, float f7, float itemScale = 0, float itemAppearOnFloorDuration = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Skill_ItemToss);
+				packet.PutInt(character.Handle);
+				packet.PutLpString(str);
+				packet.PutLpString(str2);
+				packet.PutPosition(position);
+				packet.PutInt(animationId);
+				packet.PutFloat(scale);
+				packet.PutFloat(tossScale);
+				packet.PutFloat(hangScale);
+				packet.PutFloat(speed);
+				packet.PutFloat(f5);
+				packet.PutFloat(f6);
+				packet.PutFloat(f7);
+				packet.PutFloat(itemScale);
+				packet.PutFloat(itemAppearOnFloorDuration);
+
+				character.Map.Broadcast(packet, character);
+			}
+
+			/// <summary>
+			/// Skill Related ZC_Normal Packet
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="str"></param>
+			/// <param name="str2"></param>
+			/// <param name="position"></param>
+			/// <param name="animationId1"></param>
+			/// <param name="scale"></param>
+			/// <param name="tossScale"></param>
+			/// <param name="hangScale"></param>
+			/// <param name="speed"></param>
+			/// <param name="f5"></param>
+			/// <param name="f6"></param>
+			/// <param name="f7"></param>
+			/// <param name="itemScale"></param>
+			/// <param name="itemAppearOnFloorDuration"></param>
+			public static void Skill_ItemToss(Character character, string str, string str2, Position position, int animationId1,
+				float scale, float tossScale, float hangScale, float speed, float f5, float f6, float f7, float itemScale = 0, float itemAppearOnFloorDuration = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Skill_ItemToss);
+				packet.PutInt(character.Handle);
+				packet.PutLpString(str);
+				packet.PutLpString(str2);
+				packet.PutPosition(position);
+				packet.PutInt(animationId1);
+				packet.PutFloat(scale);
+				packet.PutFloat(tossScale);
+				packet.PutFloat(hangScale);
+				packet.PutFloat(speed);
+				packet.PutFloat(f5);
+				packet.PutFloat(f6);
+				packet.PutFloat(f7);
+				packet.PutFloat(itemScale);
+				packet.PutFloat(itemAppearOnFloorDuration);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Play an effect/animation at a position
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="effectHandle"></param>
+			/// <param name="animationId">Refer to packetstrings db</param>
+			/// <param name="position">Effect's position</param>
+			/// <param name="scale">Effect's scale</param>
+			/// <param name="duration">Effect's maximum duration, some animations end before this</param>
+			public static void PlayEffectAtPosition(IZoneConnection conn, int effectHandle, int animationId, Position position, float scale, float duration)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PlayEffectAtPosition);
+
+				packet.PutInt(animationId);
+				packet.PutPosition(position);
+				packet.PutFloat(scale); // Scale ?
+				packet.PutInt(effectHandle);
+				packet.PutFloat(duration); // Duration ?
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Originally LevelUp but renamed for general purpose
+			/// Plays an effect used in certain situations like camp fire
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="animationName"></param>
+			/// <param name="scale"></param>
+			/// <param name="heightOffset">0 - Top, 1 - Mid, 2 - Bot</param>
+			/// <param name="effectRelativeX">Offsets the effect's X position relative to the actor</param>
+			/// <param name="effectRelativeY">Offsets the effect's Y position relative to the actor</param>
+			/// <param name="effectRelativeZ">Offsets the effect's Z position relative to the actor</param>
+			/// <param name="f4"></param>
+			public static void AttachEffect(IActor actor, string animationName, float scale, HeightOffset heightOffset, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var animation))
+				{
+					Log.Warning("AttachEffect: Unable to find animationName: {0}", animationName);
+					return;
+				}
+				AttachEffect(actor, animation.Id, scale, heightOffset, effectRelativeX, effectRelativeY, effectRelativeZ, b1, b2, b3, b4);
+			}
+
+			/// <summary>
+			/// Originally LevelUp but renamed for general purpose
+			/// Plays an effect used in certain situations like camp fire
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="packetString"></param>
+			/// <param name="scale"></param>
+			/// <param name="heightOffset">0 - Top, 1 - Mid, 2 - Bot</param>
+			/// <param name="effectRelativeX">Offsets the effect's X position relative to the actor</param>
+			/// <param name="effectRelativeY">Offsets the effect's Y position relative to the actor</param>
+			/// <param name="effectRelativeZ">Offsets the effect's Z position relative to the actor</param>
+			/// <param name="f4"></param>
+			public static void AttachEffect(IActor actor, int packetString, float scale, HeightOffset heightOffset, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.AttachEffect);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt(packetString);
+				packet.PutFloat(scale);
+				packet.PutInt((int)heightOffset);
+				packet.PutFloat(effectRelativeX);
+				packet.PutFloat(effectRelativeY);
+				packet.PutFloat(effectRelativeZ);
+				packet.PutByte(b1);
+				packet.PutByte(b2);
+				packet.PutByte(b3);
+				packet.PutByte(b4);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Originally LevelUp but renamed for general purpose
+			/// Plays an effect used in certain situations like camp fire
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="packetString"></param>
+			/// <param name="scale"></param>
+			/// <param name="heightOffset">0 - Top, 1 - Mid, 2 - Bot</param>
+			/// <param name="effectRelativeX">Offsets the effect's X position relative to the actor</param>
+			/// <param name="effectRelativeY">Offsets the effect's Y position relative to the actor</param>
+			/// <param name="effectRelativeZ">Offsets the effect's Z position relative to the actor</param>
+			/// <param name="f4"></param>
+			public static void AttachEffect(IZoneConnection conn, IActor actor, int packetString, float scale, HeightOffset heightOffset, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.AttachEffect);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt(packetString);
+				packet.PutFloat(scale);
+				packet.PutInt((int)heightOffset);
+				packet.PutFloat(effectRelativeX);
+				packet.PutFloat(effectRelativeY);
+				packet.PutFloat(effectRelativeZ);
+				packet.PutByte(b1);
+				packet.PutByte(b2);
+				packet.PutByte(b3);
+				packet.PutByte(b4);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Plays an animation effect.
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="b1"></param>
+			/// <param name="heightOffset"></param>
+			/// <param name="b2"></param>
+			/// <param name="scale"></param>
+			/// <param name="animationName"></param>
+			public static void PlayEffect(IActor actor, byte b1 = 1, string heightOffset = "BOT", byte b2 = 1, float scale = 1, string animationName = "F_pc_class_change", float f1 = 0, int associatedHandle = 0)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var animation))
+				{
+					Log.Warning("PlayAnimation: Packet String not found with id {0}.", animationName);
+					return;
+				}
+
+				if (!Enum.TryParse<HeightOffset>(heightOffset, out var hOffset))
+					throw new ArgumentException($"Height offset '{heightOffset}' not found.");
+
+				PlayEffect(actor, b1, (int)hOffset, b2, scale, animation.Id, f1, associatedHandle);
+			}
+
+			/// <summary>
+			/// Plays an animation effect.
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="b1"></param>
+			/// <param name="heightOffset"></param>
+			/// <param name="b2"></param>
+			/// <param name="scale"></param>
+			/// <param name="animationId"></param>
+			public static void PlayEffect(IActor actor, byte b1, int heightOffset, byte b2, float scale, int animationId, float f1 = 0, int associatedHandle = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PlayEffect);
+
+				packet.PutInt(actor.Handle);
+				packet.PutByte(b1); // Prev: 0
+				packet.PutInt(heightOffset);
+				packet.PutByte(b2); // Prev: 0
+				packet.PutFloat(scale); // Effect size Prev: 6
+				packet.PutInt(animationId);
+				packet.PutFloat(f1);
+				packet.PutInt(associatedHandle);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Removes all effects from actor.
+			/// </summary>
+			/// <param name="actor"></param>
+			public static void ClearEffects(IActor actor)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.ClearEffects);
+
+				packet.PutInt(actor.Handle);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Skill effect
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="packetString"></param>
+			/// <param name="time"></param>
+			/// <param name="str1"></param>
+			/// <param name="str2"></param>
+			public static void SkillEffect_14(Character character, int packetString, float time, string str1, string str2)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SkillEffect_14);
+
+				packet.PutInt(character.Handle);
+				packet.PutInt(packetString);
+				packet.PutFloat(time);
+				packet.PutLpString(str1);
+				packet.PutLpString(str2);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
 			/// Controls a skill's visual effects.
 			/// </summary>
 			/// <param name="unkForceId"></param>
@@ -166,7 +504,7 @@ namespace Melia.Zone.Network
 					throw new ArgumentException($"Packet string '{effect5PacketString}' not found.");
 
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Skill_16);
+				packet.PutInt(NormalOp.Zone.SkillEffectSplash);
 
 				packet.PutInt(unkForceId);
 
@@ -196,238 +534,95 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Attack broadcast?
+			/// Skill splash effects
 			/// </summary>
 			/// <param name="character"></param>
-			public static void AttackCancel(Character character)
+			/// <param name="target1"></param>
+			/// <param name="target2"></param>
+			/// <param name="animationName1"></param>
+			/// <param name="f1"></param>
+			/// <param name="animationName2"></param>
+			/// <param name="animationName3"></param>
+			/// <param name="f2"></param>
+			/// <param name="animationName4"></param>
+			/// <param name="animationName5"></param>
+			/// <param name="f3"></param>
+			/// <param name="f4"></param>
+			/// <param name="f5"></param>
+			/// <param name="f6"></param>
+			/// <param name="f7"></param>
+			public static void SkillEffectSplash(IActor character, IActor target1, IActor target2,
+			int effectHandle, string animationName1, float f1, string animationName2, string animationName3, float f2,
+			string animationName4, string animationName5, float f3, float f4, float f5, float f6, float f7)
 			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.AttackCancel);
-				packet.PutInt(character.Handle);
-
-				character.Map.Broadcast(packet);
-			}
-
-			/// <summary>
-			/// Adjusts the skill speed for a skill.
-			/// </summary>
-			/// <param name="character"></param>
-			/// <param name="skillId"></param>
-			/// <param name="value"></param>
-			public static void Skill_4E(Character character, SkillId skillId, float value)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Skill_4E);
-
-				packet.PutInt((int)skillId);
-				packet.PutFloat(value);
-				packet.PutByte(0);
-
-				character.Connection.Send(packet);
-			}
-
-			/// <summary>
-			/// Unknown skill related
-			/// </summary>
-			/// <param name="entity"></param>
-			/// <param name="skillActorId"></param>
-			public static void SkillParticleEffect(ICombatEntity entity, int skillActorId)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.SkillParticleEffect);
-
-				packet.PutInt(entity.Handle);
-				packet.PutInt(skillActorId);
-				packet.PutInt(entity.Hp);
-				packet.PutShort(6904);
-				packet.PutShort(39);
-				packet.PutFloat(25);
-				packet.PutLpString("Melee");
-				packet.PutLong(0);
-
-				entity.Map.Broadcast(packet, entity);
-			}
-
-			/// <summary>
-			/// Adjusts the skill speed for a skill.
-			/// </summary>
-			/// <param name="character"></param>
-			/// <param name="skillId"></param>
-			/// <param name="value"></param>
-			public static void SetSkillSpeed(Character character, int skillId, float value)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.SetSkillSpeed);
-
-				packet.PutInt(skillId);
-				packet.PutFloat(value);
-
-				character.Connection.Send(packet);
-			}
-
-			/// <summary>
-			/// Adjusts the hit delay for a skill.
-			/// </summary>
-			/// <param name="character"></param>
-			/// <param name="skillId"></param>
-			public static void SetHitDelay(Character character, int skillId, float value)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.SetHitDelay);
-
-				packet.PutInt(skillId);
-				packet.PutFloat(value);
-
-				character.Connection.Send(packet);
-			}
-
-			/// <summary>
-			/// Sends the session key to the client.
-			/// </summary>
-			/// <param name="conn"></param>
-			public static void AdventureBook(IZoneConnection conn)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.AdventureBook);
-
-				packet.PutLpString("AdventureBook");
-				packet.PutLpString("Initialization_point");
-
-				// [i354444] Added
+				var animationId1 = 0;
+				var animationId2 = 0;
+				var animationId3 = 0;
+				var animationId4 = 0;
+				var animationId5 = 0;
+				if (animationName1 != null && ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName1, out var packetString1))
+					animationId1 = packetString1.Id;
+				if (animationName2 != null && ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName1, out var packetString2))
+					animationId2 = packetString2.Id;
+				if (animationName3 != null && ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName1, out var packetString3))
+					animationId3 = packetString3.Id;
+				if (animationName4 != null && ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName1, out var packetString4))
+					animationId4 = packetString4.Id;
+				if (animationName5 != null && ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName1, out var packetString5))
+					animationId5 = packetString5.Id;
+				// Check for null values and replace with 0
 				{
-					packet.PutInt(-1);
-					packet.PutInt(0);
-					packet.PutInt(0);
-					packet.PutByte(1);
+					//Log.Warning("SkillEffectSplash: Unable to find packet string id from name: {0}, {1}, {2}, {3}, {4}", animationName1, animationName2, animationName3, animationName4, animationName5);
 				}
-
-				conn.Send(packet);
+				SkillEffectSplash(character, target1, target2, effectHandle, animationId1, f1, animationId2,
+					animationId3, f2, animationId4, animationId5, f3, f4, f5, f6, f7);
 			}
 
 			/// <summary>
-			/// Sends the session key to the client.
+			/// Skill splash effects
 			/// </summary>
-			/// <param name="conn"></param>
-			public static void SetSessionKey(IZoneConnection conn)
+			/// <param name="caster"></param>
+			/// <param name="target1"></param>
+			/// <param name="target2"></param>
+			/// <param name="animationId1"></param>
+			/// <param name="f1"></param>
+			/// <param name="animationId2"></param>
+			/// <param name="animationId3"></param>
+			/// <param name="f2"></param>
+			/// <param name="animationId4"></param>
+			/// <param name="animationId5"></param>
+			/// <param name="f3"></param>
+			/// <param name="f4"></param>
+			/// <param name="f5"></param>
+			/// <param name="f6"></param>
+			/// <param name="f7"></param>
+			public static void SkillEffectSplash(IActor caster, IActor target1, IActor target2,
+			int effectHandle, int animationId1, float f1, int animationId2, int animationId3, float f2,
+			int animationId4, int animationId5, float f3, float f4, float f5, float f6, float f7)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.SetSessionKey);
-				packet.PutLpString(conn.SessionKey);
+				packet.PutInt(NormalOp.Zone.SkillEffectSplash);
 
-				conn.Send(packet);
-			}
-
-			/// <summary>
-			/// Updates which headgears are visible for the character on
-			/// clients in range.
-			/// </summary>
-			/// <param name="character"></param>
-			public static void HeadgearVisibilityUpdate(Character character)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.HeadgearVisibilityUpdate);
-
-				packet.PutInt(character.Handle);
-				packet.PutByte((character.VisibleEquip & VisibleEquip.Headgear1) != 0);
-				packet.PutByte((character.VisibleEquip & VisibleEquip.Headgear2) != 0);
-				packet.PutByte((character.VisibleEquip & VisibleEquip.Headgear3) != 0);
-				packet.PutByte((character.VisibleEquip & VisibleEquip.Wig) != 0);
-
-				character.Map.Broadcast(packet, character);
-			}
-
-			/// <summary>
-			/// Updates weather wig eequipment is visible for the character
-			/// on clients in range.
-			/// </summary>
-			/// <param name="character"></param>
-			public static void WigVisibilityUpdate(Character character)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.WigVisibilityUpdate);
-
-				packet.PutInt(character.Handle);
-				packet.PutByte((character.VisibleEquip & VisibleEquip.Wig) != 0);
-
-				character.Map.Broadcast(packet, character);
-			}
-
-			/// <summary>
-			/// Updates weather wig eequipment is visible for the character
-			/// on clients in range.
-			/// </summary>
-			/// <param name="character"></param>
-			public static void SubWeaponVisibilityUpdate(Character character)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.SubWeaponVisibilityUpdate);
-
-				packet.PutInt(character.Handle);
-				packet.PutByte((character.VisibleEquip & VisibleEquip.SubWeapon) != 0);
-
-				character.Map.Broadcast(packet, character);
-			}
-
-			/// <summary>
-			/// Creates a skill in client
-			/// </summary>
-			/// <param name="character"></param>
-			/// <param name="skill"></param>
-			/// <param name="position"></param>
-			/// <param name="direction"></param>
-			/// <param name="create"></param>
-			public static void Skill(Character character, Skill skill, Position position, Direction direction, bool create)
-			{
-				var actorId = 1234; // ActorId (entity unique id for this skill)
-				var distance = 20.0f; // Distance to caster? Not sure. Observed values (20, 40, 80)
-
-				var skillState = 0; // skillState seems to be an ENUM of animation states (0 = initial animation, 1 = touched animation)
-				if (!create)
-					skillState = 1;
-
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Skill);
-				packet.PutInt(character.Handle);
-				//packet.PutBinFromHex("11 18 27 00"); // Heal skill effect
-				packet.PutInt(0);
-				packet.PutInt((int)skill.Id);
-				packet.PutInt(skill.Level); // Skill Level ?
-				packet.PutFloat(position.X);
-				packet.PutFloat(position.Y);
-				packet.PutFloat(position.Z);
-				packet.PutFloat(direction.Cos); // Direction (commented out for now)
-				packet.PutFloat(direction.Sin); // Direction (commented out for now)
-				packet.PutInt(0);
-				packet.PutFloat(distance);
-				packet.PutInt(actorId);
-				packet.PutByte(create);
-				packet.PutInt(skillState);
-				packet.PutInt(0);
-				packet.PutInt(0);
-				packet.PutInt(0);
-				packet.PutFloat(10); // Count
-				packet.PutInt(0);
-				packet.PutInt(0);
-				packet.PutInt(0);
+				packet.PutInt(effectHandle);
+				packet.PutInt(caster.Handle);
+				packet.PutInt(target1.Handle);
+				packet.PutInt(target2.Handle);
+				packet.PutInt(animationId1);
+				packet.PutFloat(f1);
+				packet.PutInt(animationId2);
+				packet.PutInt(animationId3);
+				packet.PutFloat(f2);
+				packet.PutInt(animationId4);
+				packet.PutInt(animationId5);
+				packet.PutFloat(f3);
+				packet.PutFloat(f4);
+				packet.PutEmptyBin(12);
+				packet.PutFloat(f5);
+				packet.PutFloat(f6);
+				packet.PutFloat(f7);
 				packet.PutInt(0);
 
-				character.Map.Broadcast(packet, character);
-			}
-
-			/// <summary>
-			/// Creates a particle effect (or set desired animation)
-			/// </summary>
-			/// <param name="character"></param>
-			/// <param name="actorId"></param>
-			/// <param name="enable"></param>
-			public static void ParticleEffect(Character character, int actorId, int enable)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.ParticleEffect);
-				packet.PutInt(actorId);
-				packet.PutInt(enable);
-
-				character.Map.Broadcast(packet);
+				caster.Map.Broadcast(packet, caster);
 			}
 
 			/// <summary>
@@ -464,102 +659,185 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Purpose currently unknown.
+			/// Set an Actor's Color (Yellow, Magenta, Cyan, Alpha)
 			/// </summary>
-			/// <param name="character"></param>
+			/// <param name="actor"></param>
+			/// <param name="yellow"></param>
+			/// <param name="magenta"></param>
+			/// <param name="cyan"></param>
+			/// <param name="alpha"></param>
+			/// <param name="transitionDuration"></param>
+			/// <param name="b6"></param>
+			public static void SetActorColor(IActor actor,
+				byte yellow, byte magenta, byte cyan,
+				byte alpha, float transitionDuration, byte b6)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetEntityColor);
+
+				packet.PutInt(actor.Handle);
+				packet.PutByte(yellow);
+				packet.PutByte(magenta);
+				packet.PutByte(cyan);
+				packet.PutByte(alpha);
+				packet.PutByte(1);
+				packet.PutFloat(transitionDuration);
+				packet.PutByte(b6);
+
+				actor.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Set Entity's Color (Yellow, Magenta, Cyan, Alpha)
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="actor"></param>
+			/// <param name="yellow"></param>
+			/// <param name="magenta"></param>
+			/// <param name="cyan"></param>
+			/// <param name="alpha"></param>
+			/// <param name="transitionDuration"></param>
+			/// <param name="b6"></param>
+			public static void SetActorColor(IZoneConnection conn, IActor actor,
+				byte yellow, byte magenta, byte cyan,
+				byte alpha, float transitionDuration, byte b6)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetEntityColor);
+
+				packet.PutInt(actor.Handle);
+				packet.PutByte(yellow);
+				packet.PutByte(magenta);
+				packet.PutByte(cyan);
+				packet.PutByte(alpha);
+				packet.PutByte(1);
+				packet.PutFloat(transitionDuration);
+				packet.PutByte(b6);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Call a lua func
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="animationName"></param>
 			/// <param name="i1"></param>
-			public static void Skill_45(IActor source, int i1)
+			/// <param name="i2"></param>
+			/// <param name="b1"></param>
+			/// <param name="b2"></param>
+			/// <param name="f1"></param>
+			public static void Skill_CallLuaFunc(IActor actor, string animationName, int i1, int i2, byte b1, byte b2, float f1)
 			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Skill_45);
-				packet.PutInt(i1);
-
-				source.Map.Broadcast(packet, source);
-			}
-
-			/// <summary>
-			/// Unknown purpose yet.
-			/// </summary>
-			/// <param name="character"></param>
-			public static void Unknown_A1(Character character)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Unknown_A1);
-				packet.PutLong(4);
-
-				character.Connection.Send(packet);
-			}
-
-			/// <summary>
-			/// Sent during login for unknown purpose
-			/// </summary>
-			/// <param name="character"></param>
-			public static void Unknown_DA(Character character)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Unknown_DA);
-				packet.Zlib(true, zpacket =>
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var animation))
 				{
-					zpacket.PutLong(character.ObjectId);
-					zpacket.PutInt(0);
-				});
-
-				character.Connection.Send(packet);
+					Log.Warning("Skill_CallLuaFunc: Unable to find animationName: {0}", animationName);
+					return;
+				}
+				Skill_CallLuaFunc(actor, animation.Id, i1, i2, b1, b2, f1);
 			}
 
 			/// <summary>
-			/// Sent during login for unknown purpose
+			/// Call a lua func
 			/// </summary>
-			/// <param name="character"></param>
-			public static void Unknown_E4(Character character)
+			/// <param name="actor"></param>
+			/// <param name="luaFuncPacketString"></param>
+			/// <param name="i1"></param>
+			/// <param name="i2"></param>
+			/// <param name="b1"></param>
+			/// <param name="b2"></param>
+			/// <param name="f1"></param>
+			public static void Skill_CallLuaFunc(IActor actor, int luaFuncPacketString, int i1, int i2, byte b1, byte b2, float f1)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Unknown_E4);
-				packet.PutInt(0);
+				packet.PutInt(NormalOp.Zone.Skill_CallLuaFunc);
 
-				character.Connection.Send(packet);
+				packet.PutInt(actor.Handle);
+				packet.PutInt(luaFuncPacketString);
+				packet.PutInt(i1);
+				packet.PutInt(i2);
+				packet.PutByte(b1);
+				packet.PutByte(b2);
+				packet.PutFloat(f1);
+
+				actor.Map.Broadcast(packet, actor);
 			}
 
 			/// <summary>
-			/// Sends account properties.
+			/// Skill Properties
 			/// </summary>
-			/// <param name="character"></param>
-			public static void SetGreetingMessage(Character character)
+			/// <param name="conn"></param>
+			/// <param name="b1"></param>
+			/// <param name="skill"></param>
+			/// <param name="propertyIds"></param>
+			public static void SkillProperties(IZoneConnection conn, byte b1, Skill skill, params string[] propertyIds)
 			{
+				var properties = skill.Properties.GetSelect(propertyIds);
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.AccountUpdate);
-				packet.PutLong(character.ObjectId);
-				packet.PutInt(0);
-				packet.PutLpString(character.GreetingMessage);
+				packet.PutInt(NormalOp.Zone.SetSkillProperties);
 
-				character.Connection.Send(packet);
+				packet.PutByte(b1);
+				packet.PutInt((int)skill.Id);
+				packet.PutShort(properties.GetByteCount());
+				packet.AddProperties(properties);
+
+				conn.Send(packet);
 			}
 
 			/// <summary>
-			/// Unknown purpose yet.
+			/// Dummy (Unknown Purpose)
+			/// Assister Summon Skill Related?
 			/// </summary>
-			/// <param name="character"></param>
-			public static void Unknown_1B4(Character character)
+			/// <param name="actor"></param>
+			public static void SetScale(Actor actor, int animationType, float animationScale, float animationSpeed = 0, byte b1 = 0, short s1 = 0)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Unknown_1B4);
-				packet.PutInt(0);
+				packet.PutInt(NormalOp.Zone.SetScale);
 
-				character.Connection.Send(packet);
+				packet.PutInt(actor.Handle);
+				packet.PutInt(animationType);
+				packet.PutFloat(animationScale);
+				packet.PutFloat(animationSpeed);
+				packet.PutByte(b1);
+				packet.PutShort(s1);
+
+				actor.Map.Broadcast(packet, actor);
 			}
 
 			/// <summary>
-			/// Sends account properties.
+			/// Dummy (Unknown Purpose)
 			/// </summary>
-			/// <param name="character"></param>
-			public static void AccountUpdate(Character character)
+			/// <param name="entity"></param>
+			public static void PlaySound(Character entity)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.AccountUpdate);
-				packet.PutLong(character.AccountId);
-				packet.AddAccountProperties(character.Connection.Account);
+				packet.PutInt(NormalOp.Zone.PlaySound);
 
-				character.Connection.Send(packet);
+				packet.PutInt(entity.Handle);
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Dummy (Unknown Purpose)
+			/// </summary>
+			/// <param name="entity"></param>
+			public static void Knockback(Character entity, Position pos1, Position pos2, Direction direction, float f1, float f2, float f3, float f4, byte b1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Knockback);
+
+				packet.PutPosition(pos1);
+				packet.PutPosition(pos2);
+				packet.PutDirection(direction);
+				packet.PutFloat(f1);
+				packet.PutFloat(f2);
+				packet.PutFloat(f3);
+				packet.PutFloat(f4);
+				packet.PutInt(entity.Handle);
+				packet.PutByte(b1);
+
+				entity.Map.Broadcast(packet);
 			}
 
 			/// <summary>
@@ -580,254 +858,1648 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Makes item monster appear to drop, by "throwing" it a certain
-			/// distance from its current position.
+			/// Unknown effect currently works with I_SYS_heal2 as message and a number as parameter
 			/// </summary>
-			/// <param name="monster"></param>
-			/// <param name="direction"></param>
-			/// <param name="distance"></param>
-			public static void ItemDrop(IMonster monster, Direction direction, float distance)
+			/// <param name="actor"></param>
+			/// <param name="message"></param>
+			/// <param name="parameter"></param>
+			public static void TextEffect(IActor actor, string message, string parameter)
 			{
-				// The distance might be more like a force, since items fly
-				// farther than they should with high distances. Whether this
-				// is a problem, depends on the used distance and the pick up
-				// range. With a very small pick up range, like 10, and a high
-				// distance, like 110, there will be a slight desync, and you
-				// might not get the item, even if you're right on top of it.
-				// But since we won't usually use such small and high values,
-				// it will probably be fine.
-
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.ItemDrop);
+				packet.PutInt(NormalOp.Zone.TextEffect);
 
-				packet.PutInt(monster.Handle);
-				packet.PutInt((int)direction.NormalDegreeAngle);
-				packet.PutFloat(distance);
+				packet.PutInt(actor.Handle);
+				packet.PutLpString(message);
+				packet.PutLpString(parameter);
 
-				monster.Map.Broadcast(packet, monster, false);
+				actor.Map.Broadcast(packet, actor);
 			}
 
 			/// <summary>
-			/// Unknown purpose yet.
+			/// Unknown effect currently works with I_SYS_heal2 as message and a number as parameter
 			/// </summary>
-			/// <param name="character"></param>
-			public static void Unknown_EF(Character character)
+			/// <param name="entity"></param>
+			/// <param name="message"></param>
+			/// <param name="parameter"></param>
+			public static void TextEffect(Character entity, string message, string parameter)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Unknown_EF);
+				packet.PutInt(NormalOp.Zone.TextEffect);
 
-				packet.PutLong(character.ObjectId);
-				packet.PutInt(98); // count
-				packet.PutLpString("Char3_4");
-				packet.PutInt(108213);
-				packet.PutLpString("Char4_2");
-				packet.PutInt(91582);
-				packet.PutLpString("Char2_2");
-				packet.PutInt(87664);
-				packet.PutLpString("Char1_2");
-				packet.PutInt(72125);
-				packet.PutLpString("Char2_1");
-				packet.PutInt(65701);
-				packet.PutLpString("Char2_3");
-				packet.PutInt(62257);
-				packet.PutLpString("Char1_3");
-				packet.PutInt(59394);
-				packet.PutLpString("Char1_1");
-				packet.PutInt(59326);
-				packet.PutLpString("Char3_1");
-				packet.PutInt(55356);
-				packet.PutLpString("Char3_3");
-				packet.PutInt(52974);
-				packet.PutLpString("Char4_1");
-				packet.PutInt(48879);
-				packet.PutLpString("Char1_6");
-				packet.PutInt(43388);
-				packet.PutLpString("Char4_3");
-				packet.PutInt(42821);
-				packet.PutLpString("Char1_4");
-				packet.PutInt(39746);
-				packet.PutLpString("Char2_11");
-				packet.PutInt(37070);
-				packet.PutLpString("Char2_7");
-				packet.PutInt(36189);
-				packet.PutLpString("Char2_6");
-				packet.PutInt(25420);
-				packet.PutLpString("Char2_10");
-				packet.PutInt(22025);
-				packet.PutLpString("Char2_9");
-				packet.PutInt(19903);
-				packet.PutLpString("Char2_4");
-				packet.PutInt(18620);
-				packet.PutLpString("Char4_11");
-				packet.PutInt(17977);
-				packet.PutLpString("Char1_9");
-				packet.PutInt(17797);
-				packet.PutLpString("Char4_7");
-				packet.PutInt(17423);
-				packet.PutLpString("Char3_14");
-				packet.PutInt(16096);
-				packet.PutLpString("Char1_7");
-				packet.PutInt(15377);
-				packet.PutLpString("Char4_4");
-				packet.PutInt(15097);
-				packet.PutLpString("Char2_8");
-				packet.PutInt(14413);
-				packet.PutLpString("Char3_5");
-				packet.PutInt(13485);
-				packet.PutLpString("Char4_14");
-				packet.PutInt(13288);
-				packet.PutLpString("Char4_5");
-				packet.PutInt(13265);
-				packet.PutLpString("Char4_9");
-				packet.PutInt(12484);
-				packet.PutLpString("Char1_15");
-				packet.PutInt(12448);
-				packet.PutLpString("Char2_15");
-				packet.PutInt(12387);
-				packet.PutLpString("Char3_6");
-				packet.PutInt(11803);
-				packet.PutLpString("Char3_11");
-				packet.PutInt(11666);
-				packet.PutLpString("Char1_8");
-				packet.PutInt(10493);
-				packet.PutLpString("Char3_10");
-				packet.PutInt(10420);
-				packet.PutLpString("Char5_12");
-				packet.PutInt(10043);
-				packet.PutLpString("Char3_17");
-				packet.PutInt(9334);
-				packet.PutLpString("Char4_6");
-				packet.PutInt(9327);
-				packet.PutLpString("Char2_5");
-				packet.PutInt(9088);
-				packet.PutLpString("Char2_16");
-				packet.PutInt(9036);
-				packet.PutLpString("Char2_20");
-				packet.PutInt(8883);
-				packet.PutLpString("Char1_14");
-				packet.PutInt(8851);
-				packet.PutLpString("Char5_2");
-				packet.PutInt(8739);
-				packet.PutLpString("Char3_2");
-				packet.PutInt(8667);
-				packet.PutLpString("Char3_16");
-				packet.PutInt(8256);
-				packet.PutLpString("Char4_16");
-				packet.PutInt(8138);
-				packet.PutLpString("Char1_10");
-				packet.PutInt(7980);
-				packet.PutLpString("Char3_8");
-				packet.PutInt(7662);
-				packet.PutLpString("Char4_20");
-				packet.PutInt(7097);
-				packet.PutLpString("Char3_9");
-				packet.PutInt(7025);
-				packet.PutLpString("Char4_12");
-				packet.PutInt(6932);
-				packet.PutLpString("Char4_15");
-				packet.PutInt(6616);
-				packet.PutLpString("Char2_19");
-				packet.PutInt(6610);
-				packet.PutLpString("Char2_14");
-				packet.PutInt(6378);
-				packet.PutLpString("Char4_19");
-				packet.PutInt(6357);
-				packet.PutLpString("Char1_11");
-				packet.PutInt(6293);
-				packet.PutLpString("Char4_8");
-				packet.PutInt(6212);
-				packet.PutLpString("Char3_15");
-				packet.PutInt(5508);
-				packet.PutLpString("Char2_18");
-				packet.PutInt(5332);
-				packet.PutLpString("Char3_18");
-				packet.PutInt(5286);
-				packet.PutLpString("Char4_10");
-				packet.PutInt(5122);
-				packet.PutLpString("Char5_5");
-				packet.PutInt(4875);
-				packet.PutLpString("Char5_11");
-				packet.PutInt(4704);
-				packet.PutLpString("Char5_8");
-				packet.PutInt(4383);
-				packet.PutLpString("Char1_12");
-				packet.PutInt(3968);
-				packet.PutLpString("Char1_17");
-				packet.PutInt(3783);
-				packet.PutLpString("Char3_13");
-				packet.PutInt(3740);
-				packet.PutLpString("Char5_7");
-				packet.PutInt(3675);
-				packet.PutLpString("Char1_22");
-				packet.PutInt(3675);
-				packet.PutLpString("Char2_17");
-				packet.PutInt(3333);
-				packet.PutLpString("Char2_21");
-				packet.PutInt(3233);
-				packet.PutLpString("Char4_18");
-				packet.PutInt(3021);
-				packet.PutLpString("Char5_9");
-				packet.PutInt(2965);
-				packet.PutLpString("Char1_16");
-				packet.PutInt(2906);
-				packet.PutLpString("Char5_3");
-				packet.PutInt(2737);
-				packet.PutLpString("Char1_19");
-				packet.PutInt(2736);
-				packet.PutLpString("Char4_21");
-				packet.PutInt(2634);
-				packet.PutLpString("Char1_13");
-				packet.PutInt(2617);
-				packet.PutLpString("Char5_10");
-				packet.PutInt(2569);
-				packet.PutLpString("Char3_12");
-				packet.PutInt(2498);
-				packet.PutLpString("Char4_17");
-				packet.PutInt(2488);
-				packet.PutLpString("Char2_22");
-				packet.PutInt(2451);
-				packet.PutLpString("Char1_18");
-				packet.PutInt(2426);
-				packet.PutLpString("Char3_20");
-				packet.PutInt(1813);
-				packet.PutLpString("Char5_14");
-				packet.PutInt(1744);
-				packet.PutLpString("Char5_13");
-				packet.PutInt(1612);
-				packet.PutLpString("Char5_4");
-				packet.PutInt(1582);
-				packet.PutLpString("Char3_7");
-				packet.PutInt(1326);
-				packet.PutLpString("Char2_23");
-				packet.PutInt(1116);
-				packet.PutLpString("Char1_21");
-				packet.PutInt(970);
-				packet.PutLpString("Char3_19");
-				packet.PutInt(852);
-				packet.PutLpString("Char5_15");
-				packet.PutInt(837);
-				packet.PutLpString("Char1_20");
-				packet.PutInt(641);
-				packet.PutLpString("Char5_16");
-				packet.PutInt(628);
-				packet.PutLpString("Char5_6");
-				packet.PutInt(596);
-				packet.PutLpString("Char3_21");
-				packet.PutInt(311);
+				packet.PutInt(entity.Handle);
+				packet.PutLpString(message);
+				packet.PutLpString(parameter);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Updates the number of purchased character slots.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="count"></param>
+			public static void BarrackSlotCount(IZoneConnection conn, int count)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.BarrackSlotCount);
+
+				packet.PutInt(count);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Modify attack stance
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="stanceName"></param>
+			/// <param name="i1"></param>
+			public static void Skill_ModifyAttackStance(Character entity, string stanceName, int i1 = 1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_ModifyAttackStance);
+
+				packet.PutInt(entity.Handle);
+				packet.PutInt(i1);
+				packet.PutLpString(stanceName);
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Unknown purpose yet. It could be a "target" packet. (this actor is targeting "id" actor
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="skill"></param>
+			/// <param name="direction"></param>
+			public static void Skill_40(IActor actor, Skill skill, Direction direction, int i1,
+				float f1, float f2, float f3, int i2, float f4, int i3, int i4, float f5, int i5)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_40);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt((int)skill.Id);
+				packet.PutInt(actor.Handle);
+				packet.PutDirection(actor.Direction);
+				packet.PutInt(i1);
+				packet.PutFloat(f1);
+				packet.PutFloat(f2);
+				packet.PutFloat(f3);
+				packet.PutInt(i2);
+				packet.PutFloat(f4);
+				packet.PutInt(i3);
+				packet.PutInt(i4);
+				packet.PutFloat(f5);
+				packet.PutInt(i5);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Attack broadcast?
+			/// </summary>
+			/// <param name="character"></param>
+			public static void AttackCancel(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.AttackCancel);
+
+				packet.PutInt(character.Handle);
+
+				character.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Usually after a skill has finished casting, might clean up animation?
+			/// </summary>
+			/// <remarks>
+			/// i1 seems to be always 0
+			/// </remarks>
+			/// <param name="source"></param>
+			/// <param name="i1"></param>
+			public static void Skill_45(IActor source, int i1 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_45);
+				packet.PutInt(i1);
+
+				source.Map.Broadcast(packet, source);
+			}
+
+			/// <summary>
+			/// Skill cancel
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="skillId"></param>
+			public static void SkillCancel(IActor actor, SkillId skillId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SkillCancel);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt((int)skillId);
+
+				actor.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Updates account's given properties.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="properties"></param>
+			public static void AccountPropertyUpdate(IZoneConnection conn, PropertyList properties)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.AccountPropertyUpdate);
+
+				packet.PutLong(conn.Account.Id);
+				packet.PutShort(properties.GetByteCount());
+				packet.AddProperties(properties);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Related to skills
+			/// Cast Start?
+			/// </summary>
+			/// <remarks>
+			/// Might be broadcasted, to show casting start of a skill
+			/// </remarks>
+			/// <param name="character"></param>
+			/// <param name="skillId"></param>
+			public static void Skill_4D(Character character, SkillId skillId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_4D);
+
+				packet.PutInt(character.Handle);
+				packet.PutInt((int)skillId);
 
 				character.Connection.Send(packet);
 			}
 
 			/// <summary>
-			/// Unknown purpose yet.
+			/// Related to skills
+			/// Cast End?
+			/// Cast Duration?
 			/// </summary>
+			/// <remarks>
+			/// Might be broadcasted, to show end casting of a skill
+			/// </remarks>
 			/// <param name="character"></param>
-			public static void Unknown_19B(Character character)
+			/// <param name="skillId"></param>
+			/// <param name="value"></param>
+			public static void Skill_4E(Character character, SkillId skillId, float value)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Unknown_19B);
-				packet.PutLong(1);
+				packet.PutInt(NormalOp.Zone.Skill_4E);
+
+				packet.PutInt((int)skillId);
+				packet.PutFloat(value);
 				packet.PutByte(0);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// NPC Play a Track (Client side direction)
+			/// </summary>
+			public static void NPC_PlayTrack(Character entity, string trackName, int i1, int i2, float f1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.NPC_PlayTrack);
+				packet.PutInt(entity.Handle);
+				packet.PutLpString(trackName);
+				packet.PutInt(i1);
+				packet.PutInt(i2);
+				packet.PutFloat(f1);
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// NPC Play a Track (Client side direction)
+			/// </summary>
+			public static void NPC_PlayTrack(Character character, Character entity, string trackName, int i1, int i2, float f1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.NPC_PlayTrack);
+
+				packet.PutInt(entity.Handle);
+				packet.PutLpString(trackName);
+				packet.PutInt(i1);
+				packet.PutInt(i2);
+				packet.PutFloat(f1);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// NPC Position For a script?
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="entity"></param>
+			public static void SetNPCTrackPosition(Character character, Character entity)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetNPCTrackPosition);
+
+				packet.PutInt(entity.Handle);
+				packet.PutPosition(entity.Position);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Client cutscene to play
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="cutSceneType"></param>
+			/// <param name="b"></param>
+			/// <param name="trackOrCharacter"></param>
+			public static void LoadCutscene(Character character, int cutSceneType, bool b, string trackOrCharacter)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.LoadCutscene);
+
+				packet.PutInt(cutSceneType);
+				packet.PutByte(b);
+				packet.PutLpString(trackOrCharacter);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Creates a skill in client (MONSKL_CRE_PAD)
+			/// </summary>
+			/// <param name="caster"></param>
+			/// <param name="skill"></param>
+			/// <param name="animationName"></param>
+			/// <param name="position"></param>
+			/// <param name="direction"></param>
+			/// <param name="f1"></param>
+			/// <param name="f2"></param>
+			/// <param name="skillHandle"></param>
+			/// <param name="f3"></param>
+			public static void Skill(ICombatEntity caster, Skill skill, string animationName,
+				Position position, Direction direction, float f1, float f2, int skillHandle,
+				float f3, bool isVisible = true)
+			{
+				if (ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var packetString))
+					Skill(caster, skill, packetString.Id, position, direction, f1, f2, skillHandle, f3, isVisible);
+			}
+
+			/// <summary>
+			/// Creates a pad in client (MONSKL_CRE_PAD)
+			/// </summary>
+			/// <param name="caster"></param>
+			/// <param name="skill"></param>
+			/// <param name="animationId"></param>
+			/// <param name="position"></param>
+			/// <param name="direction"></param>
+			/// <param name="f1"></param>
+			/// <param name="f2"></param>
+			/// <param name="skillHandle"></param>
+			/// <param name="f3"></param>
+			public static void Skill(ICombatEntity caster, Skill skill, int animationId,
+				Position position, Direction direction, float f1, float f2, int skillHandle,
+				float f3, bool isVisible = true)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SkillRunScript);
+
+				packet.PutInt(caster.Handle);
+				packet.PutInt(animationId);
+				packet.PutInt((int)skill.Id);
+				packet.PutInt(skill.Level); // Skill Level ?
+				packet.PutPosition(position);
+				packet.PutDirection(direction);
+				packet.PutFloat(f1);
+				packet.PutFloat(f2);
+				packet.PutInt(skillHandle);
+				packet.PutInt(isVisible ? 1 : 0);
+				packet.PutEmptyBin(13); // Unknown Bytes
+				packet.PutFloat(f3);
+				packet.PutEmptyBin(16); // Unknown Bytes
+
+				caster.Map.Broadcast(packet, caster);
+			}
+
+			/// <summary>
+			/// Set actor's height
+			/// Used in Shield Lob
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="skillHandle"></param>
+			/// <param name="height"></param>
+			/// <param name="b1">Doesn't seem to do anything</param>
+			public static void Skill_SetActorHeight(IActor actor, int skillHandle, float height, byte b1 = 1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_SetActorHeight);
+
+				packet.PutInt(skillHandle);
+				packet.PutInt(actor.Handle);
+				packet.PutFloat(height);
+				packet.PutByte(b1);
+
+				actor.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Creates a particle effect (or set desired animation)
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="actorId"></param>
+			/// <param name="enable"></param>
+			public static void ParticleEffect(Character character, int actorId, int enable)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.ParticleEffect);
+
+				packet.PutInt(actorId);
+				packet.PutInt(enable);
+
+				character.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// A "skill" created via (Skill) is moved in a certain direction
+			/// </summary>
+			/// <param name="caster"></param>
+			/// <param name="skillHandle"></param>
+			/// <param name="position"></param>
+			/// <param name="b1"></param>
+			/// <param name="movementSpeed"></param>
+			/// <param name="f2"></param>
+			public static void Skill_EffectMovement(IActor caster, int skillHandle, Position position, float movementSpeed, byte b1 = 1, float f2 = 1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_EffectMovement);
+
+				packet.PutInt(skillHandle);
+				packet.PutPosition(position);
+				packet.PutByte(b1);
+				packet.PutFloat(movementSpeed);
+				packet.PutFloat(f2);
+
+				caster.Map.Broadcast(packet, caster);
+			}
+
+			/// <summary>
+			/// A "skill" created via (Skill) is moved in a certain direction
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="skillHandle"></param>
+			/// <param name="i1"></param>
+			public static void Skill_Unknown_64(IActor actor, int skillHandle, int i1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_64);
+
+				packet.PutInt(skillHandle);
+				packet.PutInt(i1);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Changes character behavior for a cutscene.
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="active">Whether the cutscene is active.</param>
+			/// <param name="movable">Whether the client can still move the character. If not, the server can control it.</param>
+			/// <param name="hideUi">Whether to hide the UI while active.</param>
+			public static void SetupCutscene(Character character, bool active, bool movable, bool hideUi)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetupCutscene);
+
+				packet.PutByte(active);
+				packet.PutByte(movable);
+				packet.PutByte(hideUi);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Client cutscene to play
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="trackName"></param>
+			/// <param name="actors"></param>
+			public static void StartCutscene(Character character, string trackName, params Actor[] actors)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.CutsceneTrack);
+
+				packet.PutLpString(trackName);
+				packet.PutLong(1);
+				packet.PutInt(actors.Length + 2);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				for (var i = 0; i < actors.Length; i++)
+					packet.PutInt(actors[i].Handle);
+				packet.PutInt(1);
+				packet.PutInt(character.Handle);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Client cutscene to play
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="trackName"></param>
+			/// <param name="actors"></param>
+			public static void StartCutscene(Character character, string trackName, params int[] actors)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.CutsceneTrack);
+
+				packet.PutLpString(trackName);
+				packet.PutLong(1);
+				packet.PutInt(actors.Length);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				//packet.PutInt(character.Handle);
+				for (var i = 0; i < actors.Length; i++)
+					packet.PutInt(actors[i]);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Set's the track frame to advance to.
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="frame"></param>
+			public static void SetTrackFrame(Character character, int frame)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetTrackFrame);
+
+				packet.PutInt(frame);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Hide a NPC until track starts
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="actor"></param>
+			public static void SetInvisible(Character character, IActor actor, float f1 = 0)
+				=> SetInvisible(character.Connection, actor, f1);
+
+			/// <summary>
+			/// Hide a NPC until track starts
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="actor"></param>
+			public static void SetInvisible(IZoneConnection conn, IActor actor, float f1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetInvisible);
+
+				packet.PutInt(actor.Handle);
+				packet.PutFloat(f1);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Hide a NPC until track starts
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="f1">Could be transition duration</param>
+			public static void SetInvisible(IActor actor, float f1 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetInvisible);
+
+				packet.PutInt(actor.Handle);
+				packet.PutFloat(f1);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Adjusts the skill speed for a skill.
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="skillId"></param>
+			/// <param name="value"></param>
+			public static void SetSkillSpeed(Character character, int skillId, float value)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetSkillSpeed);
+
+				packet.PutInt(skillId);
+				packet.PutFloat(value);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Adjusts the hit delay for a skill.
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="skillId"></param>
+			public static void SetHitDelay(Character character, int skillId, float value)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetHitDelay);
+
+				packet.PutInt(skillId);
+				packet.PutFloat(value);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Adjusts the hit delay for a skill.
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="skillId"></param>
+			public static void SetSkillUseOverHeat(Character character, int skillId, float value)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetSkillUseOverHeat);
+
+				packet.PutInt(skillId);
+				packet.PutFloat(value);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Reset skill ?
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="skillId"></param>
+			public static void SetSkill_7B(IActor actor, SkillId skillId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetSkill_7B);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt((int)skillId);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Sent with Ice Wall
+			/// </summary>
+			/// <remarks>
+			/// Originally using Character sent to a single connection
+			/// now broadcasted with an IActor.
+			/// </remarks>
+			/// <param name="actor"></param>
+			/// <param name="skillHandle"></param>
+			/// <param name="f1"></param>
+			public static void Skill_7F(IActor actor, int skillHandle, float f1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_7F);
+
+				packet.PutInt(skillHandle);
+				packet.PutFloat(f1);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Set the main attack skill (access by Z key).
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="skillId"></param>
+			public static void SetMainAttackSkill(Character entity, SkillId skillId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetMainAttackSkill);
+
+				packet.PutInt(entity.Handle);
+				packet.PutInt((int)skillId);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Used for toggling a skill?
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="skillId"></param>
+			public static void SkillToggle(Character entity, SkillId skillId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SkillToggle);
+
+				packet.PutInt(entity.Handle);
+				packet.PutInt((int)skillId);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown Skill related packet
+			/// Sent during Shield Lob
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="f1"></param>
+			/// <param name="f2"></param>
+			/// <param name="f3"></param>
+			/// <param name="f4"></param>
+			public static void Skill_88(IActor actor, float f1 = 0, float f2 = -1, float f3 = 0.2f, float f4 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_88);
+
+				packet.PutInt(actor.Handle);
+				packet.PutFloat(f1);
+				packet.PutFloat(f2);
+				packet.PutFloat(f3);
+				packet.PutFloat(f4);
+
+				actor.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Pet play animation/state?
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="companion"></param>
+			public static void PetPlayAnimation(IZoneConnection conn, Companion companion, int animationId = 8576, int i1 = 1, byte b1 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PetPlayAnimation);
+
+				packet.PutInt(companion.Handle);
+				packet.PutInt(animationId);
+				packet.PutInt(i1);
+				packet.PutByte(b1);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Show UI Effect
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="item"></param>
+			/// <param name="style"></param>
+			/// <param name="type"></param>
+			public static void ShowItemBalloon(Character character, Item item, string type, string style = "{@st43}", string systemMsg = "AppraisalSuccess", float duration = 3)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(style, out var styleData))
+				{
+					throw new ArgumentException($"Packet string '{style}' not found.");
+				}
+				if (!ZoneServer.Instance.Data.SystemMessageDb.TryFind(systemMsg, out var systemMsgData))
+				{
+					throw new ArgumentException($"System message '{systemMsg}' not found.");
+				}
+				ShowItemBalloon(character, item, type, styleData.Id, systemMsgData.ClassId, duration);
+			}
+
+			/// <summary>
+			/// Show UI Effect
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="item"></param>
+			/// <param name="type"></param>
+			/// <param name="style"></param>
+			/// <param name="systemMsg"></param>
+			/// <param name="duration"></param>
+			public static void ShowItemBalloon(Character character, Item item = null, string type = "reward_itembox", int style = 2562289, int systemMsg = 4122, float duration = 3)
+			{
+				var properties = item.Properties.GetAll();
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.ShowUIEffect);
+
+				packet.PutByte(1);
+				packet.PutInt(character.Handle);
+				packet.PutByte((byte)(item != null ? 0 : 1));
+				if (item != null)
+				{
+					packet.PutInt(style);
+					packet.PutInt(systemMsg);
+					packet.PutShort(1);
+					packet.PutByte(0);
+					packet.PutFloat(duration);
+					packet.PutFloat(0);
+					packet.PutLpString(type);
+					packet.PutInt(item.Amount);
+					packet.PutInt(item.Id);
+					packet.PutShort(properties.GetByteCount());
+					packet.AddProperties(properties);
+				}
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Show book with text
+			/// </summary>
+			/// <param name="entity"></param>
+			public static void ShowBook(Character entity, string text)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.ShowBook);
+				packet.PutInt(entity.Handle);
+				packet.PutLpString(text);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Show scroll background with text
+			/// </summary>
+			/// <param name="entity"></param>
+			public static void ShowScroll(Character entity, string text)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.ShowScroll);
+				packet.PutInt(entity.Handle);
+				packet.PutLpString(text);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Sends associated pets for a character.
+			/// </summary>
+			/// <param name="character"></param>
+			public static void PetInfo(Character character)
+			{
+				var companions = character.GetCompanions();
+
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.PetInfo);
+				packet.PutInt(4); // 3 or 4
+				packet.PutInt(companions.Length);
+				foreach (var companion in companions)
+					packet.AddCompanion(companion);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Pet Unknown?
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="companion"></param>
+			public static void Pet_AssociateWorldId(IZoneConnection conn, Companion companion)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Pet_AssociateWorldId);
+				packet.PutInt(companion.Handle);
+				packet.PutLong(companion.ObjectId); // ?
+				packet.PutShort(0); // 0
+				packet.PutByte(0); // 0
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Pet Associate World Id and Handle
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="companion"></param>
+			public static void Pet_AssociateHandleWorldId(Character character, Companion companion)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Pet_AssociateHandleWorldId);
+				packet.PutInt(companion.Handle);
+				packet.PutLong(companion.ObjectId);
+				packet.PutByte(1);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Pet Unknown?
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="companion"></param>
+			public static void PetExpUpdate(Character character, Companion companion)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PetExpUp);
+				packet.PutLong(companion.ObjectId);
+				packet.PutLong(companion.Experience);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Buff from Riding an entity
+			/// </summary>
+			/// <param name="owner"></param>
+			/// <param name="subActor"></param>
+			/// <param name="b1"></param>
+			/// <param name="b2"></param>
+			/// <param name="b3"></param>
+			/// <param name="packetString"></param>
+			/// <param name="b4"></param>
+			public static void PetBuff(IActor owner, IActor subActor, byte b1, byte b2, byte b3, string packetString, byte b4)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var data))
+				{
+					Log.Warning("PetBuff: Unknown packet string {0}.", packetString);
+					return;
+				}
+				PetBuff(owner, subActor, b1, b2, b3, data.Id, b4);
+			}
+
+			/// <summary>
+			/// Buff from Riding an entity
+			/// </summary>
+			/// <param name="owner"></param>
+			/// <param name="subActor"></param>
+			/// <param name="b1"></param>
+			/// <param name="b2"></param>
+			/// <param name="b3"></param>
+			/// <param name="packetString"></param>
+			/// <param name="b4"></param>
+			public static void PetBuff(IActor owner, IActor subActor, byte b1, byte b2, byte b3, int packetString, byte b4)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PetBuff);
+
+				packet.PutInt(owner.Handle);
+				packet.PutInt(subActor.Handle);
+				packet.PutByte(b1);
+				packet.PutByte(b2);
+				packet.PutByte(b3);
+				packet.PutInt(packetString);
+				packet.PutByte(b4);
+
+				subActor.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Ride Pet
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="companion"></param>
+			public static void RidePet(Character character, Companion companion)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.RidePet);
+
+				packet.PutInt(character.Handle);
+				packet.PutInt(companion.Handle);
+				packet.PutByte(companion.IsRiding);
+				packet.PutByte(companion.IsRiding);
+				packet.PutLpString(companion.Data.ClassName);
+
+				character.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Pet handle association?
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="companion"></param>
+			public static void PetOwner(IZoneConnection conn, Companion companion)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PetOwner);
+
+				packet.PutInt(companion.Handle);
+				packet.PutInt(companion.OwnerHandle);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Offset Y an entity's position from "Ground"
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="yOffset"></param>
+			public static void Skill_OffsetY(IActor actor, float yOffset)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.OffsetY);
+				packet.PutInt(actor.Handle);
+				packet.PutFloat(yOffset);
+
+				actor.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Related to pet flying?
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="yOffset"></param>
+			public static void PetFlying(Character entity, float yOffset)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetPetDefaultAnimation);
+				packet.PutInt(entity.Handle);
+				packet.PutFloat(yOffset);
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Offset Y an entity's position from "Ground"
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="yOffset"></param>
+			public static void SetPetDefaultAnimation(Character entity, int defaultAnimationId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetPetDefaultAnimation);
+				packet.PutInt(entity.Handle);
+				packet.PutInt(defaultAnimationId);
+
+				entity.Map.Broadcast(packet);
+			}
+
+
+			/// <summary>
+			/// Skill Jump/Knockback?
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="position"></param>
+			/// <param name="height"></param>
+			/// <param name="angle"></param>
+			/// <param name="time1"></param>
+			/// <param name="easeIn"></param>
+			/// <param name="time2"></param>
+			/// <param name="easeOut"></param>
+			public static void LeapJump(IActor actor, Position position,
+				float height, float angle, float time1, float easeIn, float time2, float easeOut)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_MoveJump);
+
+				packet.PutInt(actor.Handle);
+				packet.PutPosition(position);
+				packet.PutFloat(height);
+				packet.PutFloat(angle);
+				packet.PutFloat(time1);
+				packet.PutFloat(easeIn);
+				packet.PutFloat(time2);
+				packet.PutFloat(easeOut);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+
+			/// <summary>
+			/// Unknown Purpose Yet.
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="b1"></param>
+			public static void Skill_Unknown_C6(IActor actor, byte b1 = 1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_Unknown_C6);
+				packet.PutInt(actor.Handle);
+				packet.PutByte(b1);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Skill Related - Krivis Divine Stigma
+			/// Unknown Purpose Yet.
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="b1"></param>
+			public static void Skill_Unknown_C7(IActor actor, IActor target,
+				float f1 = 0.25f, float f2 = 1f, int packetString = 350005,
+				int i1 = 0, int i2 = 2, int i3 = 0, float f3 = 1f)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_Unknown_C7);
+				packet.PutInt(actor.Handle);
+				packet.PutInt(target.Handle);
+				packet.PutFloat(f1);
+				packet.PutFloat(f2);
+				packet.PutInt(packetString);
+				packet.PutInt(i1);
+				packet.PutInt(i2);
+				packet.PutInt(i3);
+				packet.PutFloat(f3);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Sent during login for unknown purpose
+			/// </summary>
+			/// <param name="character"></param>
+			public static void ItemCollectionList(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.ItemCollectionList);
+				packet.Zlib(true, zpacket =>
+				{
+					zpacket.PutLong(character.ObjectId);
+					zpacket.PutInt(0);
+					/**
+					zpacket.PutInt(character.ItemCollections.Count);
+					foreach (var collection in character.ItemCollections)
+					{
+						zpacket.PutShort(collection.Id);
+						zpacket.PutInt(collection.Items.Count);
+						foreach (var collectionItem in collection.Items)
+						{
+							packet.PutInt(collectionItem.Id);
+							packet.PutLong(collectionItem.Id);
+							packet.PutShort(0); // Not too sure what this is.
+						}
+					}
+					**/
+				});
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Sent after unlocking a collection
+			/// </summary>
+			/// <param name="character"></param>
+			public static void UnlockCollection(Character character, int collectionId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.UnlockCollection);
+				packet.PutLong(character.ObjectId);
+				packet.PutInt(collectionId);
+
+				character.Connection.Send(packet);
+			}
+
+			public static void Unknown_E0(Character entity)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_E0);
+
+				packet.PutInt(entity.Handle);
+				packet.PutByte(0);
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Skill particle effect
+			/// </summary>
+			/// <param name="character"></param>
+			public static void SkillParticleEffect(IActor character, ICombatEntity target, string effectName, float f1, string param = "", long l1 = 0)
+			{
+				if (ZoneServer.Instance.Data.PacketStringDb.TryFind(effectName, out var effectId))
+					SkillParticleEffect(character, target, effectId.Id, f1, param, l1);
+			}
+
+			/// <summary>
+			/// Skill particle effect
+			/// </summary>
+			/// <param name="character"></param>
+			public static void SkillParticleEffect(IActor character, IActor target, int packetStringId, float f1, string param = "", long l1 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SkillParticleEffect);
+
+				packet.PutInt(character.Handle);
+				packet.PutInt(target.Handle);
+				packet.PutInt(packetStringId);
+				packet.PutFloat(f1);
+				if (!string.IsNullOrEmpty(param))
+					packet.PutShort(-1);
+				else
+					packet.PutLpString(param);
+				packet.PutLong(0);
+
+				character.Map.Broadcast(packet, character);
+			}
+
+			/// <summary>
+			/// Sent during login for unknown purpose
+			/// </summary>
+			/// <param name="character"></param>
+			public static void Unknown_E4(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Unknown_E5);
+				packet.PutInt(0);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// NPC Dialog in Floating Gold Text
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="dialogKey"></param>
+			/// <param name="duration"></param>
+			public static void Notice(Character entity, string dialogKey, float duration)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Notice);
+				packet.PutLpString(dialogKey);
+				packet.PutFloat(duration);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Sends the total amount of players with each job
+			/// </summary>
+			/// <param name="character"></param>
+			public static void JobCount(Character character)
+			{
+				var jobDictionary = ZoneServer.Instance.Database.GetGlobalJobCount();
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.GlobalJobCount);
+
+				packet.PutLong(character.ObjectId);
+				packet.PutInt(jobDictionary.Count);
+				foreach (var job in jobDictionary)
+				{
+					var jobData = ZoneServer.Instance.Data.JobDb.Find((JobId)job.Key);
+					packet.PutLpString(jobData.ClassName);
+					packet.PutInt(job.Value);
+				}
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Broadcast party member data
+			/// </summary>
+			/// <param name="party"></param>
+			/// <param name="member"></param>
+			public static void PartyMemberData(PartyMember member, Party party)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.PartyMemberData);
+				packet.PutByte(member.IsOnline);
+				packet.PutByte((byte)party.Type);
+				packet.PutLong(party.ObjectId);
+				packet.PutLong(member.AccountObjectId);
+				packet.AddPartyMember(member);
+
+				party.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Server response on Party Property Change
+			/// </summary>
+			/// <param name="party"></param>
+			/// <param name="type"></param>
+			/// <param name="value"></param>
+			public static void PartyNameChange(Party party)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PartyNameChange);
+				packet.PutByte((byte)party.Type);
+				packet.PutLong(party.ObjectId);
+				packet.PutInt(0);
+				packet.PutLong(party.Owner.ObjectId);
+				packet.PutLpString(party.Name);
+				packet.PutInt(1);
+				packet.PutByte(1);
+
+				party.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Sends Party Invite UI to player
+			/// </summary>
+			/// <param name="caster"></param>
+			/// <param name="sender"></param>
+			public static void PartyInvite(Character character, Character sender, PartyType partyType)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.PartyInvite);
+				packet.PutByte((byte)partyType);
+				packet.PutLong(sender.AccountObjectId);
+				packet.PutLpString(sender.TeamName);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Server response on Party Property Change
+			/// </summary>
+			/// <param name="party"></param>
+			/// <param name="property"></param>
+			public static void PartyPropertyUpdate(Party party, PropertyList properties)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PartyPropertyChange);
+				packet.PutByte((byte)party.Type);
+				packet.PutLong(party.ObjectId);
+				packet.AddProperties(properties);
+
+				party.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Server response on Party Member Property Change
+			/// </summary>
+			/// <param name="party"></param>
+			/// <param name="property"></param>
+			public static void PartyMemberPropertyUpdate(Party party, Character entity, PropertyList properties)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.PartyMemberPropertyChange);
+				packet.PutByte((byte)party.Type);
+				packet.PutLong(party.ObjectId);
+				packet.PutLong(entity.ObjectId);
+				packet.AddProperties(properties);
+
+				party.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Send list of items that are retrievable from the Market
+			/// </summary>
+			/// <param name="character"></param>
+			public static void MarketRetrievalItems(Character character, List<ItemList> items)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.MarketRetrievalItems);
+				packet.Zlib(true, zpacket =>
+				{
+					// TODO: Market Items
+					zpacket.PutInt(items.Count);
+					foreach (var item in items)
+					{
+						var itemId = item.GetItemId(character.ObjectId);
+						var itemCount = itemId == ItemId.Silver ? item.SellPrice : item.Count;
+						zpacket.PutLong(item.ItemGuid);
+						zpacket.PutInt(itemId);
+						zpacket.PutInt(0);
+						zpacket.PutInt(itemCount);
+						zpacket.PutEmptyBin(33);
+						zpacket.PutLong(item.RegTime.ToUnixTimeSeconds() * 1000);
+
+						zpacket.PutLpString(item.GetMarketStatus(character.ObjectId));
+						zpacket.PutShort(0); // item properties size
+											 // Add properties here
+						zpacket.PutInt(0);
+					}
+				});
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Register an item on the market
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="itemWorldId"></param>
+			public static void MarketRetrieveItem(Character character, long itemWorldId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.MarketRegisterItem);
+				packet.PutLong(itemWorldId);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Register an item on the market
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="marketWorldId"></param>
+			public static void MarketBuyItem(Character character, long marketWorldId, int itemRemainingAmount, short s1 = 1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.MarketBuyItem);
+				packet.PutLong(marketWorldId);
+				packet.PutInt(itemRemainingAmount);
+				packet.PutShort(s1);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Cancel an item market registration
+			/// </summary>
+			/// <param name="character"></param>
+			/// <param name="marketWorldId"></param>
+			public static void MarketCancelItem(Character character, long marketWorldId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.MarketCancelItem);
+				packet.PutLpString(marketWorldId.ToString());
+				packet.PutInt(0);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Summon (Monster) plays an animation
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="packetString"></param>
+			/// <param name="f1"></param>
+			public static void SummonPlayAnimation(IActor actor, string packetString, float f1)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStr1))
+					Log.Warning("SummonPlayAnimation: Unknown packet string {0}", packetString);
+				SummonPlayAnimation(actor, packetStr1.Id, f1);
+			}
+
+			/// <summary>
+			/// Summon (Monster) plays an animation
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="playAnimation"></param>
+			/// <param name="f1"></param>
+			public static void SummonPlayAnimation(IActor actor, int playAnimation, float f1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.SummonPlayAnimation);
+				packet.PutInt(actor.Handle);
+				packet.PutInt(playAnimation);
+				packet.PutFloat(f1);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Disables Hotkeys.
+			/// </summary>
+			/// <remarks>
+			/// Only used for specific buffs?
+			/// </remarks>
+			/// <param name="actor"></param>
+			/// <param name="buffName"></param>
+			/// <param name="skillId"></param>
+			/// <param name="b1"></param>
+			public static void ApplyBuff(IActor actor, string buffName, SkillId skillId, byte b1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.ApplyBuff);
+				packet.PutInt(actor.Handle);
+				packet.PutLpString(buffName);
+				packet.PutInt((int)skillId);
+				packet.PutByte(b1);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Enables Hotkeys.
+			/// </summary>
+			/// <remarks>
+			/// Only used for specific buffs?
+			/// </remarks>
+			/// <param name="entity"></param>
+			/// <param name="buffName"></param>
+			public static void RemoveBuff(Character entity, string buffName)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.RemoveBuff);
+				packet.PutInt(entity.Handle);
+				packet.PutLpString(buffName);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown use but related to Hoplite Stabbing Skill
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="skillId"></param>
+			public static void Skill_10B(Character entity, SkillId skillId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Skill_10B);
+				packet.PutInt(entity.Handle);
+				packet.PutInt((int)skillId);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown purpose yet.
+			/// </summary>
+			/// <remarks>Sent when using barbarian stomping kick skill</remarks>
+			/// <param name="caster"></param>
+			public static void Unknown_10F(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Unknown_10F);
+				packet.PutInt(character.Handle);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Sent for unknown purpose related to skill (Hwarang PyeonJeon)
+			/// </summary>
+			/// <param name="character"></param>
+			public static void Unknown_110(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Unknown_110);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Dummy (Unknown Purpose)
+			/// </summary>
+			/// <param name="character"></param>
+			public static void Unknown_11A(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Unknown_11A);
+				packet.PutInt(0); // ?
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown Purpose
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="packetString"></param>
+			/// <param name="shopType"></param>
+			/// <param name="i1"></param>
+			public static void Shop_Unknown11C(IZoneConnection conn, int packetString, int shopType, int i1 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Shop_Unknown11C);
+
+				packet.PutInt(packetString);
+				packet.PutInt(shopType);
+				packet.PutInt(i1);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Used with Pyromancer's Prominence Skill
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="effectHandle"></param>
+			/// <param name="packetString1"></param>
+			/// <param name="f1"></param>
+			/// <param name="packetString2"></param>
+			/// <param name="f2"></param>
+			/// <param name="f3"></param>
+			/// <param name="i2"></param>
+			/// <param name="f4"></param>
+			/// <param name="f5"></param>
+			/// <param name="i3"></param>
+			/// <param name="f6"></param>
+			/// <param name="position"></param>
+			/// <param name="i4"></param>
+			/// <remarks>
+			/// PAD_SET_PROMINENCE(self, skl, pad, eft, eftScale, maxHeight, coreCount, hitRange, onGroundTime, prominenceCount, moveCount, attackTime, jumpMin, jumpMax, maxMoveRange, preEft, preEftScale, preEftSecond)
+			/// </remarks>
+			public static void Skill_124(IActor entity, int effectHandle, string packetString1, float f1, string packetString2,
+				float f2, float f3, int i2, float f4, float f5, int i3, float f6, Position position, int i4)
+			{
+				if (ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString1, out var packetStr1) &&
+					ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString2, out var packetStr2))
+					Skill_124(entity, effectHandle, packetStr1.Id, f1, packetStr2.Id, f2, f3, i2, f4, f5, i3, f6, position, i4);
+			}
+
+			/// <summary>
+			/// Used with Pyromancer's Prominence Skill
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="effectHandle"></param>
+			/// <param name="packetString1"></param>
+			/// <param name="f1"></param>
+			/// <param name="packetString2"></param>
+			/// <param name="f2"></param>
+			/// <param name="f3"></param>
+			/// <param name="i2"></param>
+			/// <param name="f4"></param>
+			/// <param name="f5"></param>
+			/// <param name="i3"></param>
+			/// <param name="f6"></param>
+			/// <param name="position"></param>
+			/// <param name="i4"></param>
+			/// <remarks>
+			/// PAD_SET_PROMINENCE(self, skl, pad, eft, eftScale, maxHeight, coreCount, hitRange, onGroundTime, 
+			/// prominenceCount, moveCount, attackTime, jumpMin, jumpMax, maxMoveRange, preEft, preEftScale, preEftSecond)
+			/// </remarks>
+			public static void Skill_124(IActor entity, int effectHandle, int packetString1, float f1, int packetString2,
+				float f2, float f3, int i2, float f4, float f5, int i3, float f6, Position position, int i4)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_124);
+
+				packet.PutInt(effectHandle);
+				packet.PutByte(0);
+				packet.PutInt(entity.Handle);
+				packet.PutInt(packetString1);
+				packet.PutFloat(f1);
+				packet.PutInt(packetString2);
+				packet.PutFloat(f2);
+				packet.PutFloat(f3);
+				packet.PutInt(i2);
+				packet.PutFloat(f4);
+				packet.PutFloat(f5);
+				packet.PutInt(i3);
+				packet.PutFloat(f6);
+				packet.PutFloat(position.X);
+				packet.PutFloat(0);
+				packet.PutFloat(position.Z);
+				packet.PutInt(i4);
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Used with Pyromancer's Prominence Skill
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="effectHandle"></param>
+			public static void Skill_124(IActor actor, int effectHandle)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_124);
+
+				packet.PutInt(effectHandle);
+				packet.PutByte(1);
+
+				actor.Map.Broadcast(packet);
+			}
+
+
+			/// <summary>
+			/// Used with Pyromancer's Prominence Skill
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="effectHandle"></param>
+			/// <param name="position1"></param>
+			/// <param name="position2"></param>
+			public static void Skill_124(IActor entity, int effectHandle, Position position1, Position position2)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_124);
+
+				packet.PutInt(effectHandle);
+				packet.PutByte(2);
+				packet.PutFloat(position1.X);
+				packet.PutFloat(0);
+				packet.PutFloat(position1.Z);
+				packet.PutFloat(position2.X);
+				packet.PutFloat(0);
+				packet.PutFloat(position2.Z);
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Used with Hunter's Coursing Skill
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name=""></param>
+			public static void Skill_127(Character entity, int targetHandle, int effectHandle, Position position)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_127);
+
+				packet.PutInt(entity.Handle);
+				packet.PutInt(targetHandle);
+				if (targetHandle != 0)
+				{
+					packet.PutInt(effectHandle);
+					packet.PutFloat(position.X);
+					packet.PutFloat(0);
+					packet.PutFloat(position.Z);
+				}
+
+				entity.Map.Broadcast(packet);
 			}
 
 			/// <summary>
@@ -865,6 +2537,314 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
+			/// Set's a label on an NPC
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="label"></param>
+			public static void NPCLabel(Character entity, string label)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.NPCLabel);
+
+				packet.PutInt(entity.Handle);
+				packet.PutLpString(label);
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Sent on login.
+			/// Unknown purpose, could be old Greeting Message Packet?
+			/// </summary>
+			/// <param name="character"></param>
+			public static void Unknown_134(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_134);
+
+				packet.Zlib(true, zpacket =>
+				{
+					zpacket.PutLong(character.ObjectId);
+					zpacket.PutByte(1);
+					zpacket.PutEmptyBin(6);
+				});
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Displays guild name under player and party name?
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="character"></param>
+			public static void ShowParty(IZoneConnection conn, Character character)
+			{
+				var party = character.Connection.Party;
+				var guild = character.Connection.Guild;
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.ShowParty);
+
+				packet.PutInt(character.Handle);
+				if (party != null && guild != null)
+				{
+					packet.PutByte(1);
+					packet.PutLpString(party.Name);
+					packet.PutByte(0);
+					packet.PutLpString(guild.Name);
+				}
+				else if (party != null)
+				{
+					packet.PutByte(1);
+					packet.PutLpString(party.Name);
+					packet.PutByte(3);
+				}
+				else if (guild != null)
+				{
+					packet.PutByte(3);
+					packet.PutLpString(guild.Name);
+				}
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Displays guild name under player and party name?
+			/// </summary>
+			/// <param name="character"></param>
+			public static void ShowParty(Character character)
+			{
+				var party = character.Connection.Party;
+				var guild = character.Connection.Guild;
+
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.ShowParty);
+
+				packet.PutInt(character.Handle);
+				if (party != null && guild != null)
+				{
+					packet.PutByte(1);
+					packet.PutLpString(party.Name);
+					packet.PutByte(0);
+					packet.PutLpString(guild.Name);
+				}
+				else if (party != null)
+				{
+					packet.PutByte(1);
+					packet.PutLpString(party.Name);
+					packet.PutByte(3);
+				}
+				else if (guild != null)
+				{
+					packet.PutByte(3);
+					packet.PutLpString(guild.Name);
+				}
+
+				character.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Sent with Resurrect Packets?
+			/// </summary>
+			/// <param name="character"></param>
+			public static void Revive(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Revive);
+
+				packet.PutInt(character.Handle);
+				packet.PutByte(0);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Shows shop setup/closing animation 
+			/// eg: Blacksmith Iron appears/disappears in client
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="entity"></param>
+			/// <param name="scriptFunc"></param>
+			/// <param name="b1"></param>
+			/// <param name="b2">If set to 0, animation plays in reverse? Used to close shop.</param>
+			public static void ShopAnimation(IZoneConnection conn, Character entity, string scriptFunc, byte b1 = 1, byte b2 = 2)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.ShopAnimation);
+
+				packet.PutInt(entity.Handle);
+				packet.PutLpString(scriptFunc);
+				packet.PutByte(b1);
+				packet.PutByte(b2);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Sends the session key to the client.
+			/// </summary>
+			/// <param name="conn"></param>
+			public static void SetSessionKey(IZoneConnection conn)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetSessionKey);
+
+				packet.PutLpString(conn.SessionKey);
+				packet.PutByte(1);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Status Effect
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="duration"></param>
+			/// <param name="effectName"></param>
+			/// <param name="effectType"></param>
+			public static void StatusEffect(IActor actor, float duration, string effectName, string effectType)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.StatusEffect);
+
+				packet.PutInt(actor.Handle);
+				packet.PutFloat(duration);
+				packet.PutLpString(effectName);
+				packet.PutLpString(effectType);
+
+				actor.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Sent when there is a double log-in.
+			/// </summary>
+			/// <param name="character"></param>
+			public static void DisconnectError(IZoneConnection conn, string msg)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.DisconnectError);
+				packet.PutLpString(msg);
+				packet.PutInt(0);
+				packet.PutByte(0);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Makes item monster appear to drop, by "throwing" it a certain
+			/// distance from its current position.
+			/// </summary>
+			/// <param name="monster"></param>
+			/// <param name="direction"></param>
+			/// <param name="distance"></param>
+			public static void ItemDrop(IMonster monster, Direction direction, float distance)
+			{
+				// The distance might be more like a force, since items fly
+				// farther than they should with high distances. Whether this
+				// is a problem, depends on the used distance and the pick up
+				// range. With a very small pick up range, like 10, and a high
+				// distance, like 110, there will be a slight desync, and you
+				// might not get the item, even if you're right on top of it.
+				// But since we won't usually use such small and high values,
+				// it will probably be fine.
+
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.ItemDrop);
+
+				packet.PutInt(monster.Handle);
+				packet.PutInt((int)direction.NormalDegreeAngle);
+				packet.PutFloat(distance);
+
+				monster.Map.Broadcast(packet, monster, false);
+			}
+
+			/// <summary>
+			/// Set a character's state.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="character"></param>
+			/// <param name="isHostile"></param>
+			public static void FightState(IZoneConnection conn, Character character, bool isHostile)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.FightState);
+				packet.PutInt(character.Handle);
+				packet.PutPosition(character.Position);
+				packet.PutByte(isHostile);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Market Item Minimum/Maximum Prices
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="b1"></param>
+			/// <param name="l1"></param>
+			/// <param name="minPrice"></param>
+			/// <param name="l2"></param>
+			/// <param name="maxPrice"></param>
+			/// <param name="unitPrice"></param>
+			public static void MarketMinMaxInfo(Character entity, bool b1, long l1, long minPrice, long l2, long maxPrice, long unitPrice)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.MarketMinMaxInfo);
+				packet.PutByte(b1);
+				packet.PutLong(l1);
+				packet.PutLong(minPrice);
+				packet.PutLong(l2);
+				packet.PutLong(maxPrice);
+				packet.PutLong(unitPrice);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Updates which headgears are visible for the character on
+			/// clients in range.
+			/// </summary>
+			/// <param name="character"></param>
+			public static void HeadgearVisibilityUpdate(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.HeadgearVisibilityUpdate);
+
+				packet.PutInt(character.Handle);
+				packet.PutByte((character.VisibleEquip & VisibleEquip.Headgear1) != 0);
+				packet.PutByte((character.VisibleEquip & VisibleEquip.Headgear2) != 0);
+				packet.PutByte((character.VisibleEquip & VisibleEquip.Headgear3) != 0);
+				packet.PutByte((character.VisibleEquip & VisibleEquip.Wig) != 0);
+
+				character.Map.Broadcast(packet, character);
+			}
+
+			/// <summary>
+			/// Send all skills and their properties a character has.
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="propertyIds"></param>
+			public static void SetSkillsProperties(IZoneConnection conn, params string[] propertyIds)
+			{
+				var skills = conn.SelectedCharacter.Skills.GetList();
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SetSkillsProperties);
+
+				packet.PutInt(skills.Length);
+				foreach (var skill in skills)
+				{
+					var properties = skill.Properties.GetSelect(propertyIds);
+
+					packet.PutInt((int)skill.Id);
+					packet.PutShort(properties.GetByteCount());
+					packet.AddProperties(properties);
+				}
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
 			/// Updates the skill UI with character job data.
 			/// </summary>
 			/// <param name="character"></param>
@@ -885,8 +2865,8 @@ namespace Melia.Zone.Network
 
 				var packet = new Packet(Op.ZC_NORMAL);
 				packet.PutInt(NormalOp.Zone.UpdateSkillUI);
-				packet.PutLong(character.ObjectId);
 
+				packet.PutLong(character.ObjectId);
 				packet.PutInt(jobs.Length);
 				foreach (var job in jobs)
 				{
@@ -897,6 +2877,8 @@ namespace Melia.Zone.Network
 					packet.PutByte((byte)job.SkillPoints);
 					packet.PutShort(41857);
 					packet.PutEmptyBin(5);
+					// Job Advancement Date
+					//packet.PutLong(job.AdvancementDate.ToUnixTimeSeconds() * 1000);
 					packet.PutLong(132735996030000000);
 					packet.PutLong(0);
 				}
@@ -905,80 +2887,332 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Changes character behavior for a curscene.
-			/// </summary>
-			/// <param name="character"></param>
-			/// <param name="active">Whether the cutscene is active.</param>
-			/// <param name="movable">Whether the client can still move the character. If not, the server can control it.</param>
-			/// <param name="hideUi">Whether to hide the UI while active.</param>
-			public static void Cutscene(Character character, bool active, bool movable, bool hideUi)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Cutscene);
-
-				packet.PutByte(active);
-				packet.PutByte(movable);
-				packet.PutByte(hideUi);
-
-				character.Connection.Send(packet);
-			}
-
-			/// <summary>
-			/// Purpose unknown, related to skills.
-			/// </summary>
-			/// <param name="character"></param>
-			/// <param name="casterHandle"></param>
-			/// <param name="packetString"></param>
-			/// <param name="skillId"></param>
-			/// <param name="targetPos"></param>
-			/// <param name="targetDir"></param>
-			/// <exception cref="ArgumentException"></exception>
-			public static void Skill_59(Character character, int casterHandle, string packetString, SkillId skillId, Position targetPos, Direction targetDir)
-			{
-				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStringData))
-					throw new ArgumentException($"Unknown packet string '{packetString}'.");
-
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Skill_59);
-
-				packet.PutInt(casterHandle);
-				packet.PutInt(packetStringData.Id);
-				packet.PutInt((int)skillId);
-				packet.PutInt(1);
-				packet.PutPosition(targetPos);
-				packet.PutDirection(targetDir);
-				packet.PutFloat(-0.78f);
-				packet.PutFloat(0);
-				packet.PutInt(0);
-				packet.PutInt(1);
-				packet.PutEmptyBin(13);
-				packet.PutFloat(150);
-				packet.PutEmptyBin(16);
-
-				character.Connection.Send(packet);
-			}
-
-			/// <summary>
-			/// Makes the entity jump to the target position.
+			/// Show Instance Dungeon Match Making UI
 			/// </summary>
 			/// <param name="entity"></param>
-			/// <param name="targetPos"></param>
-			/// <param name="jumpHeight"></param>
-			public static void LeapJump(ICombatEntity entity, Position targetPos, float jumpHeight = 20)
+			/// <param name="instanceDungeonId"></param>
+			/// <param name="allowAutoMatchReenter"></param>
+			/// <param name="allowAutoMatch"></param>
+			/// <param name="allowEnterNow"></param>
+			/// <param name="allowAutoMatchParty"></param>
+			/// <param name="b1"></param>
+			public static void InstanceDungeonMatchMaking(Character entity, int instanceDungeonId, int allowAutoMatchReenter, int allowAutoMatch, int allowEnterNow, int allowAutoMatchParty, byte b1 = 0)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.LeapJump);
+				packet.PutInt(NormalOp.Zone.InstanceDungeonMatchMaking);
 
+				packet.PutInt(instanceDungeonId);
+				packet.PutInt(allowAutoMatchReenter);
+				packet.PutInt(allowAutoMatch);
+				packet.PutInt(allowEnterNow);
+				packet.PutInt(allowAutoMatchParty);
+				packet.PutByte(b1);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Send fishing rank data
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="type"></param>
+			public static void FishingRankData(IZoneConnection conn, string type)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				var rankingCount = 1;
+
+				packet.PutInt(NormalOp.Zone.FishingRankData);
+				packet.PutLpString("Fishing");
+				packet.PutLpString(type);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				if (rankingCount > 0)
+				{
+					packet.PutLong(conn.Account.ObjectId);
+					packet.PutInt(100);
+					packet.PutLpString(conn.SelectedCharacter.Name);
+				}
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Initializing the adventure book
+			/// </summary>
+			/// <param name="conn"></param>
+			public static void AdventureBook(IZoneConnection conn)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.AdventureBook);
+
+				packet.PutLpString("AdventureBook");
+				packet.PutLpString("Initialization_point");
+				packet.PutInt(-1);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutByte(1);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown purpose, sent on login
+			/// </summary>
+			/// <param name="conn"></param>
+			public static void Unknown198(IZoneConnection conn)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_198);
+
+				packet.PutInt(0);
+				packet.PutInt(0);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown purpose yet. (Dummy)
+			/// </summary>
+			/// <param name="character"></param>
+			public static void Unknown_19B(IZoneConnection conn)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_19B);
+				packet.PutLong(1);
+				packet.PutByte(0);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown purpose yet. (Dummy)
+			/// Set's the time for something.
+			/// </summary>
+			/// <remarks>
+			/// 05/31/23 (Showed DateTime for 06/04/23 21:00)
+			/// </remarks>
+			/// <param name="conn"></param>
+			public static void Unknown_19D_SetTime(IZoneConnection conn)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_19D_SetTime);
+
+				packet.PutByte(0);
+				packet.PutDate(DateTime.Now.AddHours(2));
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Sent when Pet is activated or disabled
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="companion"></param>
+			/// <param name="isInActive"></param>
+			public static void PetIsInactive(IZoneConnection conn, Companion companion)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PetIsInactive);
+
+				packet.PutInt(companion.Handle);
+				packet.PutInt(companion.IsActivated ? 0 : 1); // Inverse of active
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Set the sub attack skill (access by C key).
+			/// </summary>
+			/// <param name="character"></param>
+			public static void SetSubAttackSkill(Character character, SkillId skillId)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.SetSubAttackSkill);
+				packet.PutInt(character.Handle);
+				packet.PutInt((int)skillId);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown purpose yet.
+			/// </summary>
+			/// <param name="character"></param>
+			public static void Unknown_1A6(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_1A6);
+
+				packet.PutShort(1);
+				packet.PutInt(50);
+				packet.PutInt(50);
+				packet.PutInt(100);
+				packet.PutInt(100);
+				packet.PutFloat(0.3f);
+				packet.PutFloat(3f);
+				packet.PutInt(5000);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Seen during Spear Throw (Hoplite) skill.
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="str"></param>
+			/// <param name="itemId"></param>
+			public static void Skill_1A9(IActor entity, string str, int itemId = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Skill_1A9);
 				packet.PutInt(entity.Handle);
-				packet.PutPosition(targetPos);
-				packet.PutFloat(jumpHeight);
-				packet.PutFloat(0.1f); // jump speed?
-				packet.PutFloat(0.1f);
-				packet.PutFloat(1);
-				packet.PutFloat(0.2f);
-				packet.PutFloat(1);
+				packet.PutLpString(str);
+				packet.PutInt(itemId);
 
-				entity.Map.Broadcast(packet, entity);
+				if (entity is Character character)
+					character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Updates weather wig eequipment is visible for the character
+			/// on clients in range.
+			/// </summary>
+			/// <param name="character"></param>
+			public static void WigVisibilityUpdate(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.WigVisibilityUpdate);
+
+				packet.PutInt(character.Handle);
+				packet.PutByte((character.VisibleEquip & VisibleEquip.Wig) != 0);
+
+				character.Map.Broadcast(packet, character);
+			}
+
+			/// <summary>
+			/// Used Medal Total
+			/// </summary>
+			/// <param name="conn"></param>
+			/// <param name="medals"></param>
+			public static void UsedMedalTotal(IZoneConnection conn, int medals)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.UsedMedalTotal);
+
+				packet.PutInt(medals);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Unknown purpose yet.
+			/// Sent on logging in
+			/// </summary>
+			/// <param name="conn"></param>
+			public static void Unknown_1B6(IZoneConnection conn)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_1B6);
+
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
+
+				conn.Send(packet);
+			}
+
+			/// <summary>
+			/// Send client ToS Steam Achievement
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="achievement"></param>
+			public static void SteamAchievement(Character entity, string achievement)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SteamAchievement);
+				packet.PutLpString(achievement);
+
+				entity.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Rotate an Item (Monster)
+			/// Used in Shield Lob Skill
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="direction"></param>
+			/// <param name="f1"></param>
+			/// <param name="f2"></param>
+			public static void Skill_ItemRotate(Character entity, float direction, float f1 = 0, float f2 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+
+				packet.PutInt(NormalOp.Zone.Skill_ItemRotate);
+				packet.PutInt(entity.Handle);
+				packet.PutFloat(direction);
+				packet.PutFloat(f1); // Haven't seen other values yet other than 0
+				packet.PutFloat(f2); // Haven't seen other values yet other than 0
+
+				entity.Map.Broadcast(packet);
+			}
+
+			/// <summary>
+			/// Updates weather wig eequipment is visible for the character
+			/// on clients in range.
+			/// </summary>
+			/// <param name="character"></param>
+			public static void SubWeaponVisibilityUpdate(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.SubWeaponVisibilityUpdate);
+
+				packet.PutInt(character.Handle);
+				packet.PutByte((character.VisibleEquip & VisibleEquip.SubWeapon) != 0);
+
+				character.Map.Broadcast(packet, character);
+			}
+		}
+
+		public static class ZC_TO_CLIENT
+		{
+			/// <summary>
+			/// Guild/Party Event Related?
+			/// </summary>
+			/// <remarks>Maybe like a trick packet or ZC_NORMAL </remarks>
+			/// <param name="character"></param>
+			public static void MessageParameter(Character character, string message, string parameter = "", int duration = 0)
+			{
+				var packet = new Packet(Op.ZC_TO_CLIENT);
+				packet.PutInt(NormalOp.GuildOp.MessageParameter);
+
+				packet.PutLong(character.Connection.Account.ObjectId);
+				packet.PutLpString(message);
+				packet.PutLpString(parameter);
+				packet.PutInt(duration);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Guild/Party Event Related?
+			/// </summary>
+			/// <remarks>Maybe like a trick packet or ZC_NORMAL </remarks>
+			/// <param name="character"></param>
+			public static void PartyMessage(Party party, Character character, string message, string parameter = "")
+			{
+				var packet = new Packet(Op.ZC_TO_CLIENT);
+				packet.PutInt(NormalOp.GuildOp.GuildMessage);
+
+				packet.PutLong(character.AccountDbId);
+				packet.PutByte((byte)party.Type);
+				packet.PutLong(party.ObjectId);
+				packet.PutLpString(message);
+
+				party.Broadcast(packet);
+				packet.PutLong(character.ObjectId);
 			}
 		}
 	}

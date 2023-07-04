@@ -5,6 +5,7 @@ using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting.Dialogues;
 using Melia.Zone.World.Actors.Monsters;
+using Yggdrasil.Composition;
 using Yggdrasil.Scheduling;
 
 namespace Melia.Zone.World.Actors.CombatEntities.Components
@@ -140,6 +141,9 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 			{
 				this.IsMoving = false;
 				this.Destination = pos;
+
+				if (this.Entity is Companion)
+					Send.ZC_PLAY_ANI(this.Entity, AnimationName.Empty, false, 1);
 
 				Send.ZC_MOVE_STOP(this.Entity, pos);
 			}

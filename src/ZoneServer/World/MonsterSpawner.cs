@@ -23,7 +23,7 @@ namespace Melia.Zone.World
 	/// </summary>
 	public class MonsterSpawner
 	{
-		private const int MaxValidPositionTries = 50;
+		private const int MaxValidPositionTries = 1000;
 
 		private const float FlexIncreaseLimit = 100;
 		private const float FlexDecreaseLimit = -100;
@@ -78,7 +78,7 @@ namespace Melia.Zone.World
 		/// <summary>
 		/// Returns the area in which the monsters are spawned.
 		/// </summary>
-		public IShape Area { get; }
+		public IShapeF Area { get; }
 
 		/// <summary>
 		/// Returns the initial delay before the first spawn.
@@ -120,7 +120,7 @@ namespace Melia.Zone.World
 		/// <param name="maxRespawnDelay"></param>
 		/// <param name="tendency"></param>
 		/// <param name="propertyOverrides"></param>
-		public MonsterSpawner(int monsterClassId, int minAmount, int maxAmount, string mapClassName, IShape area, TimeSpan initialSpawnDelay, TimeSpan minRespawnDelay, TimeSpan maxRespawnDelay, TendencyType tendency, PropertyOverrides propertyOverrides)
+		public MonsterSpawner(int monsterClassId, int minAmount, int maxAmount, string mapClassName, IShapeF area, TimeSpan initialSpawnDelay, TimeSpan minRespawnDelay, TimeSpan maxRespawnDelay, TendencyType tendency, PropertyOverrides propertyOverrides)
 		{
 			if (!ZoneServer.Instance.Data.MonsterDb.TryFind(monsterClassId, out _monsterData))
 				throw new ArgumentException($"No monster data found for '{monsterClassId}'.");
@@ -157,7 +157,8 @@ namespace Melia.Zone.World
 			{
 				if (!this.TryGetRandomPosition(out var pos))
 				{
-					Log.Warning($"MonsterSpawner: Couldn't find a valid spawn position for monster '{_monsterData.ClassName}' on map '{_map.Name}'.");
+					Log.Warning($"MonsterSpawner: Couldn't find a valid spawn position for monster '{_monsterData.ClassName}' on map '{_map.Name}' at '{this.Area.Center}'.");
+					Debug.ShowShape(this._map, this.Area, TimeSpan.FromMinutes(5));
 					continue;
 				}
 
@@ -383,7 +384,7 @@ namespace Melia.Zone.World
 		/// <param name="point"></param>
 		/// <param name="pos"></param>
 		/// <returns></returns>
-		private bool TryGetPositionFromPoint(Vector2 point, out Position pos)
+		private bool TryGetPositionFromPoint(Vector2F point, out Position pos)
 		{
 			pos = new Position(point.X, 0, point.Y);
 			if (_map.Ground.TryGetHeightAt(pos, out var height))
@@ -392,6 +393,26 @@ namespace Melia.Zone.World
 				return true;
 			}
 
+			// If all tries failed, try the area's center point
+			pos = new Position(this.Area.Center.X, 0, this.Area.Center.Y);
+			if (_map.Ground.TryGetHeightAt(pos, out var height2))
+			{
+				pos.Y = height2;
+				return true;
+			}
+
+			// No dice? Okay... What about the edge points?
+			foreach (var edgePoint in this.Area.GetEdgePoints())
+			{
+				pos = new Position(edgePoint.X, 0, edgePoint.Y);
+				if (_map.Ground.TryGetHeightAt(pos, out var height3))
+				{
+					pos.Y = height3;
+					return true;
+				}
+			}
+
+			// Well, we gave our best. Kind of.
 			pos = Position.Zero;
 			return false;
 		}

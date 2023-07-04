@@ -34,10 +34,10 @@ namespace Melia.Barracks.Network
 		{
 			var packet = new Packet(Op.BC_LOGINOK);
 			packet.PutShort(1001); // Server Group Id
-			packet.PutLong(conn.Account.Id);
+			packet.PutLong(conn.Account.ObjectId);
 			packet.PutString(conn.Account.Name, 33);
 			packet.PutEmptyBin(23);
-			packet.PutInt(3); // accountPrivileges? <= 3 enables a kind of debug context menu
+			packet.PutInt((int)conn.Account.Type); // accountPrivileges? <= 3 enables a kind of debug context menu
 			packet.PutString(conn.SessionKey, 64);
 			packet.PutInt(4475);
 			packet.PutLong(0);
@@ -66,7 +66,7 @@ namespace Melia.Barracks.Network
 
 			var packet = new Packet(Op.BC_SPLIT_COMMANDER_INFO_LIST);
 			packet.PutInt(characterCount);
-			packet.PutLong(conn.Account.Id);
+			packet.PutLong(conn.Account.ObjectId);
 
 			packet.PutByte((byte)conn.Account.SelectedCharacterSlot);
 			packet.PutByte(0);
@@ -92,7 +92,7 @@ namespace Melia.Barracks.Network
 
 			var packet = new Packet(Op.BC_COMMANDER_LIST);
 
-			packet.PutLong(conn.Account.Id);
+			packet.PutLong(conn.Account.ObjectId);
 			packet.PutByte(0);
 			packet.PutByte(0); // 1 = 5/4 slots?
 			packet.PutString(conn.Account.TeamName, 64);
@@ -247,7 +247,7 @@ namespace Melia.Barracks.Network
 			packet.PutInt(port);
 			packet.PutInt(character.MapId);
 			packet.PutByte((byte)channelId);
-			packet.PutLong(character.Id);
+			packet.PutLong(character.ObjectId);
 			packet.PutByte(0); // Only connects if 0
 			packet.PutByte(1); // Passed to a function if ^ is 0
 
@@ -286,7 +286,7 @@ namespace Melia.Barracks.Network
 
 			var packet = new Packet(Op.BC_ACCOUNT_PROP);
 
-			packet.PutLong(account.Id);
+			packet.PutLong(account.ObjectId);
 			packet.PutShort(size);
 			packet.AddProperties(propertyList);
 
@@ -359,6 +359,49 @@ namespace Melia.Barracks.Network
 		{
 			var packet = new Packet(Op.BC_IES_MODIFY_LIST);
 			packet.AddIesModList(BarracksServer.Instance.IesMods);
+
+			conn.Send(packet);
+		}
+
+		/// <summary>
+		/// Response to CB_JUMP, when a companion requests to jump
+		/// </summary>
+		/// <param name="conn"></param>
+		public static void BC_JUMP(IBarracksConnection conn)
+		{
+			var packet = new Packet(Op.BC_JUMP);
+
+			packet.PutLong(0);
+			packet.PutInt(0);
+			packet.PutLong(conn.Account.ObjectId);
+			packet.PutByte(0);
+
+			conn.Send(packet);
+		}
+
+		/// <summary>
+		/// Current queue position
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="queuePosition"></param>
+		public static void BC_WAIT_QUEUE_ORDER(IBarracksConnection conn, int queuePosition)
+		{
+			var packet = new Packet(Op.BC_WAIT_QUEUE_ORDER);
+			packet.PutInt(queuePosition);
+
+			conn.Send(packet);
+		}
+
+		/// <summary>
+		/// Send additional character slot price
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="characterSlotPrice"></param>
+		public static void BC_REQ_SLOT_PRICE(IBarracksConnection conn, int characterSlotPrice)
+		{
+			var packet = new Packet(Op.BC_REQ_SLOT_PRICE);
+
+			packet.PutInt(characterSlotPrice);
 
 			conn.Send(packet);
 		}

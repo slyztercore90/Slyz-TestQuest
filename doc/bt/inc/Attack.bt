@@ -18,7 +18,7 @@ typedef struct
 {
 	int damage;
 	int hp;
-	int i1;
+	int hpChangeCounter;
 	short s1;
 
     byte b1;
@@ -117,7 +117,7 @@ KnockBackInfo;
 typedef struct
 {
 	byte b9;
-	byte b10; // 4 = hands/sword? 9 = magic? 102 = dagger, 103 = Onion attack, potentially related to AttackType.Aries/Strike in skill attributes
+	byte attribute; // 4 = hands/sword? 9 = magic? 102 = dagger, 103 = Onion attack, potentially related to AttackType.Aries/Strike in skill attributes
     byte b1;
     byte b2;
 

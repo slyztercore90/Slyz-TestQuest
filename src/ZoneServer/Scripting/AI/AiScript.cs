@@ -7,6 +7,7 @@ using Melia.Zone.Network;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Monsters;
+using Melia.Zone.World.Maps;
 using Yggdrasil.Ai.Enumerable;
 using Yggdrasil.Scheduling;
 using Yggdrasil.Scripting;
@@ -42,6 +43,11 @@ namespace Melia.Zone.Scripting.AI
 		public ICombatEntity Entity { get; private set; }
 
 		/// <summary>
+		/// Returns the owner of the entity that this script is controlling.
+		/// </summary>
+		public ICombatEntity Owner { get; private set; }
+
+		/// <summary>
 		/// Returns the name of the currently running routine if it
 		/// was named.
 		/// </summary>
@@ -57,7 +63,9 @@ namespace Melia.Zone.Scripting.AI
 			this.Entity = combatEntity;
 
 			if (combatEntity is Mob mob)
+			{
 				this.SetTendency(mob.Tendency);
+			}
 
 			if (ZoneServer.Instance.Data.FactionDb.TryFind(this.Entity.Faction, out var factionData))
 				this.HatesFaction(factionData.Hostile);
@@ -65,6 +73,15 @@ namespace Melia.Zone.Scripting.AI
 			this.Setup();
 
 			_initiated = true;
+		}
+
+		/// <summary>
+		/// Sets the owner of the entity this script is controlling.
+		/// </summary>
+		/// <param name="owner"></param>
+		public void SetOwner(ICombatEntity owner)
+		{
+			this.Owner = owner;
 		}
 
 		/// <summary>

@@ -1,17 +1,19 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using Melia.Shared.Data.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Network.Helpers;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Scripting;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Properties;
 using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting.Dialogues;
-using Melia.Zone.Skills;
+using Melia.Zone.Skills.Combat;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Actors.CombatEntities.Components;
+using Melia.Zone.World.Actors.Components;
 using Melia.Zone.World.Actors.Monsters;
 using Yggdrasil.Composition;
 using Yggdrasil.Logging;
@@ -23,16 +25,19 @@ namespace Melia.Zone.World.Actors.Characters
 	/// <summary>
 	/// Represents a player character.
 	/// </summary>
-	public class Character : Actor, IActor, ICombatEntity, ICommander, IPropertyObject, IUpdateable
+	public class Character : Actor, ICombatEntity, ICommander, IPropertyObject, IUpdateable
 	{
 		private bool _warping;
 		private int _destinationChannelId;
+		private int _currentLayer = 0;
 
 		private readonly object _lookAroundLock = new object();
 		private readonly object _hpLock = new object();
 		private IMonster[] _visibleMonsters = new IMonster[0];
 		private Character[] _visibleCharacters = new Character[0];
 		private ITriggerableArea[] _triggerAreas = new ITriggerableArea[0];
+
+		private readonly List<Companion> _companions = new List<Companion>();
 
 		/// <summary>
 		/// Connection this character uses.
@@ -62,7 +67,12 @@ namespace Melia.Zone.World.Actors.Characters
 		/// <summary>
 		/// Id of the character's account.
 		/// </summary>
-		public long AccountId { get; set; }
+		public long AccountDbId { get; set; }
+
+		/// <summary>
+		/// Id of the character's account.
+		/// </summary>
+		public long AccountObjectId => this.AccountDbId;
 
 		/// <summary>
 		/// Returns the character's faction.
@@ -127,6 +137,11 @@ namespace Melia.Zone.World.Actors.Characters
 		/// Character's hair style.
 		/// </summary>
 		public int Hair { get; set; }
+
+		/// <summary>
+		/// Character's pose.
+		/// </summary>
+		public byte Pose { get; set; }
 
 		/// <summary>
 		/// Returns stance, based on job and other factors.
@@ -289,6 +304,20 @@ namespace Melia.Zone.World.Actors.Characters
 		/// Returns the character's quests manager.
 		/// </summary>
 		public QuestComponent Quests { get; }
+		/// <summary>
+		/// Character's timed events.
+		/// </summary>
+		public TimedEventComponent TimedEvents { get; }
+
+		/// <summary>
+		/// Character's track manager.
+		/// </summary>
+		public TrackComponent Tracks { get; }
+
+		/// <summary>
+		/// Character's achievement manager.
+		/// </summary>
+		public Achievements Achievements { get; }
 
 		/// <summary>
 		/// Character's properties.
@@ -299,6 +328,17 @@ namespace Melia.Zone.World.Actors.Characters
 		/// possible.
 		/// </remarks>
 		public CharacterProperties Properties { get; }
+
+		/// <summary>
+		/// PCEtc Properties
+		/// Used for "Hiding NPC states", Quest Completions, Skintone, Hair
+		/// </summary>
+		public Properties EtcProperties { get; } = new Properties("PCEtc");
+
+		/// <summary>
+		/// GuildMember Properties
+		/// </summary>
+		public Properties GuildMemberProperties { get; } = new Properties("GuildMember");
 
 		/// <summary>
 		/// Returns a reference to the character's properties.
@@ -313,12 +353,62 @@ namespace Melia.Zone.World.Actors.Characters
 			get => _localizer ?? ZoneServer.Instance.MultiLocalization.GetDefault();
 			private set => _localizer = value;
 		}
+
 		private Localizer _localizer;
 
 		/// <summary>
 		/// Raised when the characters sits down or stands up.
 		/// </summary>
 		public event Action<Character> SitStatusChanged;
+
+		/// <summary>
+		/// Has Companion(s)
+		/// </summary>
+		public bool HasCompanions => _companions != null && _companions.Count > 0;
+
+		/// <summary>
+		/// Active Companion
+		/// </summary>
+		public Companion ActiveCompanion => _companions?.FirstOrDefault(companion => companion.IsActivated) ?? null;
+
+		/// <summary>
+		/// Character's online status.
+		/// </summary>
+		public bool IsOnline { get; set; } = false;
+
+		/// <summary>
+		/// A dictionary with help shown
+		/// </summary>
+		public Dictionary<int, bool> Help { get; set; } = new Dictionary<int, bool>();
+
+		/// <summary>
+		/// Character's current trade
+		/// </summary>
+		public Trade Trade { get; set; }
+
+		/// <summary>
+		/// Check if character is trading
+		/// </summary>
+		public bool IsTrading => this.Trade != null;
+
+		/// <summary>
+		/// Character's class change reset points
+		/// </summary>
+		public int ResetPoints { get; private set; }
+
+		/// <summary>
+		/// Character's Balloon Id
+		/// </summary>
+		public int BalloonId { get; set; }
+
+		/// <summary>
+		/// Animation Pairing
+		/// </summary>
+		public bool IsPaired { get; set; }
+		public long PartyId { get; set; }
+		public long GuildId { get; set; }
+
+		public Triggers Triggers { get; set; }
 
 		/// <summary>
 		/// Creates new character.
@@ -335,6 +425,10 @@ namespace Melia.Zone.World.Actors.Characters
 			this.Components.Add(new CooldownComponent(this));
 			this.Components.Add(this.Quests = new QuestComponent(this));
 
+			this.Components.Add(this.TimedEvents = new TimedEventComponent(this));
+			this.Components.Add(this.Tracks = new TrackComponent(this));
+			this.Components.Add(this.Triggers = new Triggers(this));
+			this.Components.Add(this.Achievements = new Achievements(this));
 			this.Properties = new CharacterProperties(this);
 
 			this.AddSessionObjects();
@@ -626,7 +720,7 @@ namespace Melia.Zone.World.Actors.Characters
 			// Check permission
 			if (!_warping)
 			{
-				Log.Warning("Character.FinalizeWarp: Player '{0}' tried to warp without permission.", this.AccountId);
+				Log.Warning("Character.FinalizeWarp: Player '{0}' tried to warp without permission.", this.AccountDbId);
 				return;
 			}
 
@@ -662,7 +756,7 @@ namespace Melia.Zone.World.Actors.Characters
 			Send.ZC_PC_LEVELUP(this);
 			Send.ZC_OBJECT_PROPERTY(this);
 			Send.ZC_ADDON_MSG(this, "NOTICE_Dm_levelup_base", 3, "!@#$Auto_KaeLigTeo_LeBeli_SangSeungHayeossSeupNiDa#@!");
-			Send.ZC_NORMAL.PlayEffect(this, "F_pc_level_up", 3);
+			this.PlayEffect("F_pc_level_up", 3);
 		}
 
 		/// <summary>
@@ -679,7 +773,7 @@ namespace Melia.Zone.World.Actors.Characters
 
 			Send.ZC_OBJECT_PROPERTY(this);
 			Send.ZC_ADDON_MSG(this, "NOTICE_Dm_levelup_skill", 3, "!@#$Auto_KeulLeSeu_LeBeli_SangSeungHayeossSeupNiDa#@!");
-			Send.ZC_NORMAL.PlayEffect(this, "F_pc_joblevel_up", 3);
+			this.PlayEffect("F_pc_joblevel_up", 3);
 		}
 
 		/// <summary>
@@ -794,6 +888,13 @@ namespace Melia.Zone.World.Actors.Characters
 		/// <param name="monster"></param>
 		public void GiveExp(long exp, long classExp, IMonster monster)
 		{
+			if (this.HasCompanions)
+			{
+				lock (_companions)
+					foreach (var companion in _companions)
+						companion.GiveExp(exp, monster);
+			}
+
 			// Base EXP
 			this.Exp += exp;
 			this.TotalExp += exp;
@@ -878,12 +979,30 @@ namespace Melia.Zone.World.Actors.Characters
 				{
 					Send.ZC_ENTER_MONSTER(this.Connection, monster);
 
+					monster.Components?.Get<EffectsComponent>()?.ShowEffects(this.Connection);
+
+					if (monster.OwnerHandle != 0)
+						Send.ZC_OWNER(this, monster);
+
+					if (monster is Companion companion)
+					{
+						Send.ZC_NORMAL.PetOwner(this.Connection, companion);
+						Send.ZC_NORMAL.Pet_AssociateWorldId(this.Connection, companion);
+					}
+
 					if (monster is ICombatEntity entity)
+					{
 						Send.ZC_FACTION(this.Connection, monster, entity.Faction);
+						Send.ZC_BUFF_LIST(this.Connection, entity);
+					}
 				}
 
 				foreach (var monster in disappearMonsters)
+				{
 					Send.ZC_LEAVE(this.Connection, monster);
+					if (monster is ICombatEntity entity)
+						Send.ZC_BUFF_CLEAR(this.Connection, entity);
+				}
 
 				// Characters
 				foreach (var character in appearCharacters)
@@ -1251,9 +1370,9 @@ namespace Melia.Zone.World.Actors.Characters
 		/// Plays effect for the character.
 		/// </summary>
 		/// <param name="packetString"></param>
-		public void PlayEffect(string packetString)
+		public void PlayEffect(string packetString, float scale = 1, byte b1 = 1, string heightOffset = "BOT", byte b2 = 0)
 		{
-			Send.ZC_NORMAL.PlayEffect(this, packetString);
+			Send.ZC_NORMAL.PlayEffect(this, b1, heightOffset, b2, scale, packetString, 0, 0);
 		}
 
 		/// <summary>
@@ -1264,6 +1383,235 @@ namespace Melia.Zone.World.Actors.Characters
 		{
 			var stamina = (this.Properties.Stamina -= staminaUsage);
 			Send.ZC_STAMINA(this, stamina);
+		}
+
+		/// Add companion
+		/// </summary>
+		/// <param name="companion"></param>
+		/// <param name="silently"></param>
+		public void AddCompanion(Companion companion, bool silently = false)
+		{
+			lock (_companions)
+				this._companions.Add(companion);
+			if (!silently)
+				Send.ZC_NORMAL.PetInfo(this);
+		}
+
+		/// <summary>
+		/// Get Companions
+		/// </summary>
+		/// <returns></returns>
+		public Companion[] GetCompanions()
+		{
+			lock (_companions)
+				return _companions.ToArray();
+		}
+
+		/// <summary>
+		/// Adds companion to character and the database.
+		/// </summary>
+		/// <param name="companion"></param>
+		public void CreateCompanion(Companion companion)
+		{
+			ZoneServer.Instance.Database.CreateCompanion(this.AccountDbId, this.DbId, companion);
+			this.AddCompanion(companion);
+		}
+
+		/// <summary>
+		/// Add a session object
+		/// </summary>
+		/// <param name="sessionObjectId"></param>
+		public SessionObject AddSessionObject(string sessionObjectId)
+		{
+			return this.AddSessionObject(PropertyTable.GetId("SessionObject", sessionObjectId));
+		}
+
+		/// <summary>
+		/// Add a Session Object and updates client
+		/// </summary>
+		/// <param name="sessionObjectId"></param>
+		public SessionObject AddSessionObject(int sessionObjectId)
+		{
+			var sessionObject = this.SessionObjects.GetOrCreate(sessionObjectId);
+			Send.ZC_SESSION_OBJ_ADD(this, sessionObject);
+			return sessionObject;
+		}
+
+		/// <summary>
+		/// Remove Session Object and updates the client
+		/// </summary>
+		/// <param name="sessionObjectId"></param>
+		public bool RemoveSessionObject(int sessionObjectId)
+		{
+			if (this.SessionObjects.Remove(sessionObjectId))
+			{
+				Send.ZC_SESSION_OBJ_REMOVE(this, sessionObjectId);
+				return true;
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Returns true if the player has the item and has at least
+		/// the request amount.
+		/// </summary>
+		/// <param name="itemId"></param>
+		/// <param name="requiredAmount"></param>
+		/// <returns></returns>
+		public bool HasItem(int itemId, int requiredAmount = 1)
+		{
+			return this.Inventory.CountItem(itemId) >= requiredAmount;
+		}
+
+		/// <summary>
+		/// Remove an item from the inventory.
+		/// </summary>
+		/// <param name="itemClassName"></param>
+		/// <param name="amount"></param>
+		public int RemoveItem(string itemClassName, int amount = 1)
+		{
+			var item = ZoneServer.Instance.Data.ItemDb.FindByClass(itemClassName);
+			if (item != null)
+				return this.RemoveItem(item.Id, amount);
+			return -1;
+		}
+
+		/// <summary>
+		/// Remove an item from the inventory.
+		/// </summary>
+		/// <param name="itemId"></param>
+		/// <param name="amount"></param>
+		public int RemoveItem(int itemId, int amount = 1)
+		{
+			return this.Inventory.Remove(itemId, amount, InventoryItemRemoveMsg.Given);
+		}
+
+		/// <summary>
+		/// Add an item to the inventory.
+		/// </summary>
+		/// <param name="itemClassName"></param>
+		/// <param name="amount"></param>
+		public void AddItem(string itemClassName, int amount = 1)
+		{
+			var item = ZoneServer.Instance.Data.ItemDb.FindByClass(itemClassName);
+			if (item != null)
+				this.AddItem(item.Id, amount);
+		}
+
+		/// <summary>
+		/// Add an item to the inventory.
+		/// </summary>
+		/// <param name="itemId"></param>
+		/// <param name="amount"></param>
+		public void AddItem(int itemId, int amount = 1)
+		{
+			this.Inventory.Add(itemId, amount);
+		}
+
+		/// <summary>
+		/// Returns companion or null with a given id.
+		/// </summary>
+		/// <param name="companionId"></param>
+		/// <returns></returns>
+		public Companion GetCompanion(long companionId)
+		{
+			lock (_companions)
+				return _companions.FirstOrDefault(c => c.ObjectId == companionId);
+		}
+
+		/// <summary>
+		/// Sends an addon message
+		/// </summary>
+		/// <param name="function"></param>
+		/// <param name="stringParameter"></param>
+		/// <param name="intParameter"></param>
+		public void AddonMessage(string function, string stringParameter = null, int intParameter = 0)
+		{
+			Send.ZC_ADDON_MSG(this, function, intParameter, stringParameter);
+		}
+
+		/// <summary>
+		/// Show help
+		/// </summary>
+		/// <param name="className"></param>
+		public void ShowHelp(string className)
+		{
+			var help = ZoneServer.Instance.Data.HelpDb.Find(className);
+
+			if (this.Help.ContainsKey(help.Id) && this.Help[help.Id])
+				return;
+
+			this.Help[help.Id] = true;
+
+			Send.ZC_HELP_ADD(this, help.Id, true);
+			if (help.DbSave)
+				ZoneServer.Instance.Database.SaveHelp(this.DbId, help.Id, true);
+		}
+
+		/// <summary>
+		/// Set a Property and send it to the client
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="value"></param>
+		public void SetProperty(string propertyName, float value)
+		{
+			this.Properties.SetFloat(propertyName, value);
+			Send.ZC_OBJECT_PROPERTY(this, propertyName);
+		}
+
+		/// <summary>
+		/// Set a Property and send it to the client
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="value"></param>
+		public void SetProperty(string propertyName, string value)
+		{
+			this.Properties.SetString(propertyName, value);
+			Send.ZC_OBJECT_PROPERTY(this, propertyName);
+		}
+
+		public float GetWeaponSpeed()
+		{
+			// Wand: 1.083666f Hammer: 1.054772f
+			return 1.083666f;
+		}
+
+		public void ModifyAccountProperty(string propertyName, float modifier)
+		{
+			var properties = this.Connection.Account.Properties;
+
+			this.Connection.Account.Properties.Modify(propertyName, modifier);
+
+			var propertyList = properties.GetSelect(propertyName);
+			Send.ZC_OBJECT_PROPERTY(this.Connection, this.Connection.Account, propertyName);
+			Send.ZC_NORMAL.AccountPropertyUpdate(this.Connection, propertyList);
+			Send.ZC_PC_PROP_UPDATE(this, (short)PropertyTable.GetId("Account", propertyName), 1);
+		}
+
+		public void AddAchievePoint(string achievementName, int value)
+		{
+			this.Achievements?.AddAchievementPoints(achievementName, value);
+		}
+
+		/// <summary>
+		/// Used to setup a "new" instance of a map in the client.
+		/// </summary>
+		/// <param name="layer"></param>
+		public void StartLayer(int layer = 0)
+		{
+			if (layer == 0)
+				_currentLayer = this.Map.GetNewLayer();
+			else
+				_currentLayer = layer;
+			Send.ZC_SET_LAYER(this, _currentLayer, true);
+		}
+
+		/// <summary>
+		/// Used to remove a "new" instance of a map in the client.
+		/// </summary>
+		public void StopLayer(int layer = 0)
+		{
+			Send.ZC_SET_LAYER(this, (layer == 0) ? _currentLayer : layer, false);
 		}
 	}
 }

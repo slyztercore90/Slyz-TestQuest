@@ -10,14 +10,18 @@ using Melia.Zone.Scripting;
 using Melia.Zone.Skills.SplashAreas;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Monsters;
 using Yggdrasil.Geometry;
+using Yggdrasil.Logging;
 using Yggdrasil.Scheduling;
 
 namespace Melia.Zone.World.Maps
 {
 	public class Map : IUpdateable
 	{
+		public int _layer = 0;
+
 		/// <summary>
 		/// Range a character can see.
 		/// </summary>
@@ -76,6 +80,11 @@ namespace Melia.Zone.World.Maps
 		private readonly Dictionary<int, PropertyOverrides> _monsterPropertyOverrides = new Dictionary<int, PropertyOverrides>();
 
 		/// <summary>
+		/// Returns the unique id for this map
+		/// </summary>
+		public int WorldId { get; protected set; }
+
+		/// <summary>
 		/// Map name.
 		/// </summary>
 		public string Name { get; protected set; }
@@ -105,6 +114,21 @@ namespace Melia.Zone.World.Maps
 		/// and item drops.
 		/// </summary>
 		public int MonsterCount { get { lock (_monsters) return _monsters.Count; } }
+
+		/// <summary>
+		/// Returns if the map has characters on the map.
+		/// </summary>
+		public bool HasCharacters => this.CharacterCount > 0;
+
+		/// <summary>
+		/// Raised when a player gets added to the map.
+		/// </summary>
+		public event Action<Character> PlayerEnters;
+
+		/// <summary>
+		/// Raised when a player is removed from the map.
+		/// </summary>
+		public event Action<Character> PlayerLeaves;
 
 		/// <summary>
 		/// Default dummy region.
@@ -242,6 +266,9 @@ namespace Melia.Zone.World.Maps
 				lock (_combatEntities)
 					_combatEntities[character.Handle] = character;
 			}
+
+			ZoneServer.Instance.ServerEvents.OnPlayerEntersMap(character);
+			PlayerEnters?.Invoke(character);
 		}
 
 		/// <summary>
@@ -281,6 +308,29 @@ namespace Melia.Zone.World.Maps
 		{
 			lock (_characters)
 				return _characters.Values.FirstOrDefault(a => a.TeamName == teamName);
+		}
+
+		/// <summary>
+		/// Returns a character on this map that match the given predicate.
+		/// </summary>
+		/// <param name="predicate"></param>
+		/// <returns></returns>
+		public Character GetCharacter(Func<Character, bool> predicate)
+		{
+			lock (_characters)
+				return _characters.Values.FirstOrDefault(predicate);
+		}
+
+		/// <summary>
+		/// Returns character by handle via out. Returns false if the
+		/// character wasn't found.
+		/// </summary>
+		/// <param name="handle"></param>
+		/// <returns></returns>
+		public bool TryGetCharacter(int handle, out Character character)
+		{
+			lock (_characters)
+				return _characters.TryGetValue(handle, out character);
 		}
 
 		/// <summary>
@@ -456,6 +506,34 @@ namespace Melia.Zone.World.Maps
 
 					result.Add(entity);
 				}
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Returns first attackable monster near another entity sorted 
+		/// by their distance in the given radius around position.
+		/// </summary>
+		/// <param name="attacker"></param>
+		/// <param name="entity"></param>
+		/// <param name="radius"></param>
+		/// <returns></returns>
+		public ICombatEntity GetAttackableEntityInRangeAroundEntity(ICombatEntity attacker, ICombatEntity entity, float radius)
+		{
+			ICombatEntity result = null;
+
+			lock (_monsters)
+			{
+				result = (ICombatEntity)_monsters.Values.Where(a => a is ICombatEntity combatEntity && entity.Handle != combatEntity.Handle && combatEntity.Position.InRange2D(entity.Position, radius) && attacker.CanAttack(combatEntity)).OrderBy(a => a.Position.Get2DDistance(entity.Position)).FirstOrDefault();
+				if (result != null)
+					return result;
+
+			}
+
+			lock (_characters)
+			{
+				result = _characters.Values.Where(a => a is ICombatEntity combatEntity && entity.Handle != combatEntity.Handle && combatEntity.Position.InRange2D(entity.Position, radius) && attacker.CanAttack(combatEntity)).OrderBy(a => a.Position.Get2DDistance(entity.Position)).FirstOrDefault();
 			}
 
 			return result;
@@ -662,6 +740,106 @@ namespace Melia.Zone.World.Maps
 				foreach (var character in _characters.Values.Where(a => (includeSource || a != source) && a.Position.InRange2D(source.Position, VisibleRange)))
 					character.Connection.Send(packet);
 			}
+		}
+
+		/// <summary>
+		/// Returns all characters that are inside the area defined by
+		/// the given shape.
+		/// </summary>
+		/// <param name="shape"></param>
+		/// <returns></returns>
+		public Character[] GetCharactersInside(IShapeF shape)
+		{
+			lock (_characters)
+			{
+				foreach (var character in _characters.Values)
+				{
+					if (shape is Circle circle)
+					{
+						Log.Debug("{0} {1} {2} {3} ", character.Position, circle.Center, circle.Radius, shape.IsInside(character.Position));
+						Log.Debug("{0} {1}", Math.Sqrt(Math.Pow(circle.Center.X - character.Position.X, 2.0) + Math.Pow(circle.Center.Y - character.Position.Y, 2.0)), (double)circle.Radius);
+					}
+				}
+			}
+			return this.GetCharacters(a => shape.IsInside(a.Position));
+		}
+
+		/// <summary>
+		/// Returns all characters that are outside the area defined by
+		/// the given shape.
+		/// </summary>
+		/// <param name="shape"></param>
+		/// <returns></returns>
+		public Character[] GetCharactersOutside(IShapeF shape)
+		{
+			return this.GetCharacters(a => !shape.IsInside(a.Position));
+		}
+
+		/// <summary>
+		/// Returns nearest attackable entity
+		/// </summary>
+		/// <param name="attacker"></param>
+		/// <param name="position"></param>
+		/// <param name="radius"></param>
+		/// <returns></returns>
+		public ICombatEntity GetNearestAttackableEntity(ICombatEntity attacker, Position position, float radius)
+		{
+			ICombatEntity result;
+
+			lock (_monsters)
+			{
+				result = (ICombatEntity)_monsters.Values.Where(a => a is ICombatEntity entity && entity.Position.InRange2D(position, radius) && attacker.CanAttack(entity)).OrderBy(a => a.Position.Get2DDistance(position)).FirstOrDefault();
+				if (result != null)
+					return result;
+			}
+
+			lock (_characters)
+			{
+				result = _characters.Values.Where(a => a.Position.InRange2D(position, radius) && attacker.CanAttack(a)).OrderBy(a => a.Position.Get2DDistance(position)).FirstOrDefault();
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Returns attackable entities around a specific entity 
+		/// excluding the entity sorted by 
+		/// their distance in the given radius around position.
+		/// </summary>
+		/// <param name="attacker"></param>
+		/// <param name="entity"></param>
+		/// <param name="radius"></param>
+		/// <returns></returns>
+		public List<ICombatEntity> GetAttackableEntitiesInRangeAroundEntity(ICombatEntity attacker, ICombatEntity entity, float radius, int maxResult = 0)
+		{
+			var result = new List<ICombatEntity>();
+
+			lock (_monsters)
+			{
+				var entities = _monsters.Values.Where(a => a is ICombatEntity combatEntity && entity.Handle != combatEntity.Handle && combatEntity.Position.InRange2D(entity.Position, radius) && attacker.CanAttack(combatEntity)).OrderBy(a => a.Position.Get2DDistance(entity.Position));
+				foreach (var combatEntity in entities)
+					result.Add((ICombatEntity)combatEntity);
+			}
+
+			lock (_characters)
+			{
+				var entities = _characters.Values.Where(a => entity.Handle != a.Handle && a.Position.InRange2D(entity.Position, radius) && attacker.CanAttack(a)).OrderBy(a => a.Position.Get2DDistance(entity.Position));
+				result.AddRange(entities);
+			}
+
+			if (maxResult == 0)
+				return result;
+			else
+				return result.Take(maxResult).ToList();
+		}
+
+		/// <summary>
+		/// Returns a new layer on the map
+		/// </summary>
+		/// <returns></returns>
+		public int GetNewLayer()
+		{
+			return Interlocked.Increment(ref _layer);
 		}
 	}
 

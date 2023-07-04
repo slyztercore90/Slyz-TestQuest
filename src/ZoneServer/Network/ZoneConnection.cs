@@ -1,7 +1,10 @@
-﻿using Melia.Shared.Network;
+﻿using Melia.Shared.Data.Database;
+using Melia.Shared.Network;
 using Melia.Zone.Database;
 using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World;
 using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Houses;
 using Yggdrasil.Network.TCP;
 
 namespace Melia.Zone.Network
@@ -25,6 +28,31 @@ namespace Melia.Zone.Network
 		/// Gets or sets the current dialog.
 		/// </summary>
 		Dialog CurrentDialog { get; set; }
+
+		/// <summary>
+		/// Gets or sets the current party.
+		/// </summary>
+		Party Party { get; set; }
+
+		/// <summary>
+		/// Gets or sets the current guild.
+		/// </summary>
+		Guild Guild { get; set; }
+
+		/// <summary>
+		/// Gets or sets the currently shop browsed.
+		/// </summary>
+		ShopData ActiveShop { get; set; }
+
+		/// <summary>
+		/// Gets or sets the currently shop opened.
+		/// </summary>
+		ShopData ShopCreated { get; set; }
+
+		/// <summary>
+		/// Gets or sets the current house.
+		/// </summary>
+		PersonalHouse ActiveHouse { get; set; }
 	}
 
 	/// <summary>
@@ -46,6 +74,31 @@ namespace Melia.Zone.Network
 		/// Gets or sets the current dialog.
 		/// </summary>
 		public Dialog CurrentDialog { get; set; }
+
+		/// <summary>
+		/// Gets or sets the current party.
+		/// </summary>
+		public Party Party { get; set; }
+
+		/// <summary>
+		/// Gets or sets the current guild.
+		/// </summary>
+		public Guild Guild { get; set; }
+
+		/// <summary>
+		/// Gets or sets the currently shop browsed.
+		/// </summary>
+		public ShopData ActiveShop { get; set; }
+
+		/// <summary>
+		/// Gets or sets the currently shop opened.
+		/// </summary>
+		public ShopData ShopCreated { get; set; }
+
+		/// <summary>
+		/// Gets or sets the current house.
+		/// </summary>
+		public PersonalHouse ActiveHouse { get; set; }
 
 		/// <summary>
 		/// Handles the given packet for this connection.

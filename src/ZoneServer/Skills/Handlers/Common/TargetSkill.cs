@@ -13,7 +13,7 @@ namespace Melia.Zone.Skills.Handlers.Common
 	/// <summary>
 	/// Handles ranged skills that target a single entity.
 	/// </summary>
-	[SkillHandler(SkillId.Bow_Attack, SkillId.Magic_Attack, SkillId.Pistol_Attack)]
+	[SkillHandler(SkillId.Bow_Attack, SkillId.Magic_Attack, SkillId.Magic_Attack_TH, SkillId.Pistol_Attack, SkillId.Cannon_Normal_Attack)]
 	public class TargetSkill : ITargetSkillHandler
 	{
 		/// <summary>
@@ -39,7 +39,7 @@ namespace Melia.Zone.Skills.Handlers.Common
 
 			if (target == null)
 			{
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 

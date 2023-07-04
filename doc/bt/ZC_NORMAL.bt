@@ -58,14 +58,16 @@ typedef struct
     short jobId;
     short level;
     int i1;
-    int totalExp;
-    int i2;
+    int64 totalExp;
     byte unusedSkillPoints;
-    ushort s2;
-    byte bin1[4];
     byte b1;
+    byte b2;
+    byte b3;
+    byte b4;
+    byte b5;
+    short s3;
     FILETIME advancedDate;
-    int64 l2;
+    int64 l1;
 }
 Job;
 
@@ -129,6 +131,7 @@ switch (type)
         float f4;
         float f5;
         int64 l1;
+        lpString str;
         break;
 
     // ?
@@ -269,6 +272,16 @@ switch (type)
         position targetPosition;
         break;
 
+    // Added i370844 (Could be 0x1C before this)
+    case 0x1F:
+        int handle;
+        int i1; // 0
+        int i2;
+        int i3;
+        position pos;
+        direction dir;
+        break;
+		
 	// Set Monster Color (YMCA)?
     case 0x20:
         int handle; // npc/monster handle?
@@ -394,7 +407,17 @@ switch (type)
         int skillId;
         break;
 
+    // Seen in assister quest (dungeon)
     case 0x48:
+        int handle;
+        short s1;
+        byte b1;
+        float f1;
+        float f2;
+        byte b2;
+        break;
+
+    case 0x4A:
         int i1;
         int i2;
         FILETIME time;
@@ -468,10 +491,10 @@ switch (type)
     // ? Instance Dungeon or Weekly Boss Related?
     // Script/Addon Message?
     case 0x58:
-        int i1; // 2 / ? / 0 / 2 (Parameter Count)?
-        int packetString; // 1410037 / 1300078 / 2561958 / 1370094 (Packet String)
+        int i1; // 2 / ? / 0 / 2 (Parameter Count)? / 0 / 2
+        int packetString; // 1410037 / 1300078 / 2561958 / 1370094 (Packet String) / 4852 / 12919
         if (i1 > 0)
-            int i3; // 1 /?/?/ 0
+            int i3; // 1 /?/?/ 0 / 0 / 1
         break;
 
     // Skill related? Seen when casting Lethargy or Mon_weekly_pattern_Skill_36
@@ -727,13 +750,22 @@ switch (type)
 
     case 0xA7:
         int handle;
-        int64 worldId; // Associated Unique Id?
+        short s1;
+        short s2;
+        short s3;
+        int i2;
         byte b1;
         break;
 
     case 0xA8:
         int64 worldId; // Associated Unique Id?
         int64 exp;
+        break;
+
+    case 0xA9:
+        int handle;
+        int64 worldId; // Associated Unique Id?
+        byte b1;
         break;
 
     case 0xB2:
@@ -761,19 +793,19 @@ switch (type)
         int characterHandle;
         break;
 
-    case 0xB7:
+    case 0xB9:
         int entityHandle;
-        float f1; // 10.4
+        float f1; // 10.4 or 0
         break;
 
     // Flying Pet Related?
-    case 0xB9:
+    case 0xBB:
         int entityHandle;
         int i2; // 0
         break;
 
     // Pet or Companion animation state?
-    case 0xBB:
+    case 0xBD:
         int entityHandle;
         byte b1; // 1
         int animationId; // 2562221 - SIT
@@ -781,7 +813,7 @@ switch (type)
 
     // Skill Related?
     // Skill Move Jump (Jaguar Wild Rush)
-    case 0xC0:
+    case 0xC2:
         int handle;
         position pos;
         float distance;
@@ -1051,22 +1083,29 @@ switch (type)
         JobF2 jobs[count];
         break;
 
+    // Update Party Leader
+    case 0xF6:
+        PartyType type;
+        int64 partyId;
+        int64 leader;
+        break;
+
     // Update Party/Quest Property
-    case 0xF7:
+    case 0xF9:
         PartyType type;
         int64 partyId;
         getProperties(8);
         break;
     
     // Invite to party
-    case 0xF8:
+    case 0xFA:
     	PartyType type; // Party Type
     	int64 inviterAccountId;
     	lpString inviterteamName;
     	break;
 
     // Share Quest/Party Property Update for Specific Member
-    case 0xF9:
+    case 0xFB:
         PartyType type; // Party Type
         int64 partyId; // Party Id
         int64 accountId; // ?
@@ -1158,39 +1197,37 @@ switch (type)
 
     typedef struct
     {
-        int i1;
+        int tpShopItemId;
         int i2;
         int i3;
-    } Temp_118 <optimize=false>;
+    } TpShopItem <optimize=false>;
 
     // Related to TP Shop
-    case 0x118:
+    case 0x11A:
         int count;
         local int tpCount = 0;
-        for (tpCount = 0; tpCount < count; tpCount++)
-        {
-            int tpShopItemId;
-            int i2;
-            int i3;
-        }
+        TpShopItem items[count];
         break;
 
     // Related to TP Shop
-    case 0x119:
-        int i1; // 1
-        short s1; // 1
-        byte b1; // 0
-        short s2; // 1
-        byte b2; // 0
+    case 0x11B:
+        //int i1; // 1
+        //short s1; // 1
+        //byte b1; // 0
+        //short s2; // 1
+        //byte b2; // 0
+        lpString str1;
+        lpString str2;
+        lpString str3;
         break;
 
     // ? Sent on Login
-    case 0x11A:
+    case 0x11C:
         int i1; // 0
         break;
 
     // AutoSeller Shop
-    case 0x11C:
+    case 0x11E:
         int packetString; // 690006
         int i1; // 2
         int i2; // 0
@@ -1319,29 +1356,21 @@ switch (type)
         byte bin1[16]; // no idea what this could be
         break;
 
+    case 0x13A:
+        float f1; // 1 / 1
+        float f2; // 494282.6 / 495482.6
+        FILETIME time; // 06/04/2023 17:43:30 / 06/04/2023 18:03:30
+        break;
+
     // Party?
     case 0x13C:
         int handle;
-        byte type; // type? 3 = Guild name?
-        switch (type)
-        {
-            // Only Party
-            case 1:
-                lpString partyName;
-                byte type1;
-                break;
-            // Only Guild
-            case 3:
-                byte type1; // type? 3 = Guild name?
-                lpString guildName;
-                break;
-            // Both
-            default:
-                lpString partyName;
-                byte type2; // type? 3 = Guild name?
-                lpString guildName;
-                break;
-        }
+        byte b1; // type? 3 = No value
+        if (b1 != 3)
+            lpString partyName;
+        byte b2;
+        if (b2 != 3)
+            lpString guildName;
         break;
 
     // ?
@@ -1398,7 +1427,7 @@ switch (type)
         break;
 
     // Cryomancer's Ice Bolt "Freeze" Effect?
-    case 0x14B:
+    case 0x14D:
         int handle;
         float duration; // Duration?
         lpString effectName;
@@ -1463,7 +1492,7 @@ switch (type)
         break;
 
     // Guild Tower NPC related
-    case 0x169:
+    case 0x16B:
         int handle; // 911 / 25800 
         lpString function; // GET_GUILDTOWER_NAME
         lpString parameter; // Guild Name (TOS_SupportGuild)
@@ -1499,7 +1528,7 @@ switch (type)
         break;
 
     // Member Location? Map/Channel?
-    case 0x179:
+    case 0x17A:
         byte b1; // 1
         int64 accountId;
         short mapId;
@@ -1753,6 +1782,12 @@ switch (type)
         int itemId;
         break;
 
+    // Sent after toggling wig visibility
+    case 0x1AC:
+        int handle;
+        byte wigVisibility;
+        break;
+
     // ?
     case 0x1B5:
         typedef struct
@@ -1797,21 +1832,26 @@ switch (type)
     case 0x1B8:
         int i[3]; // [0, 0, 0]
         break;
+
+    typedef struct
+    {
+        lpString name; // TCPBroadcastLogicChange
+        byte isEnabled; // 1
+    } SysFuncCall <optimize=false>;
     
     // Collect System Info
-    case 0x1BA:
-        int i1;
-        lpString lpstring;
-        byte b1;
+    case 0x1BD:
+        int count;
+        SysFuncCall calls[count];
         break;
 
     // ToS Steam Achievements
-    case 0x1BC:
+    case 0x1BE:
         lpString script; // TOS_STEAM_ACHIEVEMENT_ADVENTURE_BOOK, TOS_STEAM_ACHIEVEMENT_CLASS_CHANGE
         break;
 
     // Seen during Shield Lob Skill
-    case 0x1BD:
+    case 0x1BF:
         int handle; // Shield Monster's Handle
         float f1;
         float f2;
@@ -1819,7 +1859,7 @@ switch (type)
         break;
 
     // Hide subweapon    
-    case 0x1C6:
+    case 0x1C5:
         int handle;
         byte isOn;
         break;

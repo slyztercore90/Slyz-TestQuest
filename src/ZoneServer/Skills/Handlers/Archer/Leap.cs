@@ -45,8 +45,8 @@ namespace Melia.Zone.Skills.Handlers.Archer
 
 			caster.Position = targetPos;
 
-			Send.ZC_NORMAL.LeapJump(caster, targetPos);
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, null);
+			Send.ZC_NORMAL.LeapJump(caster, targetPos, 20f, 0.1f, 0.1f, 1, 0.2f, 1);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
 		}
 
 		/// <summary>

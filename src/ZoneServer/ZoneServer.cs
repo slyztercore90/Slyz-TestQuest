@@ -8,6 +8,8 @@ using Melia.Zone.Database;
 using Melia.Zone.Events;
 using Melia.Zone.Network;
 using Melia.Zone.Skills.Handlers;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Shared;
 using Melia.Zone.World;
 using Yggdrasil.Logging;
 using Yggdrasil.Network.TCP;
@@ -61,6 +63,11 @@ namespace Melia.Zone
 		public ServerEvents ServerEvents { get; } = new ServerEvents();
 
 		/// <summary>
+		/// Returns the dialog function handlers.
+		/// </summary>
+		public DialogFunctions DialogFunctions { get; } = new DialogFunctions();
+
+		/// <summary>
 		/// Returns reference to the server's IES mods.
 		/// </summary>
 		public IesModList IesMods { get; } = new IesModList();
@@ -91,6 +98,7 @@ namespace Melia.Zone
 			this.InitDatabase(this.Database, this.Conf);
 			this.InitSkills();
 			this.InitWorld();
+			this.LoadDialogFunctions();
 			this.LoadScripts("system/scripts/scripts_zone.txt");
 			this.LoadIesMods();
 
@@ -151,6 +159,25 @@ namespace Melia.Zone
 				this.IesMods.Add("SkillTree", 10507, "MaxLevel", 5);
 				this.IesMods.Add("SkillTree", 10508, "MaxLevel", 5);
 				this.IesMods.Add("SkillTree", 10509, "MaxLevel", 5);
+			}
+		}
+
+		/// <summary>
+		/// Sets up Dialog Functions.
+		/// </summary>
+		private void LoadDialogFunctions()
+		{
+			Log.Info("Loading dialog functions...");
+
+			try
+			{
+				this.DialogFunctions.LoadMethods();
+				Log.Info("  loaded {0} dialog functions.", this.DialogFunctions.Count);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to load dialog functions: {0}", ex);
+				ConsoleUtil.Exit(1);
 			}
 		}
 

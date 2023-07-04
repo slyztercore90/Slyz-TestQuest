@@ -15,6 +15,7 @@ public class DotBuffItemScript : GeneralScript
 	public ItemUseResult SCR_USE_ITEM_DotBuff(Character character, Item item, string buffName, float numArg1, float numArg2)
 	{
 		character.Buffs.Start(buffName, numArg1, numArg2, TimeSpan.FromSeconds(15));
+		character.AddAchievePoint("Potion", 1);
 		return ItemUseResult.Okay;
 	}
 }

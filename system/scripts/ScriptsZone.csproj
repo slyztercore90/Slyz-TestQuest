@@ -95,6 +95,7 @@
     <Compile Include="core\client\free_drops\main.cs" />
     <Compile Include="core\client\personal_shops\main.cs" />
     <Compile Include="core\client\stat_by_level\main.cs" />
+    <Compile Include="core\dialog_tx.cs" />
     <Compile Include="custom\client\unclutter\main.cs" />
     <Compile Include="core\client\custom_npc_shops\main.cs" />
     <Compile Include="const\ItemId.cs" />
@@ -332,6 +333,8 @@
     <Compile Include="core\normal_tx.cs" />
     <Compile Include="custom\test.cs" />
     <Compile Include="items\trade_select_item.cs" />
+    <Compile Include="items\add_tp.cs" />
+    <Compile Include="items\certificate_coin.cs" />
     <Compile Include="items\dot_buff.cs" />
     <Compile Include="items\exp_cards.cs" />
     <Compile Include="content\test\mobs\fields\f_siauliai_west.cs" />

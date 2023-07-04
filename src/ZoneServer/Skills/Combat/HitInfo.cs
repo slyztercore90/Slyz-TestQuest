@@ -54,6 +54,8 @@ namespace Melia.Zone.Skills.Combat
 		/// </summary>
 		public int ForceId { get; set; }
 
+		public int HitCount { get; set; } = 1;
+
 		/// <summary>
 		/// Creates new hit.
 		/// </summary>

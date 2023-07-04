@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Melia.Shared.Tos.Const;
 using Melia.Zone.Skills.Handlers.Base;
+using Melia.Zone.Skills.Handlers.Common;
 
 namespace Melia.Zone.Skills.Handlers
 {
@@ -13,6 +14,7 @@ namespace Melia.Zone.Skills.Handlers
 	public class SkillHandlers
 	{
 		private readonly Dictionary<SkillId, ISkillHandler> _handlers = new Dictionary<SkillId, ISkillHandler>();
+		public MeleeGroundSkillHandler DefaultGroundHandler { get; } = new MeleeGroundSkillHandler();
 
 		/// <summary>
 		/// Initializes the skill handlers, loading all it can find in

@@ -96,6 +96,23 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		}
 
 		/// <summary>
+		/// Returns the sum of the properties on all equipped items.
+		/// </summary>
+		/// <returns></returns>
+		public float GetSumOfEquipProperties(params string[] propertyNames)
+		{
+			var total = 0f;
+
+			lock (_syncLock)
+			{
+				foreach (var propertyName in propertyNames)
+					total += _equip.Values.Sum(a => a.Properties.GetFloat(propertyName, 0));
+			}
+
+			return total;
+		}
+
+		/// <summary>
 		/// Returns a dictionary with all items, Key being their inventory
 		/// index.
 		/// </summary>
@@ -146,7 +163,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 					for (var i = 0; i < category.Value.Count; ++i)
 					{
 						var index = category.Value[i].GetInventoryIndex(i);
-						var itemObjectId = category.Value[i].ObjectId;
+						var itemObjectId = category.Value[i].Id;
 
 						result.Add(index, itemObjectId);
 					}
@@ -174,13 +191,29 @@ namespace Melia.Zone.World.Actors.Characters.Components
 				for (var i = 0; i < items.Count; ++i)
 				{
 					var index = items[i].GetInventoryIndex(i);
-					var itemObjectId = items[i].ObjectId;
+					var itemObjectId = items[i].Id;
 
 					result.Add(index, itemObjectId);
 				}
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// Returns true if any item in the inventory is set to expire
+		/// </summary>
+		public bool HasExpiringItems => this.HasItems(a => a.IsExpiring);
+
+		/// <summary>
+		/// Returns true if an item with the given predicate exist in the inventory.
+		/// </summary>
+		/// <param name="itemId"></param>
+		/// <returns></returns>
+		public bool HasItems(Func<Item, bool> predicate)
+		{
+			lock (_syncLock)
+				return _items.SelectMany(a => a.Value).Any(predicate);
 		}
 
 		/// <summary>
@@ -257,7 +290,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <summary>
 		/// Returns item in given equip slot, or null if there is none.
 		/// </summary>
-		/// <param name="worldId"></param>
+		/// <param name="slot"></param>
 		/// <returns></returns>
 		public Item GetItem(EquipSlot slot)
 		{
@@ -287,7 +320,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// </summary>
 		/// <param name="item"></param>
 		/// <param name="addType"></param>
-		public void Add(Item item, InventoryAddType addType)
+		public bool Add(Item item, InventoryAddType addType = InventoryAddType.New, InventoryType inventoryType = InventoryType.Inventory, float notificationDelay = 0f)
 		{
 			var amountToAdd = item.Amount;
 
@@ -306,6 +339,8 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			Send.ZC_ITEM_INVENTORY_DIVISION_LIST(this.Character);
 
 			ZoneServer.Instance.ServerEvents.OnPlayerAddedItem(this.Character, item.Id, amountToAdd);
+
+			return true;
 		}
 
 		/// <summary>
@@ -469,7 +504,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			{
 				_equip[slot] = item;
 				_items[item.Data.Category].Remove(item);
-				_itemsWorldIndex.Remove(item.ObjectId);
+				_itemsWorldIndex.Remove(item.Id);
 			}
 
 			// Update character
@@ -526,34 +561,35 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// Removes item with given id from inventory.
 		/// </summary>
 		/// <param name="slot"></param>
-		public InventoryResult Remove(long worldId, int amount = 1)
+		public InventoryResult Remove(long worldId, int amount = 1, InventoryItemRemoveMsg msg = InventoryItemRemoveMsg.Destroyed, InventoryType type = InventoryType.Inventory)
 		{
 			var item = this.GetItem(worldId);
 			if (item == null || item is DummyEquipItem)
 				return InventoryResult.ItemNotFound;
 
-			return this.Remove(item, amount, InventoryItemRemoveMsg.Destroyed);
+			return this.Remove(item, amount, msg);
 		}
 
 		/// <summary>
 		/// Removes item from inventory.
 		/// </summary>
 		/// <param name="slot"></param>
-		private InventoryResult Remove(Item item)
+		private InventoryResult Remove(Item item, InventoryItemRemoveMsg msg = InventoryItemRemoveMsg.Destroyed, InventoryType type = InventoryType.Inventory)
 		{
 			lock (_syncLock)
 			{
 				if (!_items[item.Data.Category].Remove(item))
 					return InventoryResult.ItemNotFound;
 
-				_itemsWorldIndex.Remove(item.ObjectId);
+				_itemsWorldIndex.Remove(item.Id);
 			}
 
 			// TODO: Add localizable strings or dictionary keys to item data,
 			//   so that we can send those for the system message.
-			this.Character.SystemMessage("Delete{ITEM}{COUNT}", new MsgParameter("ITEM", item.Data.Name), new MsgParameter("COUNT", item.Amount));
+			if (msg == InventoryItemRemoveMsg.Destroyed)
+				this.Character.SystemMessage("Delete{ITEM}{COUNT}", new MsgParameter("ITEM", item.Data.Name), new MsgParameter("COUNT", item.Amount));
 
-			Send.ZC_ITEM_REMOVE(this.Character, item.ObjectId, item.Amount, InventoryItemRemoveMsg.Destroyed, InventoryType.Inventory);
+			Send.ZC_ITEM_REMOVE(this.Character, item.ObjectId, item.Amount, msg, type);
 
 			// We need to update the indices after removing an item,
 			// because we'll run into issues with the client potentially
@@ -573,7 +609,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// if amount becomes 0.
 		/// </summary>
 		/// <param name="slot"></param>
-		public InventoryResult Remove(Item item, int amount, InventoryItemRemoveMsg msg)
+		public InventoryResult Remove(Item item, int amount, InventoryItemRemoveMsg msg, InventoryType type = InventoryType.Inventory)
 		{
 			// Check if item exists in inventory
 			lock (_syncLock)
@@ -638,7 +674,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 					lock (_syncLock)
 					{
 						_items[category].Remove(item);
-						_itemsWorldIndex.Remove(item.ObjectId);
+						_itemsWorldIndex.Remove(item.Id);
 
 					}
 				}
@@ -804,7 +840,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 				lock (_syncLock)
 				{
 					_items[item.Data.Category].Remove(item);
-					_itemsWorldIndex.Remove(item.ObjectId);
+					_itemsWorldIndex.Remove(item.Id);
 				}
 
 				modifiedCategories.Add(item.Data.Category);
@@ -820,6 +856,18 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			Send.ZC_OBJECT_PROPERTY(this.Character, "NowWeight");
 
 			return InventoryResult.Success;
+		}
+
+		/// <summary>
+		/// Try to get an item with a given item world id.
+		/// </summary>
+		/// <param name="itemWorldId"></param>
+		/// <param name="item"></param>
+		/// <returns></returns>
+		public bool TryGetItem(long itemWorldId, out Item item)
+		{
+			item = this.GetItem(itemWorldId);
+			return item != null;
 		}
 	}
 

@@ -9,6 +9,7 @@ public class BasicMonsterAiScript : AiScript
 	ICombatEntity target;
 
 	protected int MaxChaseDistance = 300;
+	protected int MinFollowDistance = 35;
 
 	protected override void Setup()
 	{
@@ -23,18 +24,25 @@ public class BasicMonsterAiScript : AiScript
 
 	protected IEnumerable Idle()
 	{
-		SetRunning(false);
-
-		yield return Wait(4000, 8000);
-
-		SwitchRandom();
-		if (Case(80))
+		if (this.Owner == null)
 		{
-			yield return MoveRandom();
+			SetRunning(false);
+
+			yield return Wait(4000, 8000);
+
+			SwitchRandom();
+			if (Case(80))
+			{
+				yield return MoveRandom();
+			}
+			else
+			{
+				yield return Animation("IDLE");
+			}
 		}
 		else
 		{
-			yield return Animation("IDLE");
+			yield return Follow();
 		}
 	}
 
@@ -85,6 +93,15 @@ public class BasicMonsterAiScript : AiScript
 			target = mostHated;
 			StartRoutine("StopAndAttack", StopAndAttack());
 		}
+	}
+
+	private IEnumerable Follow()
+	{
+		while (!InRangeOf(this.Owner, MinFollowDistance))
+			yield return MoveTo(this.Owner.Position.GetRandomInRange2D(15, MinFollowDistance), wait: false);
+
+		yield return StopMove();
+		yield return Wait(1000);
 	}
 
 	private void CheckTarget()

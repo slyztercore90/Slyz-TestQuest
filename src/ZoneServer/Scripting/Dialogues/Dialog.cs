@@ -198,7 +198,7 @@ namespace Melia.Zone.Scripting.Dialogues
 				return WrapLocalizationKey(message);
 
 			message = this.ReplaceCustomCodes(message);
-			message = this.AddNpcIdenty(message);
+			message = this.AddNpcIdentity(message);
 
 			return message;
 		}
@@ -208,8 +208,11 @@ namespace Melia.Zone.Scripting.Dialogues
 		/// </summary>
 		/// <param name="message"></param>
 		/// <returns></returns>
-		private string AddNpcIdenty(string message)
+		private string AddNpcIdentity(string message)
 		{
+			if (this.IsClientDialog(message))
+				return message;
+
 			// Prepend title, controlling title displayed on the dialog
 			// window.
 			if (!message.Contains(NpcNameSeperator) && !message.Contains(NpcDialogTextSeperator))
@@ -283,6 +286,16 @@ namespace Melia.Zone.Scripting.Dialogues
 		internal static bool IsLocalizationKey(string value)
 		{
 			return (value.StartsWith("ETC_") || value.StartsWith("QUEST_"));
+		}
+
+		/// <summary>
+		/// Returns true if value is a known client-side dialog name.
+		/// </summary>
+		/// <param name="value"></param>
+		/// <returns></returns>
+		private bool IsClientDialog(string value)
+		{
+			return ZoneServer.Instance.Data.DialogDb.Exists(value);
 		}
 
 		/// <summary>
@@ -491,6 +504,76 @@ namespace Melia.Zone.Scripting.Dialogues
 			}
 
 			await this.GetClientResponse();
+		}
+
+		/// <summary>
+		/// Execute a client side script
+		/// </summary>
+		/// <param name="script"></param>
+		/// <param name="stringParameter">arguments for the script</param>
+		/// /// <param name="intParameter">arguments for the script</param>
+		public void AddonMessage(string script, string stringParameter = null, int intParameter = 0)
+		{
+			this.State = DialogState.Ended;
+			this.Player.AddonMessage(script, stringParameter, intParameter);
+		}
+
+		/// <summary>
+		/// Execute a client side script
+		/// </summary>
+		/// <param name="script"></param>
+		/// <param name="args">arguments for the script</param>
+		public async Task ExecuteScript(string script, params object[] args)
+		{
+			Send.ZC_EXEC_CLIENT_SCP(this.Player.Connection, args.Length > 0 ? string.Format(script, args) : script);
+			this.Leave();
+
+			await this.GetClientResponse();
+		}
+
+		/// <summary>
+		/// Custom dialog, predefined dialogs in the client
+		/// </summary>
+		/// <param name="function"></param>
+		/// <param name="dialog"></param>
+		/// <param name="argCount"></param>
+		public async Task CustomDialog(string function, string dialog = "", int argCount = 0)
+		{
+			Send.ZC_CUSTOM_DIALOG(this.Player.Connection, function, dialog, argCount);
+
+			await this.GetClientResponse();
+		}
+
+		/// <summary>
+		/// Open/Close predefined UIs in the client
+		/// </summary>
+		/// <param name="function"></param>
+		/// <param name="isOpen"></param>
+		public async Task OpenUI(string function, bool isOpen = true)
+		{
+			Send.ZC_UI_OPEN(this.Player.Connection, function, isOpen);
+
+			await this.GetClientResponse();
+		}
+
+		public void Leave()
+		{
+			Send.ZC_LEAVE_TRIGGER(this.Player.Connection);
+		}
+
+		public void PlayAnimation(string animationId)
+		{
+			Send.ZC_PLAY_ANI(this.Player, this.Npc, animationId);
+		}
+
+		public void Chat(string format, params object[] args)
+		{
+			Send.ZC_CHAT(this.Player, this.Npc, format, args);
+		}
+
+		public void ShowHelp(string helpName)
+		{
+			this.Player.ShowHelp(helpName);
 		}
 	}
 

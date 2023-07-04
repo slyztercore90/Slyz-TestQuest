@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using Melia.Shared.Tos.Const;
 using Newtonsoft.Json.Linq;
 using Yggdrasil.Data.JSON;
@@ -44,6 +45,9 @@ namespace Melia.Shared.Data.Database
 		public int CritDodgeRate { get; set; }
 		public int CritAttack { get; set; }
 
+		public string Ai { get; set; }
+		public string Dialog { get; set; }
+		
 		public List<DropData> Drops { get; set; } = new List<DropData>();
 		public List<MonsterSkillData> Skills { get; set; } = new List<MonsterSkillData>();
 	}
@@ -79,6 +83,18 @@ namespace Melia.Shared.Data.Database
 		{
 			name = name.ToLower();
 			return this.Entries.FirstOrDefault(a => a.Value.Name.ToLower() == name).Value;
+		}
+
+		/// <summary>
+		/// Returns true if the monster with the given name was found.
+		/// Returns false if no matching entry was found.
+		/// </summary>
+		/// <param name="name">Class name of the monster (case-insensitive)</param>
+		/// <returns></returns>
+		public bool TryFind(string className, out MonsterData data)
+		{
+			data = this.Entries.FirstOrDefault(a => a.Value.ClassName.ToLower() == className.ToLower()).Value;
+			return data != null;
 		}
 
 		/// <summary>
@@ -136,7 +152,10 @@ namespace Melia.Shared.Data.Database
 			data.CritHitRate = entry.ReadInt("critHitRate");
 			data.CritDodgeRate = entry.ReadInt("critDodgeRate");
 			data.CritAttack = entry.ReadInt("critAttack");
-
+			
+			data.Ai = entry.ReadString("ai");
+			data.Dialog = entry.ReadString("dialog");
+			
 			if (entry.ContainsKey("skills"))
 			{
 				foreach (JObject skillEntry in entry["skills"])
@@ -149,7 +168,7 @@ namespace Melia.Shared.Data.Database
 					skillData.SkillId = skillEntry.ReadEnum<SkillId>("skillId");
 
 					data.Skills.Add(skillData);
-				}
+				}			
 			}
 
 			if (entry.ContainsKey("drops"))

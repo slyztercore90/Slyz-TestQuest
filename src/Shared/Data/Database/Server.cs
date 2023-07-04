@@ -17,6 +17,8 @@ namespace Melia.Shared.Data.Database
 		public int[] MapIds { get; set; }
 
 		public bool ServesAllMaps => this.MapIds.Length == 1 && this.MapIds[0] == -1;
+
+		public string Name { get; set; }
 	}
 
 	/// <summary>
@@ -71,7 +73,11 @@ namespace Melia.Shared.Data.Database
 			data.Ip = entry.ReadString("ip");
 			data.Port = entry.ReadInt("port");
 
-			if (data.Type == ServerType.Zone)
+			if (data.Type == ServerType.Barracks)
+			{
+				data.Name = entry.ReadString("name", "Melia");
+			}
+			else if (data.Type == ServerType.Zone)
 			{
 				entry.AssertNotMissing("maps");
 
@@ -105,5 +111,6 @@ namespace Melia.Shared.Data.Database
 		Barracks,
 		Zone,
 		Web,
+		Social,
 	}
 }

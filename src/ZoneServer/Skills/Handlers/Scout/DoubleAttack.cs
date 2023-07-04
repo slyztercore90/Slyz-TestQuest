@@ -38,7 +38,7 @@ namespace Melia.Zone.Skills.Handlers.Scout
 			var duration = TimeSpan.FromMinutes(30);
 			target.Components.Get<BuffComponent>().Start(BuffId.DoubleAttack_Buff, skill.Level, 0, duration, caster);
 
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, originPos, null);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, originPos);
 		}
 	}
 }

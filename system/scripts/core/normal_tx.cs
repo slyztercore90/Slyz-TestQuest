@@ -11,6 +11,8 @@ using Melia.Zone.Network;
 using Melia.Zone.Scripting;
 using Melia.Zone.Skills;
 using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Items;
+using Yggdrasil.Geometry.Shapes;
 using Yggdrasil.Logging;
 
 public class NormalTxFunctionsScript : GeneralScript
@@ -182,6 +184,65 @@ public class NormalTxFunctionsScript : GeneralScript
 		Send.ZC_ADDON_MSG(character, AddonMessage.RESET_SKL_UP, 0, null);
 		Send.ZC_JOB_PTS(character, job);
 		//Send.ZC_ADDITIONAL_SKILL_POINT(character, job);
+
+		return NormalTxResult.Okay;
+	}
+
+	[ScriptableFunction("SCR_TX_TRADE_SELECT_ITEM")]
+	[ScriptableFunction("SCR_TX_TRADE_SELECT_ITEM_2")]
+	[ScriptableFunction("SCR_TX_TRADE_SELECT_ITEM_3")]
+	[ScriptableFunction("SCR_TX_TRADE_SELECT_ITEM_RANOPT")]
+	public NormalTxResult SCR_TX_TRADE_SELECT_ITEM(Character character, string strArg)
+	{
+		var selection = strArg.Split('#');
+
+		if (selection.Length < 2 || !long.TryParse(selection[0], out var worldId))
+			return NormalTxResult.Fail;
+
+		var item = character.Inventory.GetItem(worldId);
+
+		// Exit early if no item is found in inventory
+		if (item == null)
+		{
+			Log.Warning("SCR_TX_TRADE_SELECT_ITEM: Failed to find item with world id {0} by {1}", worldId, character.Username);
+			return NormalTxResult.Fail;
+		}
+
+		if (!int.TryParse(selection[1], out var selectionIndex))
+		{
+			Log.Warning("SCR_TX_TRADE_SELECT_ITEM: Failed to find item with world id {0} by {1}", worldId, character.Username);
+			return NormalTxResult.Fail;
+		}
+
+		if (!ZoneServer.Instance.Data.SelectItemDb.TryFind(item.Data.ClassName, out var selectItem))
+		{
+			Log.Warning("SCR_TX_TRADE_SELECT_ITEM: Failed to find item with world id {0} by {1}", worldId, character.Username);
+			return NormalTxResult.Fail;
+		}
+
+		// Selection Index is 1 based instead of 0 based, so offset by 1
+		selectionIndex--;
+		if (selectionIndex >= selectItem.Items.Count || selectionIndex < 0)
+		{
+			Log.Debug("SCR_TX_TRADE_SELECT_ITEM: Invalid selection index {0} by {1}", selectionIndex, character.Username);
+			return NormalTxResult.Fail;
+		}
+		var requiredItemCount = selectItem.RequiredItemCount[0];
+
+		if (selectItem.RequiredItemCount.Count > 1 && selectionIndex < selectItem.RequiredItemCount.Count)
+			requiredItemCount = selectItem.RequiredItemCount[selectionIndex];
+
+		if (item.Amount >= requiredItemCount && selectItem.Items.Count != 0 && selectionIndex < selectItem.Items.Count)
+		{
+			character.Inventory.Remove(worldId, requiredItemCount, InventoryItemRemoveMsg.Used);
+			var items = selectItem.Items[selectionIndex];
+			foreach (var itemToAdd in items)
+			{
+				var itemData = ZoneServer.Instance.Data.ItemDb.FindByClass(itemToAdd.ItemId);
+				if (itemData != null)
+					character.Inventory.Add(new Item(itemData.Id, itemToAdd.Amount), InventoryAddType.New);
+			}
+		}
 
 		return NormalTxResult.Okay;
 	}

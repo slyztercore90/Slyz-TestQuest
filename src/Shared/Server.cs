@@ -235,6 +235,7 @@ namespace Melia.Shared
 					this.LoadDb(this.Data.NormalTxDb, "db/normal_tx_scripts.txt");
 					this.LoadDb(this.Data.PacketStringDb, "db/packetstrings.txt");
 					this.LoadDb(this.Data.PropertiesDb, "db/properties.txt");
+					this.LoadDb(this.Data.RecipeDb, "db/recipes.txt");
 					this.LoadDb(this.Data.ServerDb, "db/servers.txt");
 					this.LoadDb(this.Data.SessionObjectDb, "db/sessionobjects.txt");
 					this.LoadDb(this.Data.ShopDb, "db/shops.txt");
@@ -242,8 +243,14 @@ namespace Melia.Shared
 					this.LoadDb(this.Data.SkillTreeDb, "db/skilltree.txt");
 					this.LoadDb(this.Data.StanceConditionDb, "db/stanceconditions.txt");
 					this.LoadDb(this.Data.SystemMessageDb, "db/system_messages.txt");
+					this.LoadDb(this.Data.SelectItemDb, "db/selectitems.txt");
 
 					PropertyTable.Load(this.Data.PropertiesDb);
+				}
+				else if (serverType == ServerType.Social)
+				{
+					this.LoadDb(this.Data.PropertiesDb, "db/properties.txt");
+					this.LoadDb(this.Data.ServerDb, "db/servers.txt");
 				}
 				else if (serverType == ServerType.Web)
 				{

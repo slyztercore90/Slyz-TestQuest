@@ -24,8 +24,7 @@ float f2;
 int i3;
 int forceId;
 float f5;
-int i5;
-
+int targetHandle;
 position pos;
 short hitCount;
 

@@ -1,8 +1,10 @@
 ﻿using Melia.Shared.L10N;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.Skills;
+using Melia.Zone.Skills.Combat;
 using Melia.Zone.World.Actors.Characters;
 using Yggdrasil.Composition;
 
@@ -82,6 +84,19 @@ namespace Melia.Zone.World.Actors
 		/// <param name="hpAmount"></param>
 		/// <param name="spAmount"></param>
 		void Heal(float hpAmount, float spAmount);
+
+		/// <summary>
+		/// Kills an entity
+		/// </summary>
+		/// <param name="killer"></param>
+		void Kill(ICombatEntity killer);
+
+		/// <summary>
+		/// Returns a weapon attack speed based on the entity's attack and
+		/// the skill's type.
+		/// </summary>
+		/// <returns></returns>
+		float GetWeaponSpeed();
 	}
 
 	/// <summary>
@@ -115,7 +130,21 @@ namespace Melia.Zone.World.Actors
 				return;
 
 			entity.Direction = entity.Position.GetDirection(otherEntity.Position);
-			Send.ZC_ROTATE(entity);
+			Send.ZC_QUICK_ROTATE(entity);
+		}
+
+		/// <summary>
+		/// Makes the entity turn towards a specific position.
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="position"></param>
+		public static void TurnTowards(this ICombatEntity entity, Position position)
+		{
+			if (position == Position.Zero)
+				return;
+
+			entity.Direction = entity.Position.GetDirection(position);
+			Send.ZC_QUICK_ROTATE(entity);
 		}
 
 		/// <summary>

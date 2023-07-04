@@ -212,7 +212,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 		var byBuffs = properties.GetFloat(PropertyName.MDEF_BM);
 
 		var byRateBuffs = 0f;
-		//byRateBuffs += properties.GetFloat(PropertyName.MDEF_RATE_BM);
+		byRateBuffs += properties.GetFloat(PropertyName.MDEF_RATE_BM);
 		byRateBuffs = (value * byRateBuffs);
 
 		value += byBuffs + byRateBuffs;
@@ -238,7 +238,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 		if (fixMspd != 0)
 			return fixMspd;
 
-		var moveSpeedType = monster.Components.Get<MovementComponent>().MoveSpeedType;
+		var moveSpeedType = monster.Components.Get<MovementComponent>()?.MoveSpeedType ?? MoveSpeedType.Walk;
 		var propertyName = moveSpeedType == MoveSpeedType.Walk ? PropertyName.WlkMSPD : PropertyName.RunMSPD;
 		var baseValue = monster.Properties.GetFloat(propertyName);
 

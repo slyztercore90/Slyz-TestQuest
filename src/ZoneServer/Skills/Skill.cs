@@ -64,6 +64,11 @@ namespace Melia.Zone.Skills
 			=> (int)this.Properties.GetFloat(PropertyName.SpendSP);
 
 		/// <summary>
+		/// Returns the skill's cooldown.
+		/// </summary>
+		public TimeSpan Cooldown { get; set; } = TimeSpan.Zero;
+
+		/// <summary>
 		/// Returns the skill's overheat count. If this value reaches the
 		/// skill's maximum overheat, the skill goes on a cooldown.
 		/// </summary>
@@ -110,6 +115,12 @@ namespace Melia.Zone.Skills
 		/// Returns true if the skill is currently on cooldown.
 		/// </summary>
 		public bool IsOnCooldown => this.Owner.Components.Get<CooldownComponent>().IsOnCooldown(this.Data.CooldownGroup);
+
+		/// <summary>
+		/// Get the Hit Time based off skill level
+		/// </summary>
+		/// <returns></returns>
+		public TimeSpan HitTime => (this.Level < this.Data.HitTime.Count) ? this.Data.HitTime[this.Level] : this.Data.HitTime[0];
 
 		/// <summary>
 		/// Creates a new instance.

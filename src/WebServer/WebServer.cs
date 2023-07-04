@@ -21,7 +21,9 @@ namespace Melia.Web
 	{
 		public readonly static WebServer Instance = new WebServer();
 
-		private EmbedIO.WebServer _server;
+		private EmbedIO.WebServer _webServer;
+		private EmbedIO.WebServer _marketServer;
+		private EmbedIO.WebServer _guildServer;
 
 		/// <summary>
 		/// Runs the server.
@@ -38,6 +40,8 @@ namespace Melia.Web
 			this.CheckDependencies();
 
 			this.StartWebServer();
+			this.StartMarketWebServer();
+			this.StartGuildWebServer();
 
 			ConsoleUtil.RunningTitle();
 
@@ -133,7 +137,7 @@ namespace Melia.Web
 
 				EndPointManager.UseIpv6 = false;
 
-				_server = new EmbedIO.WebServer(url);
+				_webServer = new EmbedIO.WebServer(url);
 
 				// The PHP module handles all requests to PHP scripts,
 				// including defaulting to index.php and prioritizing
@@ -142,13 +146,13 @@ namespace Melia.Web
 				// TODO: Look into handling PHP scripts from a FileModule,
 				//   adding a pre-processor.
 
-				_server.WithWebApi("/toslive/patch/", m => m.WithController<TosPatchController>());
+				_webServer.WithWebApi("/toslive/patch/", m => m.WithController<TosPatchController>());
 
-				_server.WithModule(new PhpModule("/"));
+				_webServer.WithModule(new PhpModule("/"));
 
 				if (Directory.Exists("user/web/"))
 				{
-					_server.WithStaticFolder("/", "user/web/", false, fm =>
+					_webServer.WithStaticFolder("/", "user/web/", false, fm =>
 					{
 						fm.DefaultDocument = "index.htm";
 						fm.OnMappingFailed = FileRequestHandler.PassThrough;
@@ -158,15 +162,15 @@ namespace Melia.Web
 
 				if (Directory.Exists("system/web/"))
 				{
-					_server.WithStaticFolder("/", "system/web/", false, fm =>
+					_webServer.WithStaticFolder("/", "system/web/", false, fm =>
 					{
 						fm.DefaultDocument = "index.htm";
 					});
 				}
 
-				_server.RunAsync();
+				_webServer.RunAsync();
 
-				if (_server.State == WebServerState.Stopped)
+				if (_webServer.State == WebServerState.Stopped)
 				{
 					Log.Error("Failed to start web server, make sure there's only one instance running.");
 					ConsoleUtil.Exit(1);
@@ -184,6 +188,115 @@ namespace Melia.Web
 			catch (Exception ex)
 			{
 				Log.Error("Failed to start web server: {0}", ex);
+				ConsoleUtil.Exit(1);
+			}
+		}
+
+		/// <summary>
+		/// Starts web server.
+		/// </summary>
+		private void StartMarketWebServer()
+		{
+			try
+			{
+				//Market.Load();
+
+				var url = string.Format("http://*:{0}/", this.Conf.Web.MarketPort);
+
+				Swan.Logging.Logger.NoLogging();
+				Swan.Logging.Logger.RegisterLogger<YggdrasilLogger>();
+
+				EndPointManager.UseIpv6 = false;
+
+				var options = new WebServerOptions()
+						.WithMode(HttpListenerMode.EmbedIO)
+						//.WithCertificate(cert1)
+						.WithUrlPrefix(url);
+				_marketServer = new EmbedIO.WebServer(options);
+
+				var webFolder = "system/web/";
+				if (Directory.Exists("user/web/"))
+					webFolder = "user/web/";
+
+
+				_marketServer
+					//.WithBearerToken("/", "0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJjbGF")
+					.WithWebApi("/", m => m.WithController<TosMarketController>())
+					.WithStaticFolder("/", webFolder, false, fm =>
+					{
+						fm.DefaultDocument = "index.htm";
+						fm.OnMappingFailed = FileRequestHandler.PassThrough;
+						fm.OnDirectoryNotListable = FileRequestHandler.PassThrough;
+					});
+				_marketServer.RunAsync();
+
+				if (_marketServer.State == WebServerState.Stopped)
+				{
+					Log.Error("Failed to start market server, make sure there's only one instance running.");
+					ConsoleUtil.Exit(1);
+				}
+
+				Log.Status("Market Server now running on '{0}'", url);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to start web server: {0}", ex);
+				ConsoleUtil.Exit(1);
+			}
+		}
+
+		/// <summary>
+		/// Starts web server.
+		/// </summary>
+		private void StartGuildWebServer()
+		{
+			try
+			{
+				var url = string.Format("http://*:{0}/", this.Conf.Web.GuildPort);
+
+				Swan.Logging.Logger.NoLogging();
+				Swan.Logging.Logger.RegisterLogger<YggdrasilLogger>();
+
+				EndPointManager.UseIpv6 = false;
+
+				//var ca1 = new X509Certificate2Builder { SubjectName = "CN=Melia" }.Build();
+				//var cert1 = new X509Certificate2Builder { SubjectName = "CN=MeliaSignedCert", Issuer = ca1, Intermediate = false }.Build();
+				var options = new WebServerOptions()
+						.WithMode(HttpListenerMode.EmbedIO)
+						//.WithCertificate(cert1)
+						.WithUrlPrefix(url);
+				_guildServer = new EmbedIO.WebServer(options);
+
+				var webFolder = "system/web/";
+				if (Directory.Exists("user/web/"))
+					webFolder = "user/web/";
+
+				// Create basic authentication provider (TODO Bearer Token Implementation)
+				// var basicAuthProvider = new BasicAuthorizationServerProvider();
+				// Attach Bearer Token Module
+				_guildServer
+					//.WithBearerToken("/", "0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJjbGF", new ToSAuthorizationServerProvider())
+					.WithWebApi("/", m => m.WithController<TosGuildController>())
+					.WithStaticFolder("/", webFolder, false, fm =>
+					{
+						fm.DefaultDocument = "index.htm";
+						fm.OnMappingFailed = FileRequestHandler.PassThrough;
+						fm.OnDirectoryNotListable = FileRequestHandler.PassThrough;
+					});
+
+				_guildServer.RunAsync();
+
+				if (_guildServer.State == WebServerState.Stopped)
+				{
+					Log.Error("Failed to start guild server, make sure there's only one instance running.");
+					ConsoleUtil.Exit(1);
+				}
+
+				Log.Status("Guild Server now running on '{0}'", url);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to start guild server: {0}", ex);
 				ConsoleUtil.Exit(1);
 			}
 		}

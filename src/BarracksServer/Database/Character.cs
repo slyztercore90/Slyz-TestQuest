@@ -15,12 +15,22 @@ namespace Melia.Barracks.Database
 		/// <summary>
 		/// Gets or sets the character's unique id.
 		/// </summary>
-		public long Id { get; set; }
+		public long DbId { get; set; }
+
+		/// <summary>
+		/// Globally unique object id
+		/// </summary>
+		public long ObjectId => ObjectIdRanges.Characters + this.DbId;
 
 		/// <summary>
 		/// Gets or sets id of the character's account.
 		/// </summary>
-		public long AccountId { get; set; }
+		public long AccountDbId { get; set; }
+
+		/// <summary>
+		/// Globally unique account object id
+		/// </summary>
+		public long AccountObjectId => ObjectIdRanges.Account + this.AccountDbId;
 
 		/// <summary>
 		/// Gets or sets index of character in character list.

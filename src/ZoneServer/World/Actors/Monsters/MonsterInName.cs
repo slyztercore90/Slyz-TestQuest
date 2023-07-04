@@ -41,6 +41,11 @@ namespace Melia.Zone.World.Actors.Monsters
 		public float SDR => 0;
 
 		/// <summary>
+		/// Returns the monster's movement speed.
+		/// </summary>
+		public float WalkSpeed => 16;
+
+		/// <summary>
 		/// Returns whether the monster emerged from the ground.
 		/// </summary>
 		public bool FromGround { get; set; }
@@ -93,6 +98,17 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// leaves the monster's trigger area.
 		/// </summary>
 		public string LeaveName { get; set; }
+
+		/// <summary>
+		/// Gets or sets the handled who is the owner.
+		/// </summary>
+		public int OwnerHandle { get; set; }
+
+		/// <summary>
+		/// Gets or sets the handle associated
+		/// with the spawn.
+		/// </summary>
+		public int AssociatedHandle { get; set; }
 
 		/// <summary>
 		/// Initializes the monster's properties.
