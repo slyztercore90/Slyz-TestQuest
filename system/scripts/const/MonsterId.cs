@@ -3292,6 +3292,7 @@ public static class MonsterId
 	public const int RidePet_Ep15picnic = 65015;
 	public const int RidePet_Cloudkepa = 65016;
 	public const int RidePet_Dragonboat_1 = 65017;
+	public const int RidePet_Unicorn = 65018;
 	public const int Gtower_StoneWhale = 90001;
 	public const int Gtower_Chapparition = 90002;
 	public const int Gtower_TombLord = 90003;
@@ -3759,6 +3760,17 @@ public static class MonsterId
 	public const int Pcskill_Vitality_Banner2 = 300038;
 	public const int Pcskill_Retribution_Banner2 = 300039;
 	public const int Meat2 = 300040;
+	public const int Pcskill_FlameTurret_Default = 300041;
+	public const int Pcskill_FrozenTurret_Default = 300042;
+	public const int Pcskill_ArrowTurret_Default = 300043;
+	public const int Pcskill_LightningTurret_Default = 300044;
+	public const int Pcskill_BuffTurret_Default = 300045;
+	public const int Pcskill_KingMechaV_Default = 300046;
+	public const int Pcskill_FlameTurret_Radial = 300047;
+	public const int Pcskill_ArrowTurret_Circle = 300048;
+	public const int Pcskill_LightningTurret_Punishment = 300049;
+	public const int Pcskill_KingMechaV_Frozen = 300050;
+	public const int Pcskill_KingMechaV_Circle = 300051;
 	public const int Onion = 400001;
 	public const int Onion_Big = 400002;
 	public const int Onion_Red = 400003;
@@ -7529,6 +7541,10 @@ public static class MonsterId
 	public const int Tosw_Colony_Flag_Klapeda = 160167;
 	public const int Tosw_Colony_Flag_Orsha = 160168;
 	public const int Tosw_Colony_Flag_Fedimian = 160169;
+	public const int Master_Engineer_Npc = 160170;
+	public const int Guild_Agit_Extension_Trans_Dummy_Npc_Agit_In = 160175;
+	public const int Guild_Agit_Extension_Trans_Dummy_Npc_Agit_Out = 160176;
+	public const int Guild_Agit_Extension_Trans_Dummy_Npc_Board = 160177;
 	public const int E_Statue_Zemina = 161000;
 	public const int Npc_Kupole_Velcoffer = 161001;
 	public const int Npc_Teliavelis = 161002;
