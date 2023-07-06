@@ -1538,6 +1538,12 @@ namespace Melia.Zone.World.Actors.Characters
 		{
 			var help = ZoneServer.Instance.Data.HelpDb.Find(className);
 
+			if (help == null)
+			{
+				Log.Warning("ShowHelp: Unable to find help by class name {0}.", className);
+				return;
+			}
+
 			if (this.Help.ContainsKey(help.Id) && this.Help[help.Id])
 				return;
 

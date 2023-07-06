@@ -14,7 +14,7 @@ namespace Melia.Zone.Skills.Handlers
 	public class SkillHandlers
 	{
 		private readonly Dictionary<SkillId, ISkillHandler> _handlers = new Dictionary<SkillId, ISkillHandler>();
-		public MeleeGroundSkillHandler DefaultGroundHandler { get; } = new MeleeGroundSkillHandler();
+		private readonly Dictionary<SkillId, int> _priorities = new Dictionary<SkillId, int>();
 
 		/// <summary>
 		/// Initializes the skill handlers, loading all it can find in
@@ -39,7 +39,16 @@ namespace Melia.Zone.Skills.Handlers
 					var skillIds = attr.SkillIds;
 
 					foreach (var skillId in skillIds)
+					{
+						if (_priorities.TryGetValue(skillId, out var priority))
+						{
+							if (priority > attr.Priority)
+								continue;
+						}
+
 						_handlers[skillId] = handler;
+						_priorities[skillId] = attr.Priority;
+					}
 				}
 			}
 		}
