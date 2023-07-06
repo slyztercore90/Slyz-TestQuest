@@ -1,23 +1,24 @@
-using System;
+﻿using System;
 using Melia.Shared.L10N;
 using Melia.Shared.Tos.Const;
-using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.Skills.Combat;
 using Melia.Zone.Skills.Handlers.Base;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.CombatEntities.Components;
-using Yggdrasil.Logging;
 using static Melia.Zone.Skills.SkillUseFunctions;
 
 namespace Melia.Zone.Skills.Handlers.Archer
 {
 	/// <summary>
-	/// Handler for the Archer skill Twin Arrows.
+	/// Handles the Archer skill Twin Arrow.
 	/// </summary>
 	[SkillHandler(SkillId.Archer_TwinArrows)]
 	public class TwinArrows : ITargetSkillHandler
 	{
+		/// <summary>
+		/// Handles the skill, do two consecutive hits on the enemy.
+		/// </summary>
 		public void Handle(Skill skill, ICombatEntity caster, ICombatEntity target)
 		{
 			if (!caster.TrySpendSp(skill))
@@ -32,22 +33,21 @@ namespace Melia.Zone.Skills.Handlers.Archer
 
 			if (target == null)
 			{
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
 				return;
 			}
 
-			var castRange = caster.Position.Get2DDistance(target.Position);
-			if (castRange > skill.Data.MaxRange)
+			if (!caster.Position.InRange2D(target.Position, skill.Data.MaxRange))
 			{
-				Log.Warning("Twin Arrows: Player {0} cast skill farther than max range ({1} > {2}).", caster.Name, castRange, skill.Data.MaxRange);
+				caster.ServerMessage(Localization.Get("Too far away."));
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
 				return;
 			}
 
-			Send.ZC_SKILL_READY(caster, skill, 1, caster.Position, target.Position);
-			Send.ZC_NORMAL.UpdateSkillEffect(caster, target?.Handle ?? 0, caster.Position, caster.Position.GetDirection(target.Position), target?.Position ?? Position.Zero);
+			var damageDelay = TimeSpan.FromMilliseconds(45);
+			var skillHitDelay = skill.Data.DefaultHitDelay;
 
-			var damageDelay = TimeSpan.FromMilliseconds(500);
-			var skillHitDelay = skill.Properties.HitDelay;
+			// TODO: Add more 50% damage to enemies using cloth armor type
 
 			var skillHitResult = SCR_SkillHit(caster, target, skill);
 			target.TakeDamage(skillHitResult.Damage, caster);

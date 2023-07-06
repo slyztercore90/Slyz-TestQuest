@@ -1,25 +1,28 @@
-using System;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Melia.Shared.L10N;
 using Melia.Shared.Tos.Const;
-using Melia.Shared.World;
-using Melia.Zone.Buffs;
 using Melia.Zone.Network;
 using Melia.Zone.Skills.Combat;
 using Melia.Zone.Skills.Handlers.Base;
+using Melia.Zone.Skills.SplashAreas;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.CombatEntities.Components;
-using Yggdrasil.Logging;
 using Yggdrasil.Util;
 using static Melia.Zone.Skills.SkillUseFunctions;
 
 namespace Melia.Zone.Skills.Handlers.Archer
 {
 	/// <summary>
-	/// Handler for the Archer skill Oblique Shot.
+	/// Handles the Archer skill Oblique Shot.
 	/// </summary>
 	[SkillHandler(SkillId.Archer_ObliqueShot)]
-	public class ObliqueShot : ITargetSkillHandler
+	public class ObliqueFire : ITargetSkillHandler
 	{
+		/// <summary>
+		/// Handles the skill, shoot missile at enemy that spreads to another target.
+		/// </summary>
 		public void Handle(Skill skill, ICombatEntity caster, ICombatEntity target)
 		{
 			if (!caster.TrySpendSp(skill))
@@ -34,65 +37,70 @@ namespace Melia.Zone.Skills.Handlers.Archer
 
 			if (target == null)
 			{
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
 				return;
 			}
 
-			var castRange = caster.Position.Get2DDistance(target.Position);
-			if (castRange > skill.Data.MaxRange)
+			if (!caster.Position.InRange2D(target.Position, skill.Data.MaxRange))
 			{
-				Log.Warning("Oblique Shot: Player {0} cast skill farther than max range ({1} > {2}).", caster.Name, castRange, skill.Data.MaxRange);
+				caster.ServerMessage(Localization.Get("Too far away."));
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
 				return;
 			}
 
-			var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
-			Send.ZC_SKILL_READY(caster, skill, skillHandle, caster.Position, target.Position);
-			Send.ZC_NORMAL.UpdateSkillEffect(caster, target?.Handle ?? 0, caster.Position, caster.Direction, target?.Position ?? Position.Zero);
-
-			var damageDelay = TimeSpan.FromMilliseconds(500);
-			var skillHitDelay = skill.Properties.HitDelay;
+			var damageDelay = TimeSpan.FromMilliseconds(45);
+			var skillHitDelay = TimeSpan.Zero;
 
 			var skillHitResult = SCR_SkillHit(caster, target, skill);
 			target.TakeDamage(skillHitResult.Damage, caster);
-			target.Components.Get<BuffComponent>()?.AddOrUpdate(new Buff(BuffId.ObliqueFire_Debuff, 0, 0, TimeSpan.FromSeconds(10), target, caster));
 
-			// The force id needs to be set on both the skill hits
-			// and ZC_SKILL_FORCE_TARGET for the client to connect
-			// the pieces and stop arrows from flying past the targets.
-			var forceId = ForceId.GetNew();
+			var skillHit = new SkillHitInfo(caster, target, skill, skillHitResult, damageDelay, skillHitDelay);
+			skillHit.ForceId = ForceId.GetNew();
 
-			var hit = new SkillHitInfo(caster, target, skill, skillHitResult, damageDelay, skillHitDelay);
-			hit.ForceId = forceId;
-			var radius = (int)skill.Data.SplashRange * 4;
-			var splashTarget = caster.Map.GetAttackableEntityInRangeAroundEntity(caster, target, radius);
+			Send.ZC_SKILL_FORCE_TARGET(caster, target, skill, skillHit);
 
-			Send.ZC_SKILL_FORCE_TARGET(caster, target, skill, hit);
-
-			// Add Buff Id: 160008 [Common_Slow] Duration: 8000
-			// Target ZC_MSPD affected
-			var rnd = RandomProvider.Get();
-			if (rnd.NextDouble() > .50)
+			// Random chance to apply Slow debuff	
+			if (RandomProvider.Next(100) < 50)
 			{
-				var buff = new Buff(BuffId.Common_Slow, 0, 0, TimeSpan.FromMilliseconds(8000), target, caster);
-				target.Components.Get<BuffComponent>()?.AddOrUpdate(buff);
+				var duration = TimeSpan.FromSeconds(7);
+				target.Components.Get<BuffComponent>().Start(BuffId.Common_Slow, skill.Level, 0, duration, caster);
 			}
 
-			if (splashTarget != null)
+			// Bounce shot
+			if (this.TryGetBounceTarget(caster, target, skill, out var bounceTarget))
 			{
-				var effectHandle = ZoneServer.Instance.World.CreateEffectHandle();
+				skillHitResult = SCR_SkillHit(caster, bounceTarget, skill);
+				bounceTarget.TakeDamage(skillHitResult.Damage, caster);
 
-				Send.ZC_SYNC_START(caster, skillHandle, 1);
-				Send.ZC_NORMAL.SkillEffectSplash(caster, target, splashTarget, effectHandle,
-					"I_arrow009_red", 0.7f, "arrow_cast", "F_hit_good", 1, "arrow_blow", "SLOW", 800,
-					1, 5, 0, 0);
-				Send.ZC_SYNC_END(caster, skillHandle, 0.1f);
-
-				skillHitResult = SCR_SkillHit(caster, splashTarget, skill);
-				splashTarget.TakeDamage(skillHitResult.Damage, caster);
-				var hitInfo = new HitInfo(caster, splashTarget, skill, skillHitResult.Damage, skillHitResult.Result);
-				hitInfo.ForceId = effectHandle;
-				Send.ZC_HIT_INFO(caster, splashTarget, skill, hitInfo);
+				var hit = new HitInfo(caster, target, skill, skillHitResult);
+				Send.ZC_HIT_INFO(caster, bounceTarget, skill, hit);
 			}
+		}
+
+		/// <summary>
+		/// Returns the closest target to the main target to bounce the
+		/// attack off to.
+		/// </summary>
+		/// <param name="caster"></param>
+		/// <param name="mainTarget"></param>
+		/// <param name="skill"></param>
+		/// <param name="bounceTarget"></param>
+		/// <returns></returns>
+		private bool TryGetBounceTarget(ICombatEntity caster, ICombatEntity mainTarget, Skill skill, out ICombatEntity bounceTarget)
+		{
+			var splashPos = caster.Position;
+			var splashRadius = 50; // SplashHeight * 2?
+			var splashArea = new Circle(mainTarget.Position, splashRadius);
+
+			var targets = caster.Map.GetAttackableEntitiesIn(caster, splashArea);
+			if (!targets.Any())
+			{
+				bounceTarget = null;
+				return false;
+			}
+
+			bounceTarget = targets.Where(a => a != mainTarget).OrderBy(a => a.Position.Get2DDistance(mainTarget.Position)).FirstOrDefault();
+			return bounceTarget != null;
 		}
 	}
 }

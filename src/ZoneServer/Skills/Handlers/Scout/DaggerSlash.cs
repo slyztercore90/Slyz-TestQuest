@@ -1,16 +1,16 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Melia.Shared.L10N;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
-using Melia.Zone.Buffs;
 using Melia.Zone.Network;
 using Melia.Zone.Skills.Combat;
 using Melia.Zone.Skills.Handlers.Base;
+using Melia.Zone.Skills.SplashAreas;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.CombatEntities.Components;
-using Yggdrasil.Logging;
 using static Melia.Zone.Skills.SkillUseFunctions;
+using System.Threading.Tasks;
 
 namespace Melia.Zone.Skills.Handlers.Scout
 {
@@ -21,7 +21,7 @@ namespace Melia.Zone.Skills.Handlers.Scout
 	public class DaggerSlash : IGroundSkillHandler
 	{
 		/// <summary>
-		/// Handle Skill Behavior
+		/// Handles skill, do a slash attack to the nearby enemies.
 		/// </summary>
 		/// <param name="skill"></param>
 		/// <param name="caster"></param>
@@ -40,44 +40,64 @@ namespace Melia.Zone.Skills.Handlers.Scout
 			caster.TurnTowards(designatedTarget);
 			caster.Components.Get<CombatComponent>().SetAttackState(true);
 
-			var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
-			Send.ZC_SKILL_READY(caster, skill, skillHandle, caster.Position, farPos);
+			var splashAreaHeight = 40;
+			var splashAreaWidth = 25;
 
-			Send.ZC_NORMAL.UpdateSkillEffect(caster, caster.Handle, caster.Position, caster.Direction, caster.Position);
+			originPos = caster.Position;
+			farPos = originPos.GetRelative(caster.Direction, splashAreaHeight);
 
-			var buff = new Buff(BuffId.DaggerSlash_Buff, 0, 0, TimeSpan.FromMilliseconds(3000), caster, caster);
+			var splashArea = new Square(originPos, caster.Direction, splashAreaHeight, splashAreaWidth);
 
-			Send.ZC_SYNC_START(caster, skillHandle, 1);
-			caster.Components.Get<BuffComponent>()?.AddOrUpdate(buff);
-			Send.ZC_SYNC_END(caster, skillHandle, 0);
-			Send.ZC_SYNC_EXEC_BY_SKILL_TIME(caster, skillHandle);
+			var buffDuration = TimeSpan.FromSeconds(2);
+			caster.Components.Get<BuffComponent>().Start(BuffId.DaggerSlash_Buff, skill.Level, 0, buffDuration, caster);
 
-			var targets = caster.Map.GetAttackableEntitiesInRange(caster, farPos, 50);
-			var damageDelay = TimeSpan.FromMilliseconds(200);
+			Send.ZC_SKILL_READY(caster, skill, originPos, farPos);
+
+			this.Attack(skill, caster, splashArea, farPos);
+		}
+
+		/// <summary>
+		/// Executes the actual attack after a delay.
+		/// </summary>
+		/// <param name="skill"></param>
+		/// <param name="caster"></param>
+		/// <param name="splashArea"></param>
+		private async void Attack(Skill skill, ICombatEntity caster, ISplashArea splashArea, Position farPos)
+		{
+			var damageDelay = TimeSpan.FromMilliseconds(90);
+			var skillHitDelay = TimeSpan.Zero;
+			var hitDelay = TimeSpan.FromMilliseconds(100);
 
 			var hits = new List<SkillHitInfo>();
+			var targets = caster.Map.GetAttackableEntitiesIn(caster, splashArea);
 
-			foreach (var currentTarget in targets.LimitBySDR(caster, skill))
+			foreach (var target in targets.LimitBySDR(caster, skill))
 			{
-				var skillHitResult = SCR_SkillHit(caster, currentTarget, skill);
-				if (currentTarget.TakeDamage(skillHitResult.Damage, caster))
-					Send.ZC_SKILL_CAST_CANCEL(caster);
+				var skillHitResult = SCR_SkillHit(caster, target, skill);
+				target.TakeDamage(skillHitResult.Damage, caster);
 
-				var skillHit = new SkillHitInfo(caster, currentTarget, skill, skillHitResult, damageDelay, TimeSpan.Zero);
+				var skillHit = new SkillHitInfo(caster, target, skill, skillHitResult, damageDelay, skillHitDelay);
 				hits.Add(skillHit);
 			}
 
 			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, hits);
 
-			hits = new List<SkillHitInfo>();
+			await Task.Delay(hitDelay);
 
-			foreach (var currentTarget in targets.LimitBySDR(caster, skill))
+			// Based on the packets this delay is more like 270, but that
+			// just doesn't look right for unknown reasons, so we'll use
+			// 370 for now.
+			damageDelay = TimeSpan.FromMilliseconds(370);
+			hits.Clear();
+
+			foreach (var target in targets)
 			{
-				var skillHitResult = SCR_SkillHit(caster, currentTarget, skill);
-				if (currentTarget.TakeDamage(skillHitResult.Damage, caster))
-					Send.ZC_SKILL_CAST_CANCEL(caster);
+				var skillHitResult = SCR_SkillHit(caster, target, skill);
+				var damage = skillHitResult.Damage;
 
-				var skillHit = new SkillHitInfo(caster, currentTarget, skill, skillHitResult, damageDelay, TimeSpan.Zero);
+				target.TakeDamage(damage, caster);
+
+				var skillHit = new SkillHitInfo(caster, target, skill, skillHitResult, damageDelay, skillHitDelay);
 				hits.Add(skillHit);
 			}
 

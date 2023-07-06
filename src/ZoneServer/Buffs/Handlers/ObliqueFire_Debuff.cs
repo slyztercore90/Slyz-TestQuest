@@ -1,19 +1,18 @@
-﻿using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Const;
 using Melia.Zone.Buffs.Base;
 using Melia.Zone.Network;
-using Melia.Zone.World.Actors.Characters;
 
 namespace Melia.Zone.Buffs.Handlers
 {
 	/// <summary>
-	/// Handler for ObliqueFire_Buff, which increases the target's
-	/// movement speed.
+	/// Handler for Oblique Fire buff, which affects the target's movement
+	/// speed.
 	/// </summary>
 	[BuffHandler(BuffId.ObliqueFire_Debuff)]
-	public class ObliqueFireDebuffHandler : BuffHandler
+	public class ObliqueFire_DebuffHandler : BuffHandler
 	{
-		private const string ModifierVar = "Buff:ObliqueFire_Buff/Modifier";
-		private float _modifier = 0f;
+		private const string VarName = "Melia.StatModifier";
+		private const float DebuffPenaltyRate = -0.05f;
 
 		/// <summary>
 		/// Starts buff, modifying the target's movement speed.
@@ -23,16 +22,19 @@ namespace Melia.Zone.Buffs.Handlers
 		{
 			var target = buff.Target;
 
-			// Movement Speed -5% per stack when stack is 4 or more
-			if (buff.OverbuffCounter > 3)
+			// Limit it to 2 stacks since it only happens for the fourth
+			// fifth hit of Oblique Fire.
+			if (buff.OverbuffCounter <= 2)
 			{
 				var mspd = target.Properties.GetFloat(PropertyName.MSPD);
-				var add = -mspd * 0.05f;
+				var penalty = mspd * DebuffPenaltyRate;
 
-				target.Properties.Modify(PropertyName.MSPD_BM, add);
-				_modifier += add;
+				var modifier = buff.Vars.GetFloat(VarName);
+				buff.Vars.SetFloat(VarName, modifier + penalty);
 
-				Send.ZC_MOVE_SPEED(target);
+				target.Properties.Modify(PropertyName.MSPD_BM, penalty);
+
+				Send.ZC_MSPD(target);
 			}
 		}
 
@@ -43,9 +45,12 @@ namespace Melia.Zone.Buffs.Handlers
 		public override void OnEnd(Buff buff)
 		{
 			var target = buff.Target;
-			target.Properties.Modify(PropertyName.MSPD_BM, _modifier);
 
-			Send.ZC_MOVE_SPEED(target);
+			if (buff.Vars.TryGetFloat(VarName, out var modifier))
+			{
+				target.Properties.Modify(PropertyName.MSPD_BM, -modifier);
+				Send.ZC_MSPD(target);
+			}
 		}
 	}
 }
