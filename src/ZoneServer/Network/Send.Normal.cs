@@ -65,38 +65,6 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Plays effect on actor.
-			/// </summary>
-			/// <param name="actor"></param>
-			/// <param name="caster"></param>
-			/// <param name="packetString"></param>
-			/// <param name="argNum"></param>
-			/// <param name="argStr"></param>
-			public static void PlayTextEffect(IActor actor, IActor caster, string packetString, float argNum, string argStr)
-			{
-				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStringData))
-					throw new ArgumentException($"Packet string '{packetString}' not found.");
-
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.PlayTextEffect);
-
-				packet.PutInt(actor.Handle);
-				packet.PutInt(caster.Handle);
-				packet.PutInt(packetStringData.Id);
-				packet.PutFloat(argNum);
-
-				if (argStr == null)
-					packet.PutShort(-1);
-				else
-					packet.PutLpString(argStr);
-
-				packet.PutInt(0);
-				packet.PutInt(0);
-
-				actor.Map.Broadcast(packet, actor);
-			}
-
-			/// <summary>
 			/// Plays an animation of an effect getting thrown from the
 			/// entity to the position, where a second effect is played
 			/// for the impact.
@@ -1990,32 +1958,40 @@ namespace Melia.Zone.Network
 			/// Skill particle effect
 			/// </summary>
 			/// <param name="character"></param>
-			public static void SkillParticleEffect(IActor character, ICombatEntity target, string effectName, float f1, string param = "", long l1 = 0)
+			public static void PlayTextEffect(IActor actor, IActor caster, string packetString, float argNum, string argStr = null)
 			{
-				if (ZoneServer.Instance.Data.PacketStringDb.TryFind(effectName, out var effectId))
-					SkillParticleEffect(character, target, effectId.Id, f1, param, l1);
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStringData))
+					throw new ArgumentException($"Packet string '{packetString}' not found.");
+				PlayTextEffect(actor, caster, packetStringData.Id, argNum, argStr);
 			}
 
 			/// <summary>
-			/// Skill particle effect
+			/// Plays a text effect on actor.
 			/// </summary>
-			/// <param name="character"></param>
-			public static void SkillParticleEffect(IActor character, IActor target, int packetStringId, float f1, string param = "", long l1 = 0)
+			/// <param name="actor"></param>
+			/// <param name="caster"></param>
+			/// <param name="packetStringId"></param>
+			/// <param name="argNum"></param>
+			/// <param name="argStr"></param>
+			public static void PlayTextEffect(IActor actor, IActor caster, int packetStringId, float argNum, string argStr = null)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.SkillParticleEffect);
+				packet.PutInt(NormalOp.Zone.PlayTextEffect);
 
-				packet.PutInt(character.Handle);
-				packet.PutInt(target.Handle);
+				packet.PutInt(actor.Handle);
+				packet.PutInt(caster.Handle);
 				packet.PutInt(packetStringId);
-				packet.PutFloat(f1);
-				if (!string.IsNullOrEmpty(param))
+				packet.PutFloat(argNum);
+
+				if (argStr == null)
 					packet.PutShort(-1);
 				else
-					packet.PutLpString(param);
-				packet.PutLong(0);
+					packet.PutLpString(argStr);
 
-				character.Map.Broadcast(packet, character);
+				packet.PutInt(0);
+				packet.PutInt(0);
+
+				actor.Map.Broadcast(packet, actor);
 			}
 
 			/// <summary>

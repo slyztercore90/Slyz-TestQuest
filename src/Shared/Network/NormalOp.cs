@@ -135,7 +135,7 @@
 			public const int UnlockCollection = 0xDF;
 			public const int UpdateCollection = 0xE0;
 			public const int Unknown_E0 = 0xE2;
-			public const int SkillParticleEffect = 0xE3;
+			public const int PlayTextEffect = 0xE3;
 			public const int Unknown_E5 = 0xE7;
 			public const int Notice = 0xF0;
 			public const int GlobalJobCount = 0xF2;

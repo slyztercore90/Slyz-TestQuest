@@ -9,8 +9,11 @@ using EmbedIO.WebApi;
 using Melia.Shared;
 using Melia.Shared.Data.Database;
 using Melia.Web.Controllers;
+using Melia.Web.Database;
 using Melia.Web.Logging;
 using Melia.Web.Modules;
+using Melia.Web.Serializer;
+using Melia.Web.World;
 using Yggdrasil.Logging;
 using Yggdrasil.Util;
 using Yggdrasil.Util.Commands;
@@ -22,6 +25,23 @@ namespace Melia.Web
 		public readonly static WebServer Instance = new WebServer();
 
 		private EmbedIO.WebServer _webServer;
+		private EmbedIO.WebServer _guildServer;
+		private EmbedIO.WebServer _marketServer;
+
+		/// <summary>
+		/// The server's market manager.
+		/// </summary>
+		public MarketManager Market { get; set; } = new MarketManager();
+
+		/// <summary>
+		/// The server's guild manager.
+		/// </summary>
+		public GuildManager Guild { get; set; } = new GuildManager();
+
+		/// <summary>
+		/// The server's database.
+		/// </summary>
+		public WebDb Database { get; } = new WebDb();
 
 		/// <summary>
 		/// Runs the server.
@@ -35,9 +55,12 @@ namespace Melia.Web
 			this.NavigateToRoot();
 			this.LoadConf(this.Conf);
 			this.LoadData(ServerType.Web);
+			this.InitDatabase(this.Database, this.Conf);
 			this.CheckDependencies();
 
 			this.StartWebServer();
+			this.StartGuildWebServer();
+			this.StartMarketWebServer();
 
 			ConsoleUtil.RunningTitle();
 
@@ -180,6 +203,112 @@ namespace Melia.Web
 				//Log.Info("  StaticConfigURL: {0}", url + "toslive/patch/");
 
 				Log.Status("Server now running on '{0}'", url);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to start web server: {0}", ex);
+				ConsoleUtil.Exit(1);
+			}
+		}
+
+		/// <summary>
+		/// Starts guild web server.
+		/// </summary>
+		private void StartGuildWebServer()
+		{
+			try
+			{
+				this.Guild.Load();
+
+				var url = string.Format("http://*:{0}/", this.Conf.Web.GuildPort);
+
+				Swan.Logging.Logger.NoLogging();
+				Swan.Logging.Logger.RegisterLogger<YggdrasilLogger>();
+
+				EndPointManager.UseIpv6 = false;
+
+				var options = new WebServerOptions()
+						.WithMode(HttpListenerMode.EmbedIO)
+						//.WithCertificate(cert1)
+						.WithUrlPrefix(url);
+				_guildServer = new EmbedIO.WebServer(options);
+
+				var webFolder = "system/web/";
+				if (Directory.Exists("user/web/"))
+					webFolder = "user/web/";
+
+
+				_guildServer
+					//.WithBearerToken("/", "0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJjbGF")
+					.WithWebApi("/", m => m.WithController<TosGuildController>())
+					.WithStaticFolder("/", webFolder, false, fm =>
+					{
+						fm.DefaultDocument = "index.htm";
+						fm.OnMappingFailed = FileRequestHandler.PassThrough;
+						fm.OnDirectoryNotListable = FileRequestHandler.PassThrough;
+					});
+				_guildServer.RunAsync();
+
+				if (_guildServer.State == WebServerState.Stopped)
+				{
+					Log.Error("Failed to start guild server, make sure there's only one instance running.");
+					ConsoleUtil.Exit(1);
+				}
+
+				Log.Status("Guild Server now running on '{0}'", url);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to start web server: {0}", ex);
+				ConsoleUtil.Exit(1);
+			}
+		}
+
+		/// <summary>
+		/// Starts market web server.
+		/// </summary>
+		private void StartMarketWebServer()
+		{
+			try
+			{
+				this.Market.Load();
+
+				var url = string.Format("http://*:{0}/", this.Conf.Web.MarketPort);
+
+				Swan.Logging.Logger.NoLogging();
+				Swan.Logging.Logger.RegisterLogger<YggdrasilLogger>();
+
+				EndPointManager.UseIpv6 = false;
+
+				var options = new WebServerOptions()
+						.WithMode(HttpListenerMode.EmbedIO)
+						//.WithCertificate(cert1)
+						.WithUrlPrefix(url);
+				_marketServer = new EmbedIO.WebServer(options);
+
+				var webFolder = "system/web/";
+				if (Directory.Exists("user/web/"))
+					webFolder = "user/web/";
+
+
+				_marketServer
+					//.WithBearerToken("/", "0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJjbGF")
+					.WithWebApi("/", CustomResponseSerializer.None(false), m => m.WithController<TosMarketController>())
+					.WithStaticFolder("/", webFolder, false, fm =>
+					{
+						fm.DefaultDocument = "index.htm";
+						fm.OnMappingFailed = FileRequestHandler.PassThrough;
+						fm.OnDirectoryNotListable = FileRequestHandler.PassThrough;
+					});
+				_marketServer.RunAsync();
+
+				if (_marketServer.State == WebServerState.Stopped)
+				{
+					Log.Error("Failed to start market server, make sure there's only one instance running.");
+					ConsoleUtil.Exit(1);
+				}
+
+				Log.Status("Market Server now running on '{0}'", url);
 			}
 			catch (Exception ex)
 			{

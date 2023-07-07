@@ -107,6 +107,8 @@ namespace Melia.Zone.Network
 
 			map.AddCharacter(character);
 			conn.LoggedIn = true;
+			conn.GenerateSessionKey();
+			ZoneServer.Instance.Database.SaveSessionKey(character.DbId, conn.SessionKey);
 
 			Send.ZC_CONNECT_OK(conn, character);
 		}
@@ -186,6 +188,10 @@ namespace Melia.Zone.Network
 			Send.ZC_ADDITIONAL_SKILL_POINT(character);
 			Send.ZC_SET_DAYLIGHT_INFO(character);
 			Send.ZC_DAYLIGHT_FIXED(character);
+
+			Send.ZC_NORMAL.SetSessionKey(conn);
+			Send.ZC_SEND_CASH_VALUE(conn);
+			Send.ZC_SEND_PREMIUM_STATE(conn);
 
 			// The ability points are longer read from the properties for
 			// whatever reason. We have to use the "custom commander info"

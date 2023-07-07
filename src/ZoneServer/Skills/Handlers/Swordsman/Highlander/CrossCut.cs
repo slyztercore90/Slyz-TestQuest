@@ -44,7 +44,7 @@ namespace Melia.Zone.Skills.Handlers.Highlander
 
 			foreach (var currentTarget in targets.LimitBySDR(caster, skill))
 			{
-				Send.ZC_NORMAL.SkillParticleEffect(caster, currentTarget, AnimationName.ShowBuffText, 254);
+				Send.ZC_NORMAL.PlayTextEffect(currentTarget, caster, AnimationName.ShowBuffText, 254);
 				var crossCutDebuff = new Buff(BuffId.CrossCut_Debuff, 0, 0, TimeSpan.FromSeconds(6), currentTarget, caster);
 				//crossCutDebuff.Skill = skill;
 				currentTarget.Components.Get<BuffComponent>()?.AddOrUpdate(crossCutDebuff);

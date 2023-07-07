@@ -6,13 +6,13 @@ namespace Melia.Shared.Tos.Const.Web.Guild
 	{
 		public static bool IsValidImageFormat(byte[] image)
 		{
-			byte[] array = new byte[10];
-			for (int i = 0; i < 10; i++)
+			var array = new byte[10];
+			for (var i = 0; i < 10; i++)
 			{
 				array[i] = image[i];
 			}
-			byte[][] array2 = new byte[1][] { new byte[4] { 137, 80, 78, 71 } };
-			foreach (byte[] array3 in array2)
+			var array2 = new byte[1][] { new byte[4] { 137, 80, 78, 71 } };
+			foreach (var array3 in array2)
 			{
 				if (array3.SequenceEqual(array.Take(array3.Length)))
 				{
@@ -24,14 +24,14 @@ namespace Melia.Shared.Tos.Const.Web.Guild
 
 		public static bool IsStandardSize(byte[] bytes, int fixWidth, int fixHeight)
 		{
-			byte[] array = new byte[8];
-			for (int i = 16; i < 24; i++)
+			var array = new byte[8];
+			for (var i = 16; i < 24; i++)
 			{
 				array[i - 16] = bytes[i];
 			}
-			int num = 0;
-			int num2 = 0;
-			for (int j = 0; j <= 3; j++)
+			var num = 0;
+			var num2 = 0;
+			for (var j = 0; j <= 3; j++)
 			{
 				num = array[j] | (num << 8);
 				num2 = array[j + 4] | (num2 << 8);

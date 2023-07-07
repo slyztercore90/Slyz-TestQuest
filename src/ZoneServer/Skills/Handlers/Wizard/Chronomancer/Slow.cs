@@ -63,7 +63,7 @@ namespace Melia.Zone.Skills.Handlers.Chronomancer
 
 			foreach (var currentTarget in targets.LimitBySDR(caster, skill))
 			{
-				Send.ZC_NORMAL.SkillParticleEffect(caster, currentTarget, AnimationName.ShowBuffText, 301);
+				Send.ZC_NORMAL.PlayTextEffect(currentTarget, caster, AnimationName.ShowBuffText, 301);
 				var slowDebuff = new Buff(BuffId.Slow_Debuff, 0, 0, TimeSpan.FromSeconds(10), currentTarget, caster);
 				//slowDebuff.Skill = skill;
 				currentTarget.Components.Get<BuffComponent>().AddOrUpdate(slowDebuff);

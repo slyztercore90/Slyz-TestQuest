@@ -3250,64 +3250,64 @@ namespace Melia.Zone.Network
 			packet.PutInt(4); // count?
 			{
 				packet.PutLpString("speedUp");
-				packet.PutFloat(0);
+				packet.PutDouble(0);
 
 				packet.PutLpString("marketUpMax");
-				packet.PutFloat(1);
+				packet.PutDouble(1);
 
 				packet.PutLpString("marketSellCom");
-				packet.PutFloat(30);
+				packet.PutDouble(30);
 
 				packet.PutLpString("abilityMax");
-				packet.PutFloat(1);
+				packet.PutDouble(1);
 			}
 
 			// Premium state 1?
 			packet.PutInt(4);
 			{
 				packet.PutLpString("speedUp");
-				packet.PutFloat(3);
+				packet.PutDouble(3);
 
 				packet.PutLpString("marketUpMax");
-				packet.PutFloat(5);
+				packet.PutDouble(5);
 
 				packet.PutLpString("marketSellCom");
-				packet.PutFloat(10);
+				packet.PutDouble(10);
 
 				packet.PutLpString("abilityMax");
-				packet.PutFloat(3);
+				packet.PutDouble(3);
 			}
 
 			// Premium state 2?
 			packet.PutInt(4);
 			{
 				packet.PutLpString("speedUp");
-				packet.PutFloat(3);
+				packet.PutDouble(3);
 
 				packet.PutLpString("marketUpMax");
-				packet.PutFloat(10);
+				packet.PutDouble(10);
 
 				packet.PutLpString("marketSellCom");
-				packet.PutFloat(10);
+				packet.PutDouble(10);
 
 				packet.PutLpString("abilityMax");
-				packet.PutFloat(2);
+				packet.PutDouble(2);
 			}
 
 			// ?
 			packet.PutInt(4);
 			{
 				packet.PutInt(7);
-				packet.PutFloat(2.5f);
+				packet.PutDouble(2.5f);
 
 				packet.PutInt(5);
-				packet.PutFloat(2);
+				packet.PutDouble(2);
 
 				packet.PutInt(3);
-				packet.PutFloat(1.5f);
+				packet.PutDouble(1.5f);
 
 				packet.PutInt(1);
-				packet.PutFloat(1);
+				packet.PutDouble(1);
 			}
 
 			conn.Send(packet);
@@ -3321,10 +3321,10 @@ namespace Melia.Zone.Network
 		{
 			var packet = new Packet(Op.ZC_SEND_PREMIUM_STATE);
 
-			packet.PutShort(2); // Count?
-			packet.PutShort(0x4E6C);
-			packet.PutShort(0xE8EF);
-			packet.PutInt(0);
+			packet.PutByte(2);
+			packet.PutByte(1);
+			packet.PutInt(604801);
+			packet.PutInt(490011);
 
 			conn.Send(packet);
 		}

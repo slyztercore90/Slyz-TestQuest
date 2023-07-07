@@ -70,7 +70,7 @@ namespace Melia.Zone.Skills.Handlers.Hunter
 							if (random.NextDouble() >= .5)
 							{
 								var stun = new Buff(BuffId.Stun, 0, 0, TimeSpan.FromSeconds(4), target, caster);
-								Send.ZC_NORMAL.SkillParticleEffect(caster, target, AnimationName.ShowBuffText, 61);
+								Send.ZC_NORMAL.PlayTextEffect(target, caster, AnimationName.ShowBuffText, 61);
 								Send.ZC_SYNC_START(caster, skillHandle, 1);
 								target.Components.Get<BuffComponent>()?.AddOrUpdate(stun);
 								Send.ZC_SYNC_END(caster, skillHandle, 0);

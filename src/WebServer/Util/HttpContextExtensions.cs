@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using EmbedIO.Utilities;
 using EmbedIO;
+using Melia.Web.Database;
 
 namespace Melia.Web.Util
 {
@@ -108,20 +109,18 @@ namespace Melia.Web.Util
 		public static bool IsAuthorized(this IHttpRequest request)
 		{
 			var token = request.Headers.Get("Authorization");
-			//if (!string.IsNullOrEmpty(token))
-			//return WebServer.Instance.Database.CheckSessionKeyExists(request.Headers.Get("Authorization").Replace("Bearer ", ""), out var character);
-			return true;
+			if (!string.IsNullOrEmpty(token))
+				return WebServer.Instance.Database.CheckSessionKeyExists(token.Replace("Bearer", "").Trim(), out _);
+			return false;
 		}
 
-		/**
 		public static bool IsAuthorized(this IHttpRequest request, out Character character)
 		{
 			character = default;
 			var token = request.Headers.Get("Authorization");
 			if (!string.IsNullOrEmpty(token))
-				return WebServer.Instance.Database.CheckSessionKeyExists(request.Headers.Get("Authorization").Replace("Bearer ", ""), out character);
-			return true;
+				return WebServer.Instance.Database.CheckSessionKeyExists(token.Replace("Bearer", "").Trim(), out character);
+			return false;
 		}
-		**/
 	}
 }

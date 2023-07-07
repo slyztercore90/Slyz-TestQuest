@@ -2198,5 +2198,24 @@ namespace Melia.Zone.Database
 
 			return jobDictionary;
 		}
+
+		/// <summary>
+		/// Saves session key.
+		/// </summary>
+		/// <param name="characterId"></param>
+		/// <param name="key"></param>
+		/// <returns></returns>
+		public bool SaveSessionKey(long characterId, string key)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `characters` SET {0} WHERE `characterId` = @characterId", conn))
+			{
+
+				cmd.AddParameter("@characterId", characterId);
+				cmd.Set("sessionKey", key);
+
+				return cmd.Execute() == 1;
+			}
+		}
 	}
 }

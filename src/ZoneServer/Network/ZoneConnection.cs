@@ -1,4 +1,7 @@
-﻿using Melia.Shared.Data.Database;
+﻿using System.IO;
+using System.Text;
+using System;
+using Melia.Shared.Data.Database;
 using Melia.Shared.Network;
 using Melia.Zone.Database;
 using Melia.Zone.Scripting.Dialogues;
@@ -6,6 +9,7 @@ using Melia.Zone.World;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Houses;
 using Yggdrasil.Network.TCP;
+using System.Security.Cryptography;
 
 namespace Melia.Zone.Network
 {
@@ -53,6 +57,12 @@ namespace Melia.Zone.Network
 		/// Gets or sets the current house.
 		/// </summary>
 		PersonalHouse ActiveHouse { get; set; }
+
+		/// <summary>
+		/// Generate a session key.
+		/// </summary>
+		/// <returns></returns>
+		string GenerateSessionKey();
 	}
 
 	/// <summary>
@@ -129,6 +139,43 @@ namespace Melia.Zone.Network
 
 				ZoneServer.Instance.Database.SaveCharacter(character);
 			}
+		}
+
+		/// <summary>
+		/// Generates a session key
+		/// </summary>
+		/// <returns></returns>
+		public string GenerateSessionKey()
+		{
+			var character = this.SelectedCharacter;
+			var date = DateTime.Now;
+			var result = default(byte[]);
+
+			using (var stream = new MemoryStream())
+			{
+				using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
+				{
+					writer.Write(date.Ticks);
+					writer.Write(character.Name);
+				}
+
+				stream.Position = 0;
+
+				using (var hash = SHA256.Create())
+				{
+					result = hash.ComputeHash(stream);
+				}
+			}
+
+			var text = new string[20];
+
+			for (var i = 0; i < text.Length; i++)
+			{
+				text[i] = result[i].ToString("X2");
+			}
+
+			this.SessionKey = "*" + string.Concat(text);
+			return this.SessionKey;
 		}
 	}
 }

@@ -10119,7 +10119,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("TUTO_TPSHOP_NPC")]
 		public static async Task TUTO_TPSHOP_NPC(Dialog dialog)
 		{
-			dialog.ShowHelp("TUTO_TPSHOP");
+			dialog.ShowHelp("TUTO_TP_SHOP");
 		}
 
 		[DialogFunction("TUTO_UPHILL_DEFENSE_CHECK")]
