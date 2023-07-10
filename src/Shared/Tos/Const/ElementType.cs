@@ -3,14 +3,15 @@
 	public enum ElementType
 	{
 		None,
-		Melee,
 		Fire,
-		Earth,
 		Ice,
 		Lightning,
+		Earth,
 		Poison,
-		Soul,
-		Dark,
 		Holy,
+		Dark,
+		Soul,
+
+		Melee,
 	}
 }

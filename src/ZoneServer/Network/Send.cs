@@ -3622,17 +3622,22 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// Sends ZC_SET_DAYLIGHT_INFO to character (dummy).
+		/// Updates the daylight settings for the given character.
 		/// </summary>
 		/// <param name="character"></param>
-		public static void ZC_DAYLIGHT_FIXED(Character character)
+		/// <param name="enabled"></param>
+		/// <param name="parameters"></param>
+		public static void ZC_DAYLIGHT_FIXED(Character character, bool enabled, DaylightParameters parameters)
 		{
 			var packet = new Packet(Op.ZC_DAYLIGHT_FIXED);
 
-			packet.PutInt(0);
+			packet.PutInt(enabled ? 1 : 0);
 			packet.PutByte(0);
-			for (var i = 0; i < 5; i++)
-				packet.PutFloat(1);
+			packet.PutFloat(parameters.FR);
+			packet.PutFloat(parameters.FG);
+			packet.PutFloat(parameters.FB);
+			packet.PutFloat(parameters.MapLightStrength);
+			packet.PutFloat(parameters.ModelLightStrength);
 
 			// [i361296]
 			{
