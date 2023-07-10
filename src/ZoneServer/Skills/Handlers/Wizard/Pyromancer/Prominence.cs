@@ -23,15 +23,18 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 	[SkillHandler(SkillId.Pyromancer_Prominence)]
 	public class Prominence : IDynamicGroundSkillHandler
 	{
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_PLAY_SOUND(caster, 420004);
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, 0.09375f);
+			if (caster is Character character)
+			{
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 0.09375f);
+			}
 		}
 
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, 1);
+			if (caster is Character character)
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 1);
 		}
 
 		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity target)

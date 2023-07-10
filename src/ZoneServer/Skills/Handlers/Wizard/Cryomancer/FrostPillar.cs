@@ -21,16 +21,22 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 	[SkillHandler(SkillId.Cryomancer_FrostPillar)]
 	public class FrostPillar : IDynamicGroundSkillHandler
 	{
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_PLAY_SOUND(caster, caster.Gender == Gender.Male ? "voice_wiz_m_frostpillar_cast" : "voice_wiz_frostpillar_cast");
-			Send.ZC_NORMAL.Skill_4D(caster, skill.Id);
+			if (caster is Character character)
+			{
+				Send.ZC_PLAY_SOUND(caster, character.Gender == Gender.Male ? "voice_wiz_m_frostpillar_cast" : "voice_wiz_frostpillar_cast");
+				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+			}
 		}
 
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_STOP_SOUND(caster, caster.Gender == Gender.Male ? "voice_wiz_m_frostpillar_cast" : "voice_wiz_frostpillar_cast");
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, maxCastTime);
+			if (caster is Character character)
+			{
+				Send.ZC_STOP_SOUND(character, character.Gender == Gender.Male ? "voice_wiz_m_frostpillar_cast" : "voice_wiz_frostpillar_cast");
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, maxCastTime);
+			}
 		}
 
 		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity designatedTarget)

@@ -2479,36 +2479,36 @@ namespace Melia.Zone.Network
 		/// <summary>
 		/// Plays a sound effect.
 		/// </summary>
-		/// <param name="character"></param>
+		/// <param name="actor"></param>
 		/// <param name="animationName"></param>
 		/// <param name="b1"></param>
 		/// <param name="f1"></param>
 		/// <param name="b2"></param>
-		public static void ZC_PLAY_SOUND(Character character, string animationName, byte b1 = 0, float f1 = -1, byte b2 = 0)
+		public static void ZC_PLAY_SOUND(IActor actor, string animationName, byte b1 = 0, float f1 = -1, byte b2 = 0)
 		{
 			if (ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var animation))
-				ZC_PLAY_SOUND(character, animation.Id, b1, f1, b2);
+				ZC_PLAY_SOUND(actor, animation.Id, b1, f1, b2);
 		}
 
 		/// <summary>
 		/// Plays a sound effect.
 		/// </summary>
-		/// <param name="character"></param>
+		/// <param name="actor"></param>
 		/// <param name="animationId"></param>
 		/// <param name="b1"></param>
 		/// <param name="f1"></param>
 		/// <param name="b2"></param>
-		public static void ZC_PLAY_SOUND(Character character, int animationId, byte b1 = 0, float f1 = -1, byte b2 = 0)
+		public static void ZC_PLAY_SOUND(IActor actor, int animationId, byte b1 = 0, float f1 = -1, byte b2 = 0)
 		{
 			var packet = new Packet(Op.ZC_PLAY_SOUND);
 
-			packet.PutInt(character.Handle);
+			packet.PutInt(actor.Handle);
 			packet.PutInt(animationId);
 			packet.PutByte(b1);
 			packet.PutFloat(f1);
 			packet.PutByte(b2);
 
-			character.Connection.Send(packet);
+			actor.Map.Broadcast(packet, actor);
 		}
 
 		/// <summary>
@@ -3645,6 +3645,31 @@ namespace Melia.Zone.Network
 			}
 
 			character.Connection.Send(packet);
+		}
+
+		/// <summary>
+		/// Updates the daylight settings for all characters on all maps.
+		/// </summary>
+		/// <param name="enabled"></param>
+		/// <param name="parameters"></param>
+		public static void ZC_DAYLIGHT_FIXED(bool enabled, DaylightParameters parameters)
+		{
+			var packet = new Packet(Op.ZC_DAYLIGHT_FIXED);
+
+			packet.PutInt(enabled ? 1 : 0);
+			packet.PutByte(0);
+			packet.PutFloat(parameters.FR);
+			packet.PutFloat(parameters.FG);
+			packet.PutFloat(parameters.FB);
+			packet.PutFloat(parameters.MapLightStrength);
+			packet.PutFloat(parameters.ModelLightStrength);
+
+			// [i361296]
+			{
+				packet.PutByte(0);
+			}
+
+			ZoneServer.Instance.World.Broadcast(packet);
 		}
 
 		/// <summary>

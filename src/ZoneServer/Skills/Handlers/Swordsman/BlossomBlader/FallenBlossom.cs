@@ -17,19 +17,22 @@ namespace Melia.Zone.Skills.Handlers.BlossomBlader
 	/// Handler for the BlossomBlader skill Fallen Blossom.
 	/// </summary>
 	[SkillHandler(SkillId.BlossomBlader_FallenBlossom)]
-	public class FallenBlossom : IMeleeGroundSkillHandler, IDynamicCastSkillHandler
+	public class FallenBlossom : IMeleeGroundSkillHandler, IDynamicCasted
 	{
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			// Not sure if this is needed, since it sends no packetstring for sound
 			if (caster is Character character)
+			{
 				Send.ZC_PLAY_SOUND(character, 0);
-			Send.ZC_NORMAL.Skill_4D(caster, skill.Id);
+				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+			}
 		}
 
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, 2);
+			if (caster is Character character)
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 2);
 		}
 
 		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, IList<ICombatEntity> targets)

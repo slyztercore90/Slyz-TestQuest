@@ -9,6 +9,7 @@ using Melia.Zone.Skills;
 using Melia.Zone.Skills.Combat;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.CombatEntities.Components;
+using Melia.Zone.World.Actors.Monsters;
 using Yggdrasil.Composition;
 
 namespace Melia.Zone.World.Actors
@@ -133,10 +134,6 @@ namespace Melia.Zone.World.Actors
 				TurnTowards(entity, otherEntity.Position);
 		}
 
-			entity.Direction = entity.Position.GetDirection(otherEntity.Position);
-			Send.ZC_QUICK_ROTATE(entity);
-		}
-
 		/// <summary>
 		/// Makes the entity turn towards a specific position.
 		/// </summary>
@@ -148,7 +145,10 @@ namespace Melia.Zone.World.Actors
 				return;
 
 			entity.Direction = entity.Position.GetDirection(position);
-			Send.ZC_QUICK_ROTATE(entity);
+			if (entity is IMonster)
+				Send.ZC_QUICK_ROTATE(entity);
+			else
+				Send.ZC_ROTATE(entity);
 		}
 
 		/// <summary>

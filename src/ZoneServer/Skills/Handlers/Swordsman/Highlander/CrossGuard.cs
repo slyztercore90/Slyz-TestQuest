@@ -16,20 +16,22 @@ namespace Melia.Zone.Skills.Handlers.Highlander
 	[SkillHandler(SkillId.Highlander_CrossGuard)]
 	public class CrossGuard : IDynamicGroundSkillHandler
 	{
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			Send.ZC_PLAY_SOUND(caster, "shieldup", 0, -1, 0);
 			Send.ZC_PLAY_SOUND(caster, "shieldup_2", 0, -1, 0);
 			var buff = new Buff(BuffId.CrossGuard_Buff, 0, 0, TimeSpan.FromSeconds(0), caster, caster);
 			//buff.Skill = skill;
 			caster?.Components.Get<BuffComponent>()?.AddOrUpdate(buff);
-			Send.ZC_NORMAL.Skill_4D(caster, skill.Id);
+			if (caster is Character character)
+				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
 		}
 
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			caster.Components.Get<BuffComponent>()?.Remove(BuffId.StartUp_Charging_Buff);
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, 2);
+			if (caster is Character character)
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 2);
 		}
 
 		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity target)

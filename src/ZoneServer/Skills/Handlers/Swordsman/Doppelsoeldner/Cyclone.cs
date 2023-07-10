@@ -11,6 +11,7 @@ using Melia.Zone.Skills.Combat;
 using Melia.Shared.L10N;
 using System.Collections.Generic;
 using static Melia.Zone.Skills.SkillUseFunctions;
+using Melia.Shared.Data.Database;
 
 namespace Melia.Zone.Skills.Handlers.Doppelsoeldner
 {
@@ -37,7 +38,8 @@ namespace Melia.Zone.Skills.Handlers.Doppelsoeldner
 			originPos = caster.Position;
 			farPos = originPos.GetRelative(caster.Direction, skill.Data.SplashHeight);
 
-			var splashArea = skill.GetSplashArea(farPos, caster.Direction);
+			var splashParam = skill.GetSplashParameters(caster, originPos, farPos, length: 30, width: 40, angle: 0);
+			var splashArea = skill.GetSplashArea(SplashType.Circle, splashParam);
 			var targets = caster.Map.GetAttackableEntitiesIn(caster, splashArea);
 			var damageDelay = TimeSpan.FromMilliseconds(50);
 			var skillHitDelay = skill.Properties.HitDelay;
@@ -88,12 +90,13 @@ namespace Melia.Zone.Skills.Handlers.Doppelsoeldner
 		/// <param name="skill"></param>
 		/// <param name="caster"></param>
 		/// <param name="castTime"></param>
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			Send.ZC_SKILL_DISABLE(caster);
 			caster.Components.Get<BuffComponent>()?.Remove(BuffId.Cyclone_EnableMovingShot_Buff);
 			Send.ZC_NORMAL.SetSkill_7B(caster, skill.Id);
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, 0);
+			if (caster is Character character)
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 0);
 		}
 
 		/// <summary>
@@ -102,7 +105,7 @@ namespace Melia.Zone.Skills.Handlers.Doppelsoeldner
 		/// <param name="skill"></param>
 		/// <param name="caster"></param>.
 		/// <param name="maxCastTime"></param>
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			// Method intentionally left empty.
 		}

@@ -70,12 +70,12 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 			}
 		}
 
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			// Method intentionally left empty.
 		}
 
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			// Method intentionally left empty.
 		}

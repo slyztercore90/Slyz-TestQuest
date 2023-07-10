@@ -21,27 +21,27 @@ namespace Melia.Zone.Skills.Handlers.Hwarang
 	[SkillHandler(SkillId.Hwarang_PyeonJeon)]
 	public class PyeonJeon : IDynamicGroundSkillHandler
 	{
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_NORMAL.Unknown_110(caster);
-			Send.ZC_ENABLE_CONTROL(caster.Connection, "", true);
-			Send.ZC_LOCK_KEY(caster, "", false);
-			caster.Properties.SetFloat(PropertyName.FIXMSPD_BM, 0);
-			caster.Properties.SetFloat(PropertyName.MSPD, 33);
-			caster.Properties.SetFloat(PropertyName.Jumpable, 1);
-			Send.ZC_OBJECT_PROPERTY(caster, PropertyName.FIXMSPD_BM, PropertyName.MSPD, PropertyName.Jumpable);
-			Send.ZC_MOVE_SPEED(caster, 0.8f);
-			caster.Components.Get<BuffComponent>()?.Remove(BuffId.PyeonJeon_Buff);
-			Send.ZC_STOP_SOUND(caster, "skl_eff_pyeonjeon_cast");
 			if (caster is Character character)
 			{
+				Send.ZC_NORMAL.Unknown_110(character);
+				Send.ZC_ENABLE_CONTROL(character.Connection, "", true);
+				Send.ZC_LOCK_KEY(character, "", false);
+				caster.Properties.SetFloat(PropertyName.FIXMSPD_BM, 0);
+				caster.Properties.SetFloat(PropertyName.MSPD, 33);
+				caster.Properties.SetFloat(PropertyName.Jumpable, 1);
+				Send.ZC_OBJECT_PROPERTY(character, PropertyName.FIXMSPD_BM, PropertyName.MSPD, PropertyName.Jumpable);
+				Send.ZC_MOVE_SPEED(character, 0.8f);
+				caster.Components.Get<BuffComponent>()?.Remove(BuffId.PyeonJeon_Buff);
+				Send.ZC_STOP_SOUND(character, "skl_eff_pyeonjeon_cast");
 				switch (character.Gender)
 				{
 					case Gender.Female:
-						Send.ZC_STOP_SOUND(caster, 1410306);
+						Send.ZC_STOP_SOUND(character, "voice_archer_f_pyeonjeon_cast");
 						break;
 					case Gender.Male:
-						Send.ZC_STOP_SOUND(caster, 1410307);
+						Send.ZC_STOP_SOUND(character, "voice_archer_m_pyeonjeon_cast");
 						break;
 				}
 			}
@@ -88,7 +88,7 @@ namespace Melia.Zone.Skills.Handlers.Hwarang
 			Send.ZC_SKILL_HIT_INFO(caster, hits);
 		}
 
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			// Method intentionally left empty.
 		}

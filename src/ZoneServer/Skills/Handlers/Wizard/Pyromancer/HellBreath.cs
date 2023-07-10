@@ -18,7 +18,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 	/// Handler for the Pyromancer skill Hell Breath.
 	/// </summary>
 	[SkillHandler(SkillId.Pyromancer_HellBreath)]
-	public class HellBreath : IGroundSkillHandler, IDynamicCastSkillHandler
+	public class HellBreath : IGroundSkillHandler, IDynamicCasted
 	{
 		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity target)
 		{
@@ -76,14 +76,17 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 		/// <param name="skill"></param>
 		/// <param name="caster"></param>
 		/// <param name="castTime"></param>
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			// ?
 			Send.ZC_SKILL_DISABLE(caster);
 			Send.ZC_NORMAL.SkillCancel(caster, skill.Id);
-			Send.ZC_STOP_SOUND(caster, 1320061);
-			Send.ZC_NORMAL.SetSkill_7B(caster, skill.Id);
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, 0);
+			if (caster is Character character)
+			{
+				Send.ZC_STOP_SOUND(character, "skl_eff_pyromancer_hellbreath_abil");
+				Send.ZC_NORMAL.SetSkill_7B(character, skill.Id);
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 0);
+			}
 		}
 
 		/// <summary>
@@ -92,7 +95,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 		/// <param name="skill"></param>
 		/// <param name="caster"></param>
 		/// <param name="maxCastTime"></param>
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			// Method intentionally left empty.
 		}

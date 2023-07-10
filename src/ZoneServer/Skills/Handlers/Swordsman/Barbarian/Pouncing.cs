@@ -14,9 +14,9 @@ namespace Melia.Zone.Skills.Handlers.Barbarian
 	/// Handler for the Barbarian skill Pouncing.
 	/// </summary>
 	[SkillHandler(SkillId.Barbarian_Pouncing)]
-	public class Pouncing : IDynamicCastSkillHandler
+	public class Pouncing : IDynamicCasted
 	{
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			if (!caster.TrySpendSp(skill))
 			{
@@ -26,22 +26,26 @@ namespace Melia.Zone.Skills.Handlers.Barbarian
 
 			skill.IncreaseOverheat();
 			caster.Components.Get<CombatComponent>().SetAttackState(true);
-			caster.SetProperty(PropertyName.Jumpable, 0);
+			caster.Properties.SetFloat(PropertyName.Jumpable, 0);
 
 			var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
 			Send.ZC_NORMAL.Skill(caster, skill, "Barbarian_Pouncing", caster.Position, caster.Direction, 0, 35, skillHandle, 45);
 			var buff = new Buff(BuffId.Pouncing_Buff, 0, 0, TimeSpan.Zero, caster, caster);
 			caster.Components.Get<BuffComponent>()?.AddOrUpdate(buff);
-			Send.ZC_PLAY_SOUND(caster, 370028);
-			Send.ZC_NORMAL.Skill_4D(caster, skill.Id);
+			Send.ZC_PLAY_SOUND(caster, "voice_war_atk_long_cast");
+			if (caster is Character character)
+				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
 		}
 
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			caster.SetProperty(PropertyName.Jumpable, 1);
+			caster.Properties.SetFloat(PropertyName.Jumpable, 1);
 			caster.Components.Get<BuffComponent>()?.Remove(BuffId.Pouncing_Buff);
-			Send.ZC_STOP_SOUND(caster, 370028);
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, 3.5f);
+			if (caster is Character character)
+			{
+				Send.ZC_STOP_SOUND(character, "voice_war_atk_long_cast");
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 3.5f);
+			}
 			var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
 			Send.ZC_NORMAL.Skill(caster, skill, "Barbarian_Pouncing", caster.Position, caster.Direction, 0, 35, skillHandle, 45);
 		}

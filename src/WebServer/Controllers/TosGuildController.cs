@@ -103,7 +103,7 @@ namespace Melia.Web.Controllers
 			var data = await this.HttpContext.GetRequestFormDataAsync();
 			if (int.TryParse(data["claimCode"], out var claimCode))
 			{
-
+				// TODO: Do something with claim code
 			}
 		}
 

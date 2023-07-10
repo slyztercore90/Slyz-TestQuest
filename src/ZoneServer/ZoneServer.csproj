@@ -84,7 +84,6 @@
     <Compile Include="Buffs\Handlers\DaggerSlash_Buff.cs" />
     <Compile Include="Buffs\Handlers\DashRun.cs" />
     <Compile Include="Buffs\Handlers\Bear.cs" />
-    <Compile Include="Buffs\Handlers\ObliqueFire_Debuff.cs" />
     <Compile Include="Buffs\Handlers\SwiftStep_Buff.cs" />
     <Compile Include="Buffs\Handlers\Lethargy_Debuff.cs" />
     <Compile Include="Buffs\Handlers\Concentration_Buff.cs" />
@@ -158,12 +157,8 @@
     <Compile Include="Skills\Combat\KnockBackInfo.cs" />
     <Compile Include="Skills\Combat\SkillHitInfo.cs" />
     <Compile Include="Skills\Combat\SkillHitResult.cs" />
-    <Compile Include="Skills\Handlers\Archer\ObliqueShot.cs" />
-    <Compile Include="Skills\Handlers\Archer\TwinArrows.cs" />
     <Compile Include="Skills\Handlers\Archer\Leap.cs" />
-    <Compile Include="Skills\Handlers\Archer\SwiftStep.cs" />
     <Compile Include="Skills\Handlers\Archer\Concentration.cs" />
-    <Compile Include="Skills\Handlers\Archer\Multishot.cs" />
     <Compile Include="Skills\Handlers\Archer\Hunter\Coursing.cs" />
     <Compile Include="Skills\Handlers\Archer\Hunter\RushDog.cs" />
     <Compile Include="Skills\Handlers\Archer\Hwarang\PyeonJeon.cs" />
@@ -173,10 +168,7 @@
     <Compile Include="Skills\Handlers\Archer\SwiftStep.cs" />
     <Compile Include="Skills\Handlers\Archer\TwinArrows.cs" />
     <Compile Include="Skills\Handlers\Base\Interfaces.cs" />
-    <Compile Include="Skills\DamageVisibilityModifier.cs" />
     <Compile Include="Skills\Handlers\Base\ParametersOnlySkill.cs" />
-    <Compile Include="Skills\Handlers\Cleric\GuardianSaint.cs" />
-    <Compile Include="Skills\Handlers\Cleric\Fade.cs" />
     <Compile Include="Skills\Handlers\Cleric\Cure.cs" />
     <Compile Include="Skills\Handlers\Cleric\Fade.cs" />
     <Compile Include="Skills\Handlers\Cleric\GuardianSaint.cs" />
@@ -202,7 +194,6 @@
     <Compile Include="Skills\Handlers\Common\TargetSkill.cs" />
     <Compile Include="Skills\Handlers\Base\SimpleMonsterAttackSkill.cs" />
     <Compile Include="Skills\Handlers\Monsters\BasicAttacks.cs" />
-    <Compile Include="Skills\Handlers\Scout\DaggerSlash.cs" />
     <Compile Include="Skills\Handlers\Scout\Cloaking.cs" />
     <Compile Include="Skills\Handlers\Scout\DaggerSlash.cs" />
     <Compile Include="Skills\Handlers\Scout\DoubleAttack.cs" />
@@ -215,17 +206,13 @@
     <Compile Include="Skills\Handlers\Scout\FreeStep.cs" />
     <Compile Include="Skills\Handlers\Scout\Jaguar\JaguarStance.cs" />
     <Compile Include="Skills\Handlers\Scout\Jaguar\WildRush.cs" />
-	<Compile Include="Skills\Handlers\Scout\ObliqueFire.cs" />
     <Compile Include="Skills\Handlers\Swordsman\Barbarian\Embowel.cs" />
     <Compile Include="Skills\Handlers\Swordsman\Barbarian\Pouncing.cs" />
     <Compile Include="Skills\Handlers\Swordsman\Barbarian\Seism.cs" />
     <Compile Include="Skills\Handlers\Swordsman\Barbarian\StompingKick.cs" />
     <Compile Include="Skills\Handlers\Swordsman\Barbarian\Warcry.cs" />
     <Compile Include="Skills\Handlers\Scout\ObliqueFire.cs" />
-    <Compile Include="Skills\Handlers\Swordsman\Bear.cs" />
     <Compile Include="Skills\Handlers\Swordsman\Liberate.cs" />
-    <Compile Include="Skills\Handlers\Swordsman\PainBarrier.cs" />
-    <Compile Include="Skills\Handlers\Swordsman\GungHo.cs" />
     <Compile Include="Skills\Handlers\Swordsman\Bash.cs" />
     <Compile Include="Skills\Handlers\Swordsman\Bear.cs" />
     <Compile Include="Skills\Handlers\Swordsman\BlossomBlader\ControlBlade.cs" />

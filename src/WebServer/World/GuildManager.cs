@@ -19,7 +19,10 @@ namespace Melia.Web.World
 			foreach (var guild in guilds)
 			{
 				if (long.TryParse(guild.Id, out var guildId))
+				{
 					this._guildIndexed.Add(guildId, guild);
+					_guildMembersIndexed.Add(guildId, WebServer.Instance.Database.GetGuildMembers(guildId));
+				}
 			}
 			Log.Info("Loaded {0} guilds from database.", guilds.Count);
 		}

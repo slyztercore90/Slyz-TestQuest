@@ -19,14 +19,16 @@ namespace Melia.Zone.Skills.Handlers.Chronomancer
 	[SkillHandler(SkillId.Chronomancer_Slow)]
 	public class Slow : IDynamicGroundSkillHandler
 	{
-		public void HandleCastStart(Skill skill, Character caster, float maxCastTime)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_NORMAL.Skill_4D(caster, skill.Id);
+			if (caster is Character character)
+				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
 		}
 
-		public void HandleCastEnd(Skill skill, Character caster, float maxCastTime)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_NORMAL.Skill_4E(caster, skill.Id, 2);
+			if (caster is Character character)
+				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 2);
 		}
 
 		/// <summary>

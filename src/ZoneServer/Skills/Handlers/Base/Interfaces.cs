@@ -43,13 +43,13 @@ namespace Melia.Zone.Skills.Handlers.Base
 	/// <summary>
 	/// A skill handler interface when the client provides a target
 	/// </summary>
-	public interface IDynamicCastSkillHandler : ISkillHandler
+	public interface IDynamicCasted : ISkillHandler
 	{
-		void HandleCastStart(Skill skill, Character caster, float maxCastTime);
-		void HandleCastEnd(Skill skill, Character caster, float maxCastTime);
+		void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime);
+		void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime);
 	}
 
-	public interface IDynamicGroundSkillHandler : IGroundSkillHandler, IDynamicCastSkillHandler { }
-	public interface IDynamicForceSkillHandler : IForceSkillHandler, IDynamicCastSkillHandler { }
-	public interface IDynamicTargetSkillHandler : ITargetSkillHandler, IDynamicCastSkillHandler { }
+	public interface IDynamicGroundSkillHandler : IGroundSkillHandler, IDynamicCasted { }
+	public interface IDynamicForceSkillHandler : IForceSkillHandler, IDynamicCasted { }
+	public interface IDynamicTargetSkillHandler : ITargetSkillHandler, IDynamicCasted { }
 }

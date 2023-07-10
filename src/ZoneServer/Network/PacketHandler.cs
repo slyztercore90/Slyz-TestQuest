@@ -1422,13 +1422,14 @@ namespace Melia.Zone.Network
 				return;
 			}
 
-			if (!ZoneServer.Instance.SkillHandlers.TryGetHandler<IDynamicCastSkillHandler>(skillId, out var handler))
+			if (!ZoneServer.Instance.SkillHandlers.TryGetHandler<IDynamicCasted>(skillId, out var handler))
 			{
 				character.ServerMessage(Localization.Get("This skill has not been implemented yet."));
 				Log.Warning("CZ_DYNAMIC_CASTING_START: No handler for skill '{0}' found.", skillId);
 				return;
 			}
-			handler.HandleCastStart(skill, character, maxCastTime);
+
+			handler.StartDynamicCast(skill, character, maxCastTime);
 		}
 
 		/// <summary>
@@ -1451,13 +1452,14 @@ namespace Melia.Zone.Network
 				return;
 			}
 
-			if (!ZoneServer.Instance.SkillHandlers.TryGetHandler<IDynamicCastSkillHandler>(skillId, out var handler))
+			if (!ZoneServer.Instance.SkillHandlers.TryGetHandler<IDynamicCasted>(skillId, out var handler))
 			{
 				character.ServerMessage(Localization.Get("This skill has not been implemented yet."));
 				Log.Warning("CZ_DYNAMIC_CASTING_END: No handler for skill '{0}' found.", skillId);
 				return;
 			}
-			handler.HandleCastEnd(skill, character, castTime);
+
+			handler.EndDynamicCast(skill, character, castTime);
 		}
 
 		/// <summary>

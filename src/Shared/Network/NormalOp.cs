@@ -57,7 +57,7 @@
 			public const int Died = 0x13;
 			public const int SkillEffect_14 = 0x14;
 			public const int PlayEffect = 0x16;
-			public const int SkillEffectSplash = 0x17;
+			public const int PlayForceEffect = 0x17;
 			public const int UpdateSkillEffect = 0x1F;
 			public const int SetEntityColor = 0x20;
 			public const int Skill_CallLuaFunc = 0x26;

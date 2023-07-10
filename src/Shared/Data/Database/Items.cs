@@ -61,6 +61,95 @@ namespace Melia.Shared.Data.Database
 		public float DarkResistence { get; set; }
 		public float SoulResistence { get; set; }
 
+		public float CrtHR { get; set; }
+		public float CrtATK { get; set; }
+		public float CrtDR { get; set; }
+		public float AddHR { get; set; }
+		public float AddDR { get; set; }
+		public float Str { get; set; }
+		public float Dex { get; set; }
+		public float Con { get; set; }
+		public float Int { get; set; }
+		public float Mna { get; set; }
+		public float Sr { get; set; }
+		public float Sdr { get; set; }
+		public float CrtMAtk { get; set; }
+		public float Mgp { get; set; }
+		public float AddSkillMaxR { get; set; }
+		public float Skillrange { get; set; }
+		public float Skillangle { get; set; }
+		public float Luck { get; set; }
+		public float Blockrate { get; set; }
+		public float Blk { get; set; }
+		public float BlkBreak { get; set; }
+		public float Revive { get; set; }
+		public float HitCount { get; set; }
+		public float BackHit { get; set; }
+		public float SkillPower { get; set; }
+		public float Aspd { get; set; }
+		public float Mspd { get; set; }
+		public float KdPow { get; set; }
+		public float MHp { get; set; }
+		public float MSp { get; set; }
+		public float Msta { get; set; }
+		public float RHp { get; set; }
+		public float RSp { get; set; }
+		public float RSptime { get; set; }
+		public float RSta { get; set; }
+		public float AddCloth { get; set; }
+		public float AddLeather { get; set; }
+		public float AddChain { get; set; }
+		public float AddIron { get; set; }
+		public float AddGhost { get; set; }
+		public float AddSmallsize { get; set; }
+		public float AddMiddlesize { get; set; }
+		public float AddLargesize { get; set; }
+		public float AddForester { get; set; }
+		public float AddWidling { get; set; }
+		public float AddVelias { get; set; }
+		public float AddParamune { get; set; }
+		public float AddKlaida { get; set; }
+		public float AddFire { get; set; }
+		public float AddIce { get; set; }
+		public float AddPoison { get; set; }
+		public float AddLightning { get; set; }
+		public float AddEarth { get; set; }
+		public float AddSoul { get; set; }
+		public float AddHoly { get; set; }
+		public float AddDark { get; set; }
+		public float BaseSocket { get; set; }
+		public float MaxSocketCount { get; set; }
+		public float BaseSocketMa { get; set; }
+		public float MaxSocketMa { get; set; }
+		public float Minoption { get; set; }
+		public float Maxoption { get; set; }
+		public float MinRDmg { get; set; }
+		public float MaxRDmg { get; set; }
+		public float FdMinR { get; set; }
+		public float FdMaxR { get; set; }
+		public float Lifetime { get; set; }
+		public float Itemlifetimeover { get; set; }
+		public float NeedAppraisal { get; set; }
+		public float NeedRandomOption { get; set; }
+		public float Lootingchance { get; set; }
+		public float Isalwayshatvisible { get; set; }
+		public float SkillWidthRange { get; set; }
+		public float DynamicLifeTime { get; set; }
+		public float AddBossAtk { get; set; }
+		public float Teambelonging { get; set; }
+		public float AddDamageAtk { get; set; }
+		public float MagicEarthAtk { get; set; }
+		public float ResaddDamage { get; set; }
+		public float JobGrade { get; set; }
+		public float MagicIceAtk { get; set; }
+		public float MagicSoulAtk { get; set; }
+		public float MagicDarkAtk { get; set; }
+		public float MagicMeleeAtk { get; set; }
+		public float MagicFireAtk { get; set; }
+		public float MagicLightningAtk { get; set; }
+		public int Cooldown { get; set; }
+		public string CooldownGroup { get; set; }
+
 		public ItemScriptData Script { get; set; }
 		public SkillAttackType AttackType { get; set; } = SkillAttackType.None;
 
@@ -236,12 +325,6 @@ namespace Melia.Shared.Data.Database
 			data.MaxSocketMa = entry.ReadFloat("maxSocketMa", 0);
 			data.Minoption = entry.ReadFloat("minoption", 0);
 			data.Maxoption = entry.ReadFloat("maxoption", 0);
-			data.Aries = entry.ReadFloat("aries", 0);
-			data.AriesDEF = entry.ReadFloat("ariesDEF", 0);
-			data.Slash = entry.ReadFloat("slash", 0);
-			data.SlashDEF = entry.ReadFloat("slashDEF", 0);
-			data.Strike = entry.ReadFloat("strike", 0);
-			data.StrikeDEF = entry.ReadFloat("strikeDEF", 0);
 			data.AriesRange = entry.ReadFloat("ariesRange", 0);
 			data.SlashRange = entry.ReadFloat("slashRange", 0);
 			data.StrikeRange = entry.ReadFloat("strikeRange", 0);
@@ -249,14 +332,6 @@ namespace Melia.Shared.Data.Database
 			data.MaxRDmg = entry.ReadFloat("maxRDmg", 0);
 			data.FdMinR = entry.ReadFloat("fdMinR", 0);
 			data.FdMaxR = entry.ReadFloat("fdMaxR", 0);
-			data.ResFire = entry.ReadFloat("resFire", 0);
-			data.ResIce = entry.ReadFloat("resIce", 0);
-			data.ResPoison = entry.ReadFloat("resPoison", 0);
-			data.ResLightning = entry.ReadFloat("resLightning", 0);
-			data.ResEarth = entry.ReadFloat("resEarth", 0);
-			data.ResSoul = entry.ReadFloat("resSoul", 0);
-			data.ResHoly = entry.ReadFloat("resHoly", 0);
-			data.ResDark = entry.ReadFloat("resDark", 0);
 			data.Lifetime = entry.ReadFloat("lifetime", 0);
 			data.Itemlifetimeover = entry.ReadFloat("itemlifetimeover", 0);
 			data.NeedAppraisal = entry.ReadFloat("needAppraisal", 0);

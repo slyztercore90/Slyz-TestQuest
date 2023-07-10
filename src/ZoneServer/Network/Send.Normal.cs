@@ -601,7 +601,7 @@ namespace Melia.Zone.Network
 			int animationId4, int animationId5, float f3, float f4, float f5, float f6, float f7)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.SkillEffectSplash);
+				packet.PutInt(NormalOp.Zone.PlayForceEffect);
 
 				packet.PutInt(effectHandle);
 				packet.PutInt(caster.Handle);
