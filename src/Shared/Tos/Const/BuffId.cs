@@ -1,4 +1,4 @@
-﻿namespace Melia.Shared.Tos.Const
+namespace Melia.Shared.Tos.Const
 {
 	/// <summary>
 	/// A buff's id.

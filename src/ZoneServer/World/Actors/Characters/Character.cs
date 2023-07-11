@@ -993,7 +993,9 @@ namespace Melia.Zone.World.Actors.Characters
 					if (monster is ICombatEntity entity)
 					{
 						Send.ZC_FACTION(this.Connection, monster, entity.Faction);
-						Send.ZC_BUFF_LIST(this.Connection, entity);
+
+						if (entity.Components.Get<BuffComponent>()?.Count != 0)
+							Send.ZC_BUFF_LIST(this.Connection, entity);
 					}
 				}
 
@@ -1006,7 +1008,12 @@ namespace Melia.Zone.World.Actors.Characters
 
 				// Characters
 				foreach (var character in appearCharacters)
+				{
 					Send.ZC_ENTER_PC(this.Connection, character);
+
+					if (character.Components.Get<BuffComponent>()?.Count != 0)
+						Send.ZC_BUFF_LIST(this.Connection, character);
+				}
 
 				foreach (var character in disappearCharacters)
 					Send.ZC_LEAVE(this.Connection, character);

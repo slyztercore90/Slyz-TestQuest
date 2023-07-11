@@ -516,6 +516,9 @@ namespace Melia.Zone.Network
 		/// <param name="hits"></param>
 		public static void ZC_SKILL_FORCE_TARGET(ICombatEntity entity, ICombatEntity target, Skill skill, int forceId, IEnumerable<SkillHitInfo> hits)
 		{
+			var shootTime = skill.Properties.GetFloat(PropertyName.ShootTime);
+			var sklSpdRate = skill.Properties.GetFloat(PropertyName.SklSpdRate);
+
 			var packet = new Packet(Op.ZC_SKILL_FORCE_TARGET);
 
 			packet.PutInt((int)skill.Id);
@@ -523,11 +526,12 @@ namespace Melia.Zone.Network
 			packet.PutFloat(entity.Direction.Cos);
 			packet.PutFloat(entity.Direction.Sin);
 			packet.PutInt(1);
-			packet.PutFloat(550.7403f); // Delay until next attack?
+			packet.PutFloat(shootTime);
 			packet.PutFloat(1);
 			packet.PutInt(0);
 			packet.PutInt(forceId);
-			packet.PutFloat(1.089443f); // Bow Attack: 1.089443f Wand: 1.054772
+			packet.PutFloat(sklSpdRate);
+
 			packet.PutInt(0);
 			packet.PutInt(target?.Handle ?? 0);
 			packet.PutInt(0);
@@ -574,6 +578,9 @@ namespace Melia.Zone.Network
 		/// <param name="hits"></param>
 		public static void ZC_SKILL_MELEE_GROUND(ICombatEntity entity, Skill skill, Position targetPos, int forceId, IEnumerable<SkillHitInfo> hits)
 		{
+			var shootTime = skill.Properties.GetFloat(PropertyName.ShootTime);
+			var sklSpdRate = skill.Properties.GetFloat(PropertyName.SklSpdRate);
+
 			var packet = new Packet(Op.ZC_SKILL_MELEE_GROUND);
 
 			packet.PutInt((int)skill.Id);
@@ -581,11 +588,11 @@ namespace Melia.Zone.Network
 			packet.PutFloat(entity.Direction.Cos);
 			packet.PutFloat(entity.Direction.Sin);
 			packet.PutInt(1);
-			packet.PutFloat((float)skill.Data.ShootTime.TotalMilliseconds);
+			packet.PutFloat(shootTime);
 			packet.PutFloat(1);
 			packet.PutInt(0);
 			packet.PutInt(forceId);
-			packet.PutFloat(1.083666f);
+			packet.PutFloat(sklSpdRate);
 
 			// This does _not_ look like a handle to me... And sending a
 			// single target handle for an AoE skill packet doesn't make
@@ -626,6 +633,8 @@ namespace Melia.Zone.Network
 		/// <param name="hits"></param>
 		public static void ZC_SKILL_MELEE_TARGET(ICombatEntity entity, Skill skill, ICombatEntity target, IEnumerable<SkillHitInfo> hits)
 		{
+			var shootTime = skill.Properties.GetFloat(PropertyName.ShootTime);
+			var sklSpdRate = skill.Properties.GetFloat(PropertyName.SklSpdRate);
 			var forceId = hits?.FirstOrDefault()?.ForceId ?? 0;
 
 			var packet = new Packet(Op.ZC_SKILL_MELEE_TARGET);
@@ -635,11 +644,11 @@ namespace Melia.Zone.Network
 			packet.PutFloat(entity.Direction.Cos);
 			packet.PutFloat(entity.Direction.Sin);
 			packet.PutInt(1);
-			packet.PutFloat((float)skill.Data.ShootTime.TotalMilliseconds);
+			packet.PutFloat(shootTime);
 			packet.PutFloat(1);
 			packet.PutInt(0);
 			packet.PutInt(forceId);
-			packet.PutFloat(1.083666f);
+			packet.PutFloat(sklSpdRate);
 
 			// This does _not_ look like a handle to me... And sending a
 			// single target handle for an AoE skill packet doesn't make
@@ -4953,77 +4962,103 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// When view another player's character view the submenu
+		/// Display's a character's information in a side-panel.
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="character"></param>
 		public static void ZC_PROPERTY_COMPARE(IZoneConnection conn, Character character)
 		{
-			// TODO: This method is in desperate need of a cleanup.
+			var jobs = character.Jobs.GetList();
+			var properties = character.Properties.GetAll();
+			var propertiesSize = properties.GetByteCount();
+			var equipItems = character.Inventory.GetEquip();
 
 			var packet = new Packet(Op.ZC_PROPERTY_COMPARE);
-
-			var propertyList = character.Properties.GetAll();
-			var propertiesSize = propertyList.GetByteCount();
-			var equip = character.Inventory.GetEquip();
 
 			packet.PutInt(character.Handle);
 			packet.PutString(character.Name, 65);
 			packet.PutLong(character.ObjectId);
-			packet.PutLong(character.AccountObjectId);
-			packet.PutEmptyBin(5);
-			packet.PutByte(1);
-			packet.PutInt(1624);
-			packet.PutLong(1624);
-			packet.PutString(character.TeamName, 64);
+			packet.PutLong(character.AccountId);
+			packet.PutInt(0);
+			packet.PutByte(0);
+			packet.PutByte(0);
+			packet.PutInt(-1); // adventurerIndex
+			packet.PutInt(0); // adventurerRank
+			packet.PutInt(0); // achievementCount
+			packet.PutInt(0);
 
-			packet.PutString(character.Name, 64);
-			packet.PutShort(0);
+			packet.PutString(character.TeamName, 64);
+			packet.PutString(character.Name, 65);
+			packet.PutByte(0);
 			packet.PutShort((short)character.JobId);
-			packet.PutInt((int)character.JobId);
-			packet.PutInt(11);
-			packet.PutShort(1);
-			packet.PutLong(11);
+			packet.PutInt(0);
+			packet.PutByte((byte)character.Gender);
+			packet.PutShort(0);
+			packet.PutEmptyBin(25);
+			packet.PutShort(1001); // serverGroupId
+
+			packet.PutShort(0);
+			packet.PutInt(character.Level);
+			packet.PutInt(0);
+
+			for (var i = 0; i < 4; ++i)
+			{
+				if (i < jobs.Length)
+					packet.PutShort((short)jobs[i].Id);
+				else
+					packet.PutShort(0);
+			}
+
 			packet.PutLong(0);
-			packet.PutEmptyBin(6);
-			packet.PutInt(1003);
-			packet.PutInt(10); // ?
-			packet.PutByte(0x80);
-			packet.PutByte(0x80);
-			packet.PutByte(0x80);
-			packet.PutByte(0xFF);
-			packet.PutLong((long)character.JobId);
-			packet.PutLong(0);
-			packet.PutShort(1490);
-			packet.PutShort(215);
+			packet.PutShort(propertiesSize);
+			packet.PutShort(0); // etcPropertySize
 
 			packet.AddAppearancePc(character);
-			packet.AddProperties(propertyList);
 
-			foreach (var equipItem in equip)
+			packet.AddProperties(properties);
+			//packet.AddProperties(etcProperties);
+
+			foreach (var equipItemKv in equipItems)
 			{
-				propertyList = equipItem.Value.Properties.GetAll();
-				propertiesSize = propertyList.GetByteCount();
+				var equipSlot = equipItemKv.Key;
+				var equipItem = equipItemKv.Value;
 
-				packet.PutInt(equipItem.Value.Id);
-				packet.PutInt(propertiesSize);
+				var equipItemProperties = equipItem.Properties.GetAll();
+				var equipItemPropertiesSize = equipItemProperties.GetByteCount();
 
-				if ((equipItem.Value.Id >= 2 && equipItem.Value.Id <= 10) || equipItem.Value.Id == 10000 || equipItem.Value.Id == 11000 || equipItem.Value.Id == 12101 || equipItem.Value.Id == 9999996)
-					packet.PutLong(0);
-				else
-					packet.PutLong(equipItem.Value.Id);
-
-				packet.PutInt((int)equipItem.Key);
+				packet.PutInt(equipItem.Id);
+				packet.PutShort(equipItemPropertiesSize);
+				packet.PutShort(equipItem.Amount);
+				packet.PutLong(equipItem.ObjectId);
+				packet.PutInt((int)equipSlot);
 				packet.PutInt(0);
-				packet.PutShort(0);
-				packet.AddProperties(propertyList);
+				packet.PutShort(2);
 
-				if (propertiesSize > 0)
+				if (equipItemPropertiesSize > 0)
 				{
-					packet.PutShort(0);
-					packet.PutLong(equipItem.Value.Id);
-					packet.PutShort(0);
+					packet.AddProperties(equipItemProperties);
+
+					packet.PutShort(0); // sealOptionSize
+					packet.PutLong(equipItem.ObjectId);
+					packet.PutShort(0); // gemCount
 				}
+			}
+
+			packet.PutShort(jobs.Length);
+			foreach (var job in jobs)
+			{
+				packet.PutShort((short)job.Id);
+				packet.PutByte(0x00);
+				packet.PutByte(0xB1);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
+				packet.PutInt(0);
 			}
 
 			conn.Send(packet);
@@ -5090,7 +5125,30 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// Buff list, sent when a entity spawns?
+		/// Updates the entity's buffs on the client.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="entity"></param>
+		public static void ZC_BUFF_LIST(IZoneConnection conn, ICombatEntity entity)
+		{
+			var buffs = entity.Components.Get<BuffComponent>();
+			var buffCount = buffs?.Count ?? 0;
+
+			var packet = new Packet(Op.ZC_BUFF_LIST);
+
+			packet.PutInt(entity.Handle);
+			packet.PutByte((byte)buffCount);
+			if (buffCount > 0)
+			{
+				foreach (var buff in buffs.GetList())
+					packet.AddBuff(buff);
+			}
+
+			conn.Send(packet);
+		}
+
+		/// <summary>
+		/// Updates the entity's buffs on all clients in range.
 		/// </summary>
 		/// <param name="entity"></param>
 		public static void ZC_BUFF_LIST(ICombatEntity entity)
@@ -5108,7 +5166,7 @@ namespace Melia.Zone.Network
 					packet.AddBuff(buff);
 			}
 
-			entity.Map.Broadcast(packet);
+			entity.Map.Broadcast(packet, entity);
 		}
 
 		/// <summary>
@@ -5544,8 +5602,59 @@ namespace Melia.Zone.Network
 			character.Connection.Send(packet);
 		}
 
-		public static void DUMMY(IZoneConnection conn)
+		/// <summary>
+		/// Toggles character's fluting stance.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="enabled"></param>
+		public static void ZC_READY_FLUTING(Character character, bool enabled)
 		{
+			var packet = new Packet(Op.ZC_READY_FLUTING);
+
+			packet.PutInt(character.Handle);
+			packet.PutByte(enabled);
+
+			character.Map.Broadcast(packet, character);
+		}
+
+		/// <summary>
+		/// Makes character play a note on their flute.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="note"></param>
+		/// <param name="octave"></param>
+		/// <param name="semitone"></param>
+		/// <param name="animate"></param>
+		public static void ZC_PLAY_FLUTING(Character character, int note, int octave, bool semitone, bool animate)
+		{
+			var packet = new Packet(Op.ZC_PLAY_FLUTING);
+
+			packet.PutInt(character.Handle);
+			packet.PutInt(note);
+			packet.PutInt(octave);
+			packet.PutByte(semitone);
+			packet.PutByte(animate);
+
+			character.Map.Broadcast(packet, character);
+		}
+
+		/// <summary>
+		/// Stops character playing the current note on their flute.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="note"></param>
+		/// <param name="octave"></param>
+		/// <param name="semitone"></param>
+		public static void ZC_STOP_FLUTING(Character character, int note, int octave, bool semitone)
+		{
+			var packet = new Packet(Op.ZC_STOP_FLUTING);
+
+			packet.PutInt(character.Handle);
+			packet.PutInt(note);
+			packet.PutInt(octave);
+			packet.PutByte(semitone);
+
+			character.Map.Broadcast(packet, character);
 		}
 	}
 }
