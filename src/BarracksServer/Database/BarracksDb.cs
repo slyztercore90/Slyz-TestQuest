@@ -2,13 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Remoting.Messaging;
 using System.Text;
 using Melia.Shared.Database;
-using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Yggdrasil.Logging;
 using Yggdrasil.Security.Hashing;
 using Yggdrasil.Util;
@@ -125,7 +123,7 @@ namespace Melia.Barracks.Database
 					account.SelectedBarrack = reader.GetInt32("barracksThema");
 					account.SelectedCharacterSlot = reader.GetInt32("selectedSlot");
 
-					var themas = reader.GetStringSafe("themas");
+					var themas = reader.GetString("themas");
 					account.Themas.Clear();
 					account.Themas.UnionWith(themas.Split(' ').Select(int.Parse));
 
