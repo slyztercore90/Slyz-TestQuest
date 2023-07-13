@@ -19,6 +19,14 @@ namespace Melia.Shared.Configuration.Files
 		public float ClassExpRate { get; protected set; }
 
 		public bool DisableSDR { get; protected set; }
+		public int AbilityPointCost { get; protected set; }
+
+		public int TicksPerMinute { get; protected set; }
+		public int MinutesPerHour { get; protected set; }
+		public int HoursPerDay { get; protected set; }
+		public int DaysPerMonth { get; protected set; }
+		public int MonthsPerYear { get; protected set; }
+		public bool EnableDayNightCycle { get; protected set; }
 
 		/// <summary>
 		/// Loads conf file and its options from the given path.
@@ -40,6 +48,14 @@ namespace Melia.Shared.Configuration.Files
 			this.ClassExpRate = this.GetFloat("class_exp_rate", 100);
 
 			this.DisableSDR = this.GetBool("disable_sdr", false);
+			this.AbilityPointCost = this.GetInt("ability_point_cost", 1000);
+
+			this.TicksPerMinute = this.GetInt("rt2gt_ms_per_minute", 1500) * 10000;
+			this.MinutesPerHour = this.GetInt("gt_minutes_per_hour", 60);
+			this.HoursPerDay = this.GetInt("gt_hours_per_day", 24);
+			this.DaysPerMonth = this.GetInt("gt_days_per_month", 40);
+			this.MonthsPerYear = this.GetInt("gt_months_per_year", 7);
+			this.EnableDayNightCycle = this.GetBool("enable_day_night_cycle", true);
 		}
 	}
 }

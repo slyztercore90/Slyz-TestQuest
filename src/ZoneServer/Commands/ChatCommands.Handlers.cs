@@ -4,6 +4,8 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Melia.Shared.Data.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Network;
@@ -12,6 +14,7 @@ using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting;
 using Melia.Zone.Skills;
+using Melia.Zone.World;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Actors.CombatEntities.Components;
@@ -40,7 +43,6 @@ namespace Melia.Zone.Commands
 			// Official
 			this.Add("requpdateequip", "", "", this.HandleReqUpdateEquip);
 			this.Add("buyabilpoint", "<amount>", "", this.HandleBuyAbilPoint);
-			this.Add("learnpcabil", "<ability class name>", "", this.HandleLearnPcAbil);
 
 			// Custom
 			this.Add("buyshop", "", "", this.HandleBuyShop);
@@ -49,6 +51,7 @@ namespace Melia.Zone.Commands
 			// Normal
 			this.Add("where", "", "Displays current location.", this.HandleWhere);
 			this.Add("name", "<new name>", "Changes character name.", this.HandleName);
+			this.Add("time", "", "Displays the current server and game time.", this.HandleTime);
 			this.Add("help", "[command]", "Displays available commands or information about a certain command.", this.HandleHelp);
 
 			// VIP
@@ -124,6 +127,25 @@ namespace Melia.Zone.Commands
 				sender.ServerMessage("You are here: {0} ({1}), {2} (Direction: {3:0.#####}°)", target.Map.Name, target.Map.Id, target.Position, target.Direction.DegreeAngle);
 			else
 				sender.ServerMessage("{3} is here: {0} ({1}), {2} (Direction: {3:0.#####}°)", target.Map.Name, target.Map.Id, target.Position, target.TeamName, target.Direction.DegreeAngle);
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Displays the current server and game time.
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="commandName"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleTime(Character sender, Character target, string message, string commandName, Arguments args)
+		{
+			var now = GameTime.Now;
+
+			target.ServerMessage(Localization.Get("Server Time: {0:yyyy-MM-dd HH:mm}"), now.DateTime);
+			target.ServerMessage(Localization.Get("Game Time: {0:y-M-dd HH:mm}"), now);
 
 			return CommandResult.Okay;
 		}
@@ -1105,153 +1127,19 @@ namespace Melia.Zone.Commands
 				return CommandResult.Okay;
 			}
 
-			var cost = (amount * 1000);
+			var costPerPoint = ZoneServer.Instance.Conf.World.AbilityPointCost;
+			var totalCost = (amount * costPerPoint);
 			var silver = sender.Inventory.CountItem(ItemId.Silver);
-			if (silver < cost)
+			if (silver < totalCost)
 			{
 				Log.Debug("HandleBuyAbilPoint: User '{0}' didn't have enough money.", sender.Connection.Account.Name);
 				return CommandResult.Okay;
 			}
 
-			sender.Inventory.Remove(ItemId.Silver, cost, InventoryItemRemoveMsg.Given);
+			sender.Inventory.Remove(ItemId.Silver, totalCost, InventoryItemRemoveMsg.Given);
 			sender.ModifyAbilityPoints(amount);
 
-			Send.ZC_ADDON_MSG(sender, AddonMessage.SUCCESS_BUY_ABILITY_POINT, "BLANK");
-
-			return CommandResult.Okay;
-		}
-
-		/// <summary>
-		/// Official slash command to learn abilities.
-		/// </summary>
-		/// <param name="sender"></param>
-		/// <param name="target"></param>
-		/// <param name="message"></param>
-		/// <param name="command"></param>
-		/// <param name="args"></param>
-		/// <returns></returns>
-		private CommandResult HandleLearnPcAbil(Character sender, Character target, string message, string command, Arguments args)
-		{
-			// Since this command is sent via UI interactions, we'll not
-			// use any automated command result messages, but we'll leave
-			// debug messages for now, in case of unexpected values.
-
-			if (args.Count != 2 || !int.TryParse(args.Get(1), out var levels) || levels < 1)
-			{
-				Log.Debug("HandleLearnPcAbil: Invalid call by user '{0}': {1}", sender.Connection.Account.Name, command);
-				return CommandResult.Okay;
-			}
-
-			var className = args.Get(0);
-
-			var abilityData = ZoneServer.Instance.Data.AbilityDb.Find(className);
-			if (abilityData == null)
-			{
-				Log.Debug("HandleLearnPcAbil: User '{0}' tried to learn non-existent ability '{1}'.", sender.Connection.Account.Name, className);
-				return CommandResult.Okay;
-			}
-
-			// All we get here is the ability name, but whether it can
-			// be learned or not potentially depends on any of the job's
-			// ability tree's entries. We have to check whether the ability
-			// can be learned by any of the character's jobs.
-
-			var abilityId = abilityData.Id;
-			var canLearn = false;
-			var jobs = sender.Jobs.GetList();
-
-			AbilityTreeData abilityTreeData = null;
-			foreach (var job in jobs)
-			{
-				// An ability can be learned by a job if there's an entry
-				// for it in the tree and an unlock condition is given.
-				var jobAbilityTreeData = ZoneServer.Instance.Data.AbilityTreeDb.Find(job.Id, abilityId);
-				if (jobAbilityTreeData == null || !jobAbilityTreeData.HasUnlockScript)
-					continue;
-
-				var scriptName = jobAbilityTreeData.UnlockScriptName;
-				var argStr = jobAbilityTreeData.UnlockScriptArgStr;
-				var argInt = jobAbilityTreeData.UnlockScriptArgNum;
-
-				if (!ScriptableFunctions.AbilityUnlock.TryGet(scriptName, out var func))
-				{
-					Log.Warning("HandleLearnPcAbil: Ability unlocked check function '{0}' not found.", scriptName);
-					continue;
-				}
-
-				canLearn = func(sender, argStr, argInt, abilityData);
-				abilityTreeData = jobAbilityTreeData;
-				break;
-			}
-
-			if (!canLearn)
-			{
-				Log.Debug("HandleLearnPcAbil: User '{0}' tried to learn ability '{1}', which they can't learn (yet).", sender.Connection.Account.Name, className);
-				return CommandResult.Okay;
-			}
-
-			var ability = sender.Abilities.Get(abilityId);
-			var currentLevel = (ability == null ? 0 : ability.Level);
-			var newLevel = (currentLevel + levels);
-			var maxLevel = abilityTreeData.MaxLevel;
-
-			if (newLevel > maxLevel)
-			{
-				Log.Debug("HandleLearnPcAbil: User '{0}' tried to increase ability '{1}'s level past the max level of {2}.", sender.Connection.Account.Name, className, maxLevel);
-				return CommandResult.Okay;
-			}
-
-			// Price and time can come either from the actual values,
-			// or from functions that return both.
-
-			var price = abilityTreeData.Price;
-			var time = abilityTreeData.Time;
-
-			if (abilityTreeData.HasPriceTimeScript)
-			{
-				price = 0;
-
-				if (!ScriptableFunctions.AbilityPrice.TryGet(abilityTreeData.PriceTimeScript, out var func))
-				{
-					Log.Warning("HandleLearnPcAbil: Ability price/time calculation function '{0}' not found.", abilityTreeData.PriceTimeScript);
-				}
-				else
-				{
-					for (var i = currentLevel + 1; i <= newLevel; ++i)
-					{
-						func(sender, abilityData, abilityTreeData, i, out var addPrice, out time);
-						price += addPrice;
-					}
-				}
-			}
-
-			var points = sender.Properties.GetFloat(PropertyName.AbilityPoint);
-			if (points < price)
-			{
-				Log.Debug("HandleLearnPcAbil: User '{0}' didn't have enough points.", sender.Connection.Account.Name);
-				return CommandResult.Okay;
-			}
-
-			//Log.Debug("Learn: {0}", abilityData.EngName);
-			//Log.Debug("- From: {0}", currentLevel);
-			//Log.Debug("- To: {0}", newLevel);
-			//Log.Debug("- Price: {0}", price);
-			//Log.Debug("- Time: {0}", time);
-
-			// Add ability if character doesn't have it yet
-			if (ability == null)
-			{
-				ability = new Ability(abilityId, 0);
-				sender.Abilities.Add(ability);
-			}
-
-			// Update ability
-			ability.Level += levels;
-			Send.ZC_OBJECT_PROPERTY(sender.Connection, ability);
-
-			sender.ModifyAbilityPoints(-price);
-			Send.ZC_ADDON_MSG(sender, AddonMessage.RESET_ABILITY_UP, "Ability_" + abilityTreeData.Category);
-			Send.ZC_ADDON_MSG(sender, AddonMessage.SUCCESS_LEARN_ABILITY, abilityTreeData.Category);
+			Send.ZC_ADDON_MSG(sender, AddonMessage.SUCCESS_BUY_ABILITY_POINT, 0, "BLANK");
 
 			return CommandResult.Okay;
 		}

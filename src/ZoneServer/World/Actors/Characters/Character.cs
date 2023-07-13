@@ -661,7 +661,7 @@ namespace Melia.Zone.World.Actors.Characters
 			Send.ZC_MAX_EXP_CHANGED(this, 0);
 			Send.ZC_PC_LEVELUP(this);
 			Send.ZC_OBJECT_PROPERTY(this);
-			Send.ZC_ADDON_MSG(this, 3, "NOTICE_Dm_levelup_base", "!@#$Auto_KaeLigTeo_LeBeli_SangSeungHayeossSeupNiDa#@!");
+			Send.ZC_ADDON_MSG(this, "NOTICE_Dm_levelup_base", 3, "!@#$Auto_KaeLigTeo_LeBeli_SangSeungHayeossSeupNiDa#@!");
 			Send.ZC_NORMAL.PlayEffect(this, "F_pc_level_up", 3);
 		}
 
@@ -678,7 +678,7 @@ namespace Melia.Zone.World.Actors.Characters
 			this.Heal();
 
 			Send.ZC_OBJECT_PROPERTY(this);
-			Send.ZC_ADDON_MSG(this, 3, "NOTICE_Dm_levelup_skill", "!@#$Auto_KeulLeSeu_LeBeli_SangSeungHayeossSeupNiDa#@!");
+			Send.ZC_ADDON_MSG(this, "NOTICE_Dm_levelup_skill", 3, "!@#$Auto_KeulLeSeu_LeBeli_SangSeungHayeossSeupNiDa#@!");
 			Send.ZC_NORMAL.PlayEffect(this, "F_pc_joblevel_up", 3);
 		}
 
@@ -778,7 +778,12 @@ namespace Melia.Zone.World.Actors.Characters
 			abilityPoints += amount;
 			this.Properties.SetString(PropertyName.AbilityPoint, abilityPoints.ToString());
 
-			Send.ZC_OBJECT_PROPERTY(this, PropertyName.AbilityPoint);
+			// For some reason the client no longer reads the ability
+			// point property when updating the amount. Instead there's
+			// the commander info now.
+
+			//Send.ZC_OBJECT_PROPERTY(this, PropertyName.AbilityPoint);
+			Send.ZC_CUSTOM_COMMANDER_INFO(this, CommanderInfoType.AbilityPoints, abilityPoints);
 		}
 
 		/// <summary>
@@ -874,7 +879,12 @@ namespace Melia.Zone.World.Actors.Characters
 					Send.ZC_ENTER_MONSTER(this.Connection, monster);
 
 					if (monster is ICombatEntity entity)
+					{
 						Send.ZC_FACTION(this.Connection, monster, entity.Faction);
+
+						if (entity.Components.Get<BuffComponent>()?.Count != 0)
+							Send.ZC_BUFF_LIST(this.Connection, entity);
+					}
 				}
 
 				foreach (var monster in disappearMonsters)
@@ -882,7 +892,12 @@ namespace Melia.Zone.World.Actors.Characters
 
 				// Characters
 				foreach (var character in appearCharacters)
+				{
 					Send.ZC_ENTER_PC(this.Connection, character);
+
+					if (character.Components.Get<BuffComponent>()?.Count != 0)
+						Send.ZC_BUFF_LIST(this.Connection, character);
+				}
 
 				foreach (var character in disappearCharacters)
 					Send.ZC_LEAVE(this.Connection, character);
