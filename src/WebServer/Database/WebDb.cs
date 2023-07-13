@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using Melia.Shared.Tos.Const.Web;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.Database;
-using MySql.Data.MySqlClient;
 using Yggdrasil.Logging;
+using MySqlConnector;
 
 namespace Melia.Web.Database
 {

@@ -2,8 +2,7 @@
 using System.Collections.Generic;
 using Melia.Shared.Database;
 using Melia.Shared.Tos.Const;
-using MySql.Data.MySqlClient;
-using Yggdrasil.Security.Hashing;
+using MySqlConnector;
 
 namespace Melia.Social.Database
 {

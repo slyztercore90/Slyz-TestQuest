@@ -14,7 +14,7 @@
             The errors that occurred.
             </summary>
         </member>
-        <member name="M:Yggdrasil.Scripting.CompilerErrorException.#ctor(System.CodeDom.Compiler.CompilerErrorCollection)">
+        <member name="M:Yggdrasil.Scripting.CompilerErrorException.#ctor(System.Collections.Generic.List{System.CodeDom.Compiler.CompilerError})">
             <summary>
             Creates new instance.
             </summary>
@@ -123,17 +123,15 @@
             scripts.
             </summary>
         </member>
-        <member name="M:Yggdrasil.Scripting.ScriptLoader.#ctor(System.CodeDom.Compiler.CodeDomProvider)">
+        <member name="M:Yggdrasil.Scripting.ScriptLoader.#ctor">
             <summary>
-            Creates new instance, using the given CodeDomProvider to compile
-            scripts and no caching.
+            Creates new instance
             </summary>
             <param name="provider"></param>
         </member>
-        <member name="M:Yggdrasil.Scripting.ScriptLoader.#ctor(System.CodeDom.Compiler.CodeDomProvider,System.String)">
+        <member name="M:Yggdrasil.Scripting.ScriptLoader.#ctor(System.String)">
             <summary>
-            Creates new instance, using the given CodeDomProvider to compile
-            scripts, caching the result in the given file.
+            Creates new instance, caching the result in the given file.
             </summary>
             <param name="provider"></param>
             <param name="cacheFilePath"></param>
@@ -172,6 +170,24 @@
             <param name="priorityFolders"></param>
             <returns></returns>
         </member>
+        <member name="M:Yggdrasil.Scripting.ScriptLoader.AddAssembly(System.String)">
+            <summary>
+            Adds an assembly to References for use when compiling scripts
+            </summary>
+            <param name="assemblyDll"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Scripting.ScriptLoader.AddAssemblies(System.String[])">
+            <summary>
+            Helper method to add multiple assemblies at once.
+            </summary>
+            <param name="assemblies"></param>
+        </member>
+        <member name="M:Yggdrasil.Scripting.ScriptLoader.AddNetCoreDefaultReferences">
+            <summary>
+            Helper method to add default .net core references for compiling scripts.
+            </summary>
+        </member>
         <member name="M:Yggdrasil.Scripting.ScriptLoader.LoadFromList(System.Collections.Generic.IEnumerable{System.String})">
             <summary>
             Loads all files in the given list.
@@ -202,6 +218,14 @@
             </summary>
             <param name="scriptFilesList"></param>
             <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Scripting.ScriptLoader.EmitToArray(Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Takes a compilation and emits the resulting executable scripts as a byte array.
+            </summary>
+            <param name="compilation"></param>
+            <returns></returns>
+            <exception cref="T:Yggdrasil.Scripting.CompilerErrorException"></exception>
         </member>
         <member name="M:Yggdrasil.Scripting.ScriptLoader.ClearTempFiles">
             <summary>

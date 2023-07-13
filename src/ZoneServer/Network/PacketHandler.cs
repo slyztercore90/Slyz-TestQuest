@@ -3266,32 +3266,6 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// When resurrect is selected from the dialog
-		/// </summary>
-		/// <remarks>
-		/// Currently broken because visually character stays on in dead stance
-		/// </remarks>
-		/// <param name="conn"></param>
-		/// <param name="packet"></param>
-		[PacketHandler(Op.CZ_RESURRECT)]
-		public void CZ_RESURRECT(IZoneConnection conn, Packet packet)
-		{
-			var command = packet.GetByte();
-
-			var character = conn.SelectedCharacter;
-			if (command == 1)
-			{
-				//Send.ZC_RESET_VIEW(conn);
-				character.Warp(character.MapId, character.Position);
-				Send.ZC_RESURRECT_SAVE_POINT_ACK(character);
-				Send.ZC_ENTER_PC(conn, character);
-				Send.ZC_NORMAL.Revive(character);
-				Send.ZC_RESURRECT(character, character.Hp, character.MaxHp);
-				character.Heal(character.MaxHp / 2, character.Sp);
-			}
-		}
-
-		/// <summary>
 		/// When warping from warp function
 		/// </summary>
 		/// <param name="conn"></param>
@@ -4284,18 +4258,6 @@ namespace Melia.Zone.Network
 				cells.Add(new SkillCellPosition(cellX, cellZ));
 			}
 			character.Variables.Temp.Set("SkillCellList", cells);
-		}
-
-		/// <summary>
-		/// Garbage Packet sent on Death
-		/// </summary>
-		/// <param name="conn"></param>
-		/// <param name="packet"></param>
-		[PacketHandler(Op.CZ_PC_DEATH)]
-		public void CZ_PC_DEATH(IZoneConnection conn, Packet packet)
-		{
-			if (conn.SelectedCharacter.IsDead)
-				Send.ZC_RESURRECT_DIALOG(conn);
 		}
 
 		/// <summary>

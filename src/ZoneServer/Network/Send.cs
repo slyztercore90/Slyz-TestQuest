@@ -2291,7 +2291,7 @@ namespace Melia.Zone.Network
 		/// Makes actor appear dead on all clients in range of it.
 		/// </summary>
 		/// <param name="actor"></param>
-		public static void ZC_DEAD(IActor actor, IActor killer = null, bool hideCorpse = false, isOverkill = false, isSpecialDrop = false)
+		public static void ZC_DEAD(IActor actor, IActor killer = null, bool hideCorpse = false, bool isOverkill = false, bool isSpecialDrop = false)
 		{
 			var packet = new Packet(Op.ZC_DEAD);
 
@@ -3099,49 +3099,6 @@ namespace Melia.Zone.Network
 			packet.PutInt(0);
 
 			entity.Map.Broadcast(packet, entity);
-		}
-
-		/// <summary>
-		/// Sends ZC_RESURRECT_DIALOG to character on death
-		/// </summary>
-		/// <param name="conn"></param>
-		public static void ZC_RESURRECT_DIALOG(IZoneConnection conn)
-		{
-			var packet = new Packet(Op.ZC_RESURRECT_DIALOG);
-
-			packet.PutInt(0); // 0
-			packet.PutEmptyBin(512);
-			packet.PutByte(0); // i364857 Added
-
-			conn.Send(packet);
-		}
-
-		/// <summary>
-		/// Sends ZC_RESURRECT_SAVE_POINT_ACK to character after death
-		/// </summary>
-		/// <param name="character"></param>
-		public static void ZC_RESURRECT_SAVE_POINT_ACK(Character character)
-		{
-			var packet = new Packet(Op.ZC_RESURRECT_SAVE_POINT_ACK);
-			packet.PutByte(0);
-
-			character.Connection.Send(packet);
-		}
-
-		/// <summary>
-		/// Revive the character visually
-		/// </summary>
-		/// <param name="character"></param>
-		/// <param name="hp"></param>
-		/// <param name="maxHp"></param>
-		public static void ZC_RESURRECT(Character character, int hp, int maxHp)
-		{
-			var packet = new Packet(Op.ZC_RESURRECT);
-			packet.PutInt(character.Handle);
-			packet.PutInt(hp);
-			packet.PutInt(maxHp);
-
-			character.Connection.Send(packet);
 		}
 
 		/// <summary>

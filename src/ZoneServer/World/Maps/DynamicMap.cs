@@ -11,7 +11,7 @@ namespace Melia.Zone.World.Maps
 		public DynamicMap(int id, string name = null) : base(id, name)
 		{
 			this.WorldId = ZoneServer.Instance.World.GenerateDynamicMapId();
-			this.Name = name ?? "DynamicMap" + this.Id;
+			this.ClassName = name ?? "DynamicMap" + this.Id;
 		}
 	}
 }

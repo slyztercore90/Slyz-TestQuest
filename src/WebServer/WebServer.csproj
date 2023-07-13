@@ -45,42 +45,11 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\lib\Yggdrasil.Data.JSON.dll</HintPath>
     </Reference>
+    <Reference Include="MySqlConnector">
+      <HintPath>..\..\lib\MySqlConnector.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Controllers\TosGuildController.cs" />
-    <Compile Include="Controllers\TosMarketController.cs" />
-    <Compile Include="Controllers\TosPatchController.cs" />
-    <Compile Include="Database\Character.cs" />
-    <Compile Include="Database\WebDb.cs" />
-    <Compile Include="Logging\YggdrasilLogger.cs" />
-    <Compile Include="Modules\PhpModule.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Serializer\CustomResponseSerializer.cs" />
-    <Compile Include="Util\FileUtils.cs" />
-    <Compile Include="Util\HttpContextExtensions.cs" />
-    <Compile Include="WebServer.cs" />
-    <Compile Include="World\GuildManager.cs" />
-    <Compile Include="World\MarketManager.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Shared\Shared.csproj">
-      <Project>{85bdc651-d262-4a0f-a415-609369f78837}</Project>
-      <Name>Shared</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
     <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 </Project>
