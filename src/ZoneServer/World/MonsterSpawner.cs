@@ -157,8 +157,7 @@ namespace Melia.Zone.World
 			{
 				if (!this.TryGetRandomPosition(out var pos))
 				{
-					Log.Warning($"MonsterSpawner: Couldn't find a valid spawn position for monster '{_monsterData.ClassName}' on map '{_map.Name}' at '{this.Area.Center}'.");
-					Debug.ShowShape(this._map, this.Area, TimeSpan.FromMinutes(5));
+					Log.Warning($"MonsterSpawner: Couldn't find a valid spawn position for monster '{_monsterData.ClassName}' on map '{_map.ClassName}'.");
 					continue;
 				}
 

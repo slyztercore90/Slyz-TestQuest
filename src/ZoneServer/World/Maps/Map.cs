@@ -85,12 +85,12 @@ namespace Melia.Zone.World.Maps
 		public int WorldId { get; protected set; }
 
 		/// <summary>
-		/// Map name.
+		/// Returns the map's unique class name.
 		/// </summary>
-		public string Name { get; protected set; }
+		public string ClassName { get; protected set; }
 
 		/// <summary>
-		/// Map id.
+		/// Returns the map's class id.
 		/// </summary>
 		public int Id { get; protected set; }
 
@@ -141,7 +141,7 @@ namespace Melia.Zone.World.Maps
 		public Map(int id, string name)
 		{
 			this.Id = id;
-			this.Name = name;
+			this.ClassName = name;
 
 			this.Load();
 		}
@@ -154,7 +154,7 @@ namespace Melia.Zone.World.Maps
 			this.Data = ZoneServer.Instance.Data.MapDb.Find(this.Id);
 
 			// A few maps don't seem to have any ground data.
-			if (ZoneServer.Instance.Data.GroundDb.TryFind(this.Name, out var groundData))
+			if (ZoneServer.Instance.Data.GroundDb.TryFind(this.ClassName, out var groundData))
 				this.Ground.Load(groundData);
 		}
 
@@ -392,6 +392,10 @@ namespace Melia.Zone.World.Maps
 				return _spawners.ToArray();
 		}
 
+		/// <summary>
+		/// Updates all spawners, spawning monsters as necessary.
+		/// </summary>
+		/// <param name="elapsed"></param>
 		public void UpdateSpawners(TimeSpan elapsed)
 		{
 			lock (_spawners)
