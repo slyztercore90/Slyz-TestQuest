@@ -79,6 +79,7 @@ namespace Melia.Zone.Database
 					account.Name = reader.GetStringSafe("name");
 					account.TeamName = reader.GetStringSafe("teamName");
 					account.Authority = reader.GetInt32("authority");
+					account.Type = (AccountType)reader.GetByte("type");
 					account.Settings.Parse(reader.GetStringSafe("settings"));
 					account.Medals = reader.GetInt32("medals");
 					account.GiftMedals = reader.GetInt32("giftMedals");
