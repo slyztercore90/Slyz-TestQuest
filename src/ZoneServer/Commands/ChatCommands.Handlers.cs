@@ -178,6 +178,7 @@ namespace Melia.Zone.Commands
 
 			target.ServerMessage(Localization.Get("Server Time: {0:yyyy-MM-dd HH:mm}"), now.DateTime);
 			target.ServerMessage(Localization.Get("Game Time: {0:y-M-dd HH:mm}"), now);
+			target.ServerMessage(Localization.Get("Time of Day: {0}"), now.TimeOfDay);
 
 			return CommandResult.Okay;
 		}

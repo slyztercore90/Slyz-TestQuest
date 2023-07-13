@@ -789,6 +789,18 @@ namespace Melia.Zone.Network
 			/// Assister Summon Skill Related?
 			/// </summary>
 			/// <param name="actor"></param>
+			public static void SetScale(Actor actor, string animationName, float animationScale, float animationSpeed = 0, byte b1 = 0, short s1 = 0)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var packetString))
+					throw new ArgumentException($"Packet string '{animationName}' not found.");
+				SetScale(actor, packetString.Id, animationScale, animationSpeed, b1, s1);
+			}
+
+			/// <summary>
+			/// Dummy (Unknown Purpose)
+			/// Assister Summon Skill Related?
+			/// </summary>
+			/// <param name="actor"></param>
 			public static void SetScale(Actor actor, int animationType, float animationScale, float animationSpeed = 0, byte b1 = 0, short s1 = 0)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);

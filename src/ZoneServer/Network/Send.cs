@@ -4966,7 +4966,7 @@ namespace Melia.Zone.Network
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="character"></param>
-		public static void ZC_PROPERTY_COMPARE(IZoneConnection conn, Character character)
+		public static void ZC_PROPERTY_COMPARE(IZoneConnection conn, Character character, bool isView)
 		{
 			var jobs = character.Jobs.GetList();
 			var properties = character.Properties.GetAll();
@@ -4978,14 +4978,14 @@ namespace Melia.Zone.Network
 			packet.PutInt(character.Handle);
 			packet.PutString(character.Name, 65);
 			packet.PutLong(character.ObjectId);
-			packet.PutLong(character.AccountId);
+			packet.PutLong(character.AccountObjectId);
 			packet.PutInt(0);
-			packet.PutByte(0);
+			packet.PutByte(isView);
 			packet.PutByte(0);
 			packet.PutInt(-1); // adventurerIndex
 			packet.PutInt(0); // adventurerRank
-			packet.PutInt(0); // achievementCount
-			packet.PutInt(0);
+			packet.PutInt(0); // achievementTitleCount
+			packet.PutInt(0);// achievementCount
 
 			packet.PutString(character.TeamName, 64);
 			packet.PutString(character.Name, 65);
@@ -4999,7 +4999,10 @@ namespace Melia.Zone.Network
 
 			packet.PutShort(0);
 			packet.PutInt(character.Level);
-			packet.PutInt(0);
+			packet.PutByte(0x80);
+			packet.PutByte(0x80);
+			packet.PutByte(0x80);
+			packet.PutByte(0xFF);
 
 			for (var i = 0; i < 4; ++i)
 			{
@@ -5032,7 +5035,7 @@ namespace Melia.Zone.Network
 				packet.PutLong(equipItem.ObjectId);
 				packet.PutInt((int)equipSlot);
 				packet.PutInt(0);
-				packet.PutShort(2);
+				packet.PutShort(0);
 
 				if (equipItemPropertiesSize > 0)
 				{
@@ -5129,7 +5132,7 @@ namespace Melia.Zone.Network
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="entity"></param>
-		public static void ZC_BUFF_LIST(IZoneConnection conn, ICombatEntity entity)
+		public static void ZC_BUFF_LIST(IZoneConnection conn, IActor entity)
 		{
 			var buffs = entity.Components.Get<BuffComponent>();
 			var buffCount = buffs?.Count ?? 0;
@@ -5151,7 +5154,7 @@ namespace Melia.Zone.Network
 		/// Updates the entity's buffs on all clients in range.
 		/// </summary>
 		/// <param name="entity"></param>
-		public static void ZC_BUFF_LIST(ICombatEntity entity)
+		public static void ZC_BUFF_LIST(IActor entity)
 		{
 			var buffs = entity.Components.Get<BuffComponent>();
 			var buffCount = buffs?.Count ?? 0;

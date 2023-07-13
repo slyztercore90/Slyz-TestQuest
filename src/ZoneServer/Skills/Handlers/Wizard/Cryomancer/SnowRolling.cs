@@ -76,7 +76,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 			Send.ZC_NORMAL.Skill_CallLuaFunc(snowball, AnimationName.MissileDead, 2, 4, 0, 3, 1);
 			Send.ZC_MOVE_ANIM(snowball, FixedAnimation.WLK, 0);
 			Send.ZC_STD_ANIM(snowball, FixedAnimation.WLK);
-			Send.ZC_NORMAL.SetScale(snowball, 908, 0.65f);
+			Send.ZC_NORMAL.SetScale(snowball, "F_wizard_snowrolling_ground", 0.65f);
 			Send.ZC_NORMAL.SetInvisible(snowball);
 			Send.ZC_NORMAL.Skill_Unknown_C6(snowball);
 			Send.ZC_NORMAL.Skill_OffsetY(snowball, 10.4f);

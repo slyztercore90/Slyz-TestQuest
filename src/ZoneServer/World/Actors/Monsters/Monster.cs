@@ -20,7 +20,7 @@ namespace Melia.Zone.World.Actors.Monsters
 		DateTime DisappearTime { get; }
 	}
 
-	public interface IMonsterBase : ISubActor, IMonsterAppearance, IMonsterAppearanceBase
+	public interface IMonsterBase : ISubActor, IMonsterAppearance, IMonsterAppearanceBase, ISpawn
 	{
 		/// <summary>
 		/// Returns the monster's type.

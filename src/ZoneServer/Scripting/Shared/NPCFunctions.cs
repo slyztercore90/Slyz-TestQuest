@@ -43,8 +43,6 @@ namespace Melia.Zone.Scripting.Shared
 		/// <summary>
 		/// Guild Tower
 		/// </summary>
-		/// <param name="player"></param>
-		/// <param name="npc"></param>
 		/// <param name="dialog"></param>
 		/// <returns></returns>
 		[DialogFunction("GUILD_HOUSE_OBJECT")]
@@ -94,8 +92,6 @@ namespace Melia.Zone.Scripting.Shared
 		/// <summary>
 		/// Warp Statues
 		/// </summary>
-		/// <param name="player"></param>
-		/// <param name="npc"></param>
 		/// <param name="dialog"></param>
 		/// <returns></returns>
 		public static async Task STATUE_WARP(Dialog dialog)

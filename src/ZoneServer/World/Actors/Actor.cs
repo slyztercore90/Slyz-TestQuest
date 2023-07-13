@@ -58,6 +58,17 @@ namespace Melia.Zone.World.Actors
 	}
 
 	/// <summary>
+	/// Represents a spawnable
+	/// </summary>
+	public interface ISpawn
+	{
+		/// <summary>
+		/// Spawn location
+		/// </summary>
+		Location SpawnLocation { get; set; }
+	}
+
+	/// <summary>
 	/// An object that can be placed on a map.
 	/// </summary>
 	public abstract class Actor : IActor

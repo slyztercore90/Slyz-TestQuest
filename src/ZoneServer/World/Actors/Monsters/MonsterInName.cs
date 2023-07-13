@@ -1,6 +1,7 @@
 ﻿using System;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.World;
 
 namespace Melia.Zone.World.Actors.Monsters
 {
@@ -118,6 +119,7 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// with the spawn.
 		/// </summary>
 		public int AssociatedHandle { get; set; }
+		public Location SpawnLocation { get; set; }
 
 		/// <summary>
 		/// Initializes the monster's properties.

@@ -2853,8 +2853,8 @@ namespace Melia.Zone.Network
 			// client, we'll disable it for now. More research is needed
 			// to get the structure of ZC_PROPERTY_COMPARE right.
 
-			character.ServerMessage(Localization.Get("This feature is not yet implemented."));
-			//Send.ZC_PROPERTY_COMPARE(conn, character);
+			//character.ServerMessage(Localization.Get("This feature is not yet implemented."));
+			Send.ZC_PROPERTY_COMPARE(conn, character, isView);
 			if (isLike)
 			{
 				//TODO Send poses and rotate?

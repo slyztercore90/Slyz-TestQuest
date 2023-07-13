@@ -320,7 +320,7 @@ namespace Melia.Zone.Scripting
 			var initialSpawnDelay = TimeSpan.FromSeconds(0);
 			var minRespawnDelay = Math2.Max(TimeSpan.FromSeconds(3), respawn);
 			var maxRespawnDelay = minRespawnDelay.Multiply(3);
-			var minAmount = Math.Max(1, (int)(maxAmount * 0.05));
+			var minAmount = Math.Max(1, (int)(maxAmount * 0.25));
 
 			return AddSpawner(monsterClassId, minAmount, maxAmount, initialSpawnDelay, minRespawnDelay, maxRespawnDelay, map, area, tendency, propertyOverrides);
 		}
@@ -589,7 +589,7 @@ namespace Melia.Zone.Scripting
 			ZoneServer.Instance.ChatCommands.Add(command, usage, description, func);
 			ZoneServer.Instance.Conf.Commands.CommandLevels[command] = new CommandAuthLevels(auth, targetAuth);
 		}
-		
+
 		/// <summary>
 		/// Returns a random element from the array.
 		/// </summary>

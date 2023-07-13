@@ -164,6 +164,7 @@ namespace Melia.Zone.World
 
 				var monster = new Mob(_monsterData.Id, MonsterType.Mob);
 				monster.Position = pos;
+				monster.SpawnLocation = new Location(this._map.Id, pos);
 				monster.FromGround = true;
 				monster.Tendency = this.Tendency;
 				monster.Died += this.OnMonsterDied;
