@@ -7,6 +7,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Melia.Shared.Data.Database;
 using Melia.Shared.Tos.Const;
 using Melia.Zone;
 using Melia.Zone.Network;
@@ -28,7 +29,7 @@ public class DialogTxFunctionsScript : GeneralScript
 		var recipeId = args.NumArgs[0];
 		var craftAmount = args.NumArgs[1];
 
-		if (!ZoneServer.Instance.Data.RecipeDb.TryFind(recipeId, out var recipe))
+		if (!ZoneServer.Instance.Data.RecipeDb.TryFind(recipeId, out var recipe) || !ZoneServer.Instance.Data.ItemDb.TryFind(a => a.ClassName == recipe.ProductClassName, out var itemData))
 		{
 			character.AddonMessage(AddonMessage.JOURNAL_DETAIL_CRAFT_EXEC_FAIL, "", 0);
 			return DialogTxResult.Fail;
@@ -39,50 +40,57 @@ public class DialogTxFunctionsScript : GeneralScript
 		var timeConsumed = 8;
 		var type = "CRAFT";
 
-		Send.ZC_NORMAL.TimeAction(character, "!@#$ItemCraftProcess#@!", type, timeConsumed, true);
-
-		var sessionObject = character.AddSessionObject(15509);
+		var sessionObject = character.AddSessionObject(SessionObjectId.TemporaryStopEvent);
 		sessionObject.Properties.SetFloat(PropertyName.Step1, 8500);
 		Send.ZC_OBJECT_PROPERTY(character, sessionObject, PropertyName.Step1);
+		Send.ZC_CANCEL_MOUSE_MOVE(character);
 
-		character.TimedEvents.Add(TimeSpan.FromSeconds(timeConsumed), TimeSpan.Zero, 0, "timeaction", caller =>
+		Send.ZC_NORMAL.TimeAction(character, "!@#$ItemCraftProcess#@!", type, timeConsumed, true);
+
+		character.TimedEvents?.Add(TimeSpan.FromSeconds(timeConsumed), TimeSpan.Zero, 0, "timeaction", caller =>
 		{
-			var evStopObject = (caller as Character)?.SessionObjects.Get(15509);
+			Send.ZC_NORMAL.TimeActionState(character, true);
+
+			var evStopObject = (caller as Character)?.SessionObjects.Get(SessionObjectId.TemporaryStopEvent);
 			evStopObject?.Properties.SetFloat(PropertyName.Goal1, 1);
 			Send.ZC_OBJECT_PROPERTY(character, evStopObject, PropertyName.Goal1);
-			(caller as Character)?.RemoveSessionObject(15509);
+			(caller as Character)?.RemoveSessionObject(SessionObjectId.TemporaryStopEvent);
 
-			Send.ZC_NORMAL.TimeActionState(caller, true);
-
-			for (var i = 0; i < craftAmount; i++)
+			foreach (var txItem in args.TxItems)
 			{
-				foreach (var txItem in args.TxItems)
-				{
-					var item = txItem.Item;
-					var amount = txItem.Amount;
+				var item = txItem.Item;
+				var amount = txItem.Amount;
 
-					if (!recipe.RequiredItems.ContainsKey(item.Data.ClassName) || amount < recipe.RequiredItems[item.Data.ClassName])
-					{
-						character.AddonMessage(AddonMessage.JOURNAL_DETAIL_CRAFT_EXEC_FAIL, recipe.ClassName);
-						return;
-					}
+				if (recipe.Ingredients.Exists(a => a.ClassName == item.Data.ClassName && amount < a.Amount * craftAmount))
+				{
+					character.AddonMessage(AddonMessage.JOURNAL_DETAIL_CRAFT_EXEC_FAIL, recipe.ClassName);
+					return;
 				}
 			}
 
-			for (var i = 0; i < craftAmount; i++)
+			foreach (var txItem in args.TxItems)
 			{
-				foreach (var txItem in args.TxItems)
-				{
-					character.Inventory.Remove(txItem.Item.ObjectId, txItem.Amount, InventoryItemRemoveMsg.Given);
-				}
+				character.Inventory.Remove(txItem.Item.ObjectId, txItem.Amount * craftAmount, InventoryItemRemoveMsg.Given);
 			}
 
-			character.AddItem(recipe.Item, recipe.ItemAmount * craftAmount);
+
+			var product = new Item(itemData.Id, recipe.ProductAmount * craftAmount);
+			if (args.StrArgs.Length == 2)
+			{
+				var customName = args.StrArgs[0];
+				var memo = args.StrArgs[1];
+				product.Properties.SetString(PropertyName.CustomName, customName);
+				product.Properties.SetString(PropertyName.Memo, memo);
+				product.Properties.SetString(PropertyName.Maker, character.Name);
+			}
+			character.Inventory.Add(product);
 			character.AddonMessage(AddonMessage.JOURNAL_DETAIL_CRAFT_EXEC_SUCCESS, recipe.ClassName, craftAmount);
+
 		}, caller =>
 		{
-			(caller as Character)?.RemoveSessionObject(15509);
-			Send.ZC_NORMAL.TimeActionState(caller, false);
+			(caller as Character)?.RemoveSessionObject(SessionObjectId.TemporaryStopEvent);
+			Send.ZC_NORMAL.TimeActionState(character, false);
+			character.AddonMessage(AddonMessage.JOURNAL_DETAIL_CRAFT_EXEC_FAIL, "", 0);
 		});
 
 		return DialogTxResult.Okay;

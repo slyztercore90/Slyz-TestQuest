@@ -525,8 +525,22 @@ namespace Melia.Zone.Scripting.Dialogues
 		/// <param name="args">arguments for the script</param>
 		public async Task ExecuteScript(string script, params object[] args)
 		{
+			this.State = DialogState.Ended;
 			Send.ZC_EXEC_CLIENT_SCP(this.Player.Connection, args.Length > 0 ? string.Format(script, args) : script);
 			this.Leave();
+
+			//await this.GetClientResponse();
+		}
+
+		/// <summary>
+		/// Custom dialog, predefined dialogs in the client
+		/// </summary>
+		/// <param name="function"></param>
+		/// <param name="dialog"></param>
+		/// <param name="argCount"></param>
+		public async Task TimedAction(string function, string dialog = "", int argCount = 0)
+		{
+			Send.ZC_CUSTOM_DIALOG(this.Player.Connection, function, dialog, argCount);
 
 			await this.GetClientResponse();
 		}

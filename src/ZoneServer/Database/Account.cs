@@ -5,8 +5,6 @@ using Melia.Shared.Network.Helpers;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Scripting;
 using Melia.Shared.Tos.Const;
-using Melia.Shared.Tos.Const.Web;
-using Melia.Zone.Network;
 using Melia.Zone.World;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Maps;
