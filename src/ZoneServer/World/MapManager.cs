@@ -80,7 +80,7 @@ namespace Melia.Zone.World
 		public bool Has(string mapName)
 		{
 			lock (_maps)
-				return _maps.Any(a => a.Value.Name == mapName);
+				return _maps.Any(a => a.Value.ClassName == mapName);
 		}
 
 		/// <summary>
@@ -126,7 +126,7 @@ namespace Melia.Zone.World
 		{
 			lock (_maps)
 			{
-				map = _maps.Values.FirstOrDefault(a => string.Compare(a.Name, mapName, true) == 0);
+				map = _maps.Values.FirstOrDefault(a => string.Compare(a.ClassName, mapName, true) == 0);
 				return (map != null);
 			}
 		}

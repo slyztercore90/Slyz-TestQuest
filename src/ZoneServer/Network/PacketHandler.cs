@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Melia.Shared.Data.Database;
+using Melia.Shared.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Network;
 using Melia.Shared.Network.Helpers;
@@ -108,7 +109,9 @@ namespace Melia.Zone.Network
 			map.AddCharacter(character);
 			conn.LoggedIn = true;
 			conn.GenerateSessionKey();
+
 			ZoneServer.Instance.Database.SaveSessionKey(character.DbId, conn.SessionKey);
+			ZoneServer.Instance.Database.UpdateLoginState(conn.Account.Id, character.DbId, LoginState.Zone);
 
 			Send.ZC_CONNECT_OK(conn, character);
 		}
@@ -370,7 +373,11 @@ namespace Melia.Zone.Network
 
 			var character = conn.SelectedCharacter;
 
-			// TODO: Sanity checks.
+			if (character.IsDead)
+			{
+				//Log.Warning("CZ_KEYBOARD_MOVE: User '{0}' tried to move while dead.", conn.Account.Name);
+				return;
+			}
 
 			character.Move(position, direction, f1);
 		}
@@ -2849,11 +2856,6 @@ namespace Melia.Zone.Network
 				return;
 			}
 
-			// Since our current response to this request is crashing the
-			// client, we'll disable it for now. More research is needed
-			// to get the structure of ZC_PROPERTY_COMPARE right.
-
-			//character.ServerMessage(Localization.Get("This feature is not yet implemented."));
 			Send.ZC_PROPERTY_COMPARE(conn, character, isView);
 			if (isLike)
 			{
@@ -3255,32 +3257,6 @@ namespace Melia.Zone.Network
 				}
 				// Try to add item to inventory
 				character.Inventory.Add(item);
-			}
-		}
-
-		/// <summary>
-		/// When resurrect is selected from the dialog
-		/// </summary>
-		/// <remarks>
-		/// Currently broken because visually character stays on in dead stance
-		/// </remarks>
-		/// <param name="conn"></param>
-		/// <param name="packet"></param>
-		[PacketHandler(Op.CZ_RESURRECT)]
-		public void CZ_RESURRECT(IZoneConnection conn, Packet packet)
-		{
-			var command = packet.GetByte();
-
-			var character = conn.SelectedCharacter;
-			if (command == 1)
-			{
-				//Send.ZC_RESET_VIEW(conn);
-				character.Warp(character.MapId, character.Position);
-				Send.ZC_RESURRECT_SAVE_POINT_ACK(character);
-				Send.ZC_ENTER_PC(conn, character);
-				Send.ZC_NORMAL.Revive(character);
-				Send.ZC_RESURRECT(character, character.Hp, character.MaxHp);
-				character.Heal(character.MaxHp / 2, character.Sp);
 			}
 		}
 
@@ -4280,18 +4256,6 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// Garbage Packet sent on Death
-		/// </summary>
-		/// <param name="conn"></param>
-		/// <param name="packet"></param>
-		[PacketHandler(Op.CZ_PC_DEATH)]
-		public void CZ_PC_DEATH(IZoneConnection conn, Packet packet)
-		{
-			if (conn.SelectedCharacter.IsDead)
-				Send.ZC_RESURRECT_DIALOG(conn);
-		}
-
-		/// <summary>
 		/// Request to start or stop playing the flute while resting.
 		/// </summary>
 		/// <param name="conn"></param>
@@ -4384,6 +4348,46 @@ namespace Melia.Zone.Network
 			// ones, and stop all if anything goes wrong.
 
 			Send.ZC_STOP_FLUTING(character, note, octave, semitone);
+		}
+
+		/// <summary>
+		/// Packet with unknown purpose that is spammed by the client
+		/// while the player character is dead.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(0x520A)]
+		public void CZ_InteractionCancel(IZoneConnection conn, Packet packet)
+		{
+			// The packet is spammed with a frequency of about 1-2 packets
+			// per millisecond. It's 64 bytes long, with the last 5 looking
+			// like random garbage data, though the packet doesn't seem to
+			// contain any useful information in general. Its name seems
+			// to be "CZ_InteractionCancel", though it doesn't appear in
+			// the op code list.
+		}
+
+		/// <summary>
+		/// Request from a player to revive their character.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_RESURRECT)]
+		public void CZ_RESURRECT(IZoneConnection conn, Packet packet)
+		{
+			var optionIdx = packet.GetByte();
+			var l1 = packet.GetLong();
+
+			var character = conn.SelectedCharacter;
+			var option = (ResurrectOptions)(1 << (int)optionIdx);
+
+			if (!character.IsDead)
+			{
+				Log.Warning("CZ_RESURRECT: User '{0}' tried to revive their character while not dead.", conn.Account.Name);
+				return;
+			}
+
+			character.Resurrect(option);
 		}
 	}
 }

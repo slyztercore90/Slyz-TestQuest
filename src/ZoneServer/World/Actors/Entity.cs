@@ -94,13 +94,6 @@ namespace Melia.Zone.World.Actors
 		/// </summary>
 		/// <param name="killer"></param>
 		void Kill(ICombatEntity killer);
-
-		/// <summary>
-		/// Returns a weapon attack speed based on the entity's attack and
-		/// the skill's type.
-		/// </summary>
-		/// <returns></returns>
-		float GetWeaponSpeed();
 	}
 
 	/// <summary>

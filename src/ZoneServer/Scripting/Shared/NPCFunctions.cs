@@ -487,7 +487,7 @@ namespace Melia.Zone.Scripting.Shared
 											var item = ZoneServer.Instance.Data.ItemDb.FindByClass("PersonalHousing_PointGacha_1");
 											player.AddItem(item.ClassName);
 											dialog.AddonMessage(AddonMessage.EVENT_REWARD_NOTIFY_ITEM_GET,
-												string.Format("!@#$PH_POINT_SHOP_POINT_TRADE_SUCCESS_1#@!;@dicID_^*{0}*^", item.LocalKey));
+												string.Format("!@#$PH_POINT_SHOP_POINT_TRADE_SUCCESS_1#@!;@dicID_^*{0}*^", item.Name));
 										}
 										break;
 										case 2:
@@ -496,7 +496,7 @@ namespace Melia.Zone.Scripting.Shared
 											var item = ZoneServer.Instance.Data.ItemDb.FindByClass("PersonalHousing_PointGacha_1");
 											player.AddItem(item.ClassName);
 											dialog.AddonMessage(AddonMessage.EVENT_REWARD_NOTIFY_ITEM_GET,
-												string.Format("!@#$PH_POINT_SHOP_POINT_TRADE_SUCCESS_1#@!;@dicID_^*{0}*^", item.LocalKey));
+												string.Format("!@#$PH_POINT_SHOP_POINT_TRADE_SUCCESS_1#@!;@dicID_^*{0}*^", item.Name));
 										}
 										break;
 									}

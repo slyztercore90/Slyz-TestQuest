@@ -10,11 +10,10 @@ using Yggrasil.Ai.BehaviorTree.Leafs;
 [Ai("BasicMonster")]
 public class BasicMonsterAiScript : AiScript
 {
-	ICombatEntity target;
+	private const int MaxChaseDistance = 300;
+	private const int MaxRoamDistance = 300;
 
-	protected int MaxRoamDistance = 300;
-	protected int MaxChaseDistance = 300;
-	protected int MinFollowDistance = 35;
+	ICombatEntity target;
 
 	protected override void Setup()
 	{
@@ -30,25 +29,25 @@ public class BasicMonsterAiScript : AiScript
 
 	protected IEnumerable Idle()
 	{
-		if (this.Owner == null)
+		ResetMoveSpeed();
+
+		var master = GetMaster();
+		if (master != null)
 		{
-			SetRunning(false);
+			yield return Follow(master);
+			yield break;
+		}
 
-			yield return Wait(4000, 8000);
+		yield return Wait(4000, 8000);
 
-			SwitchRandom();
-			if (Case(80))
-			{
-				yield return MoveRandom();
-			}
-			else
-			{
-				yield return Animation("IDLE");
-			}
+		SwitchRandom();
+		if (Case(80))
+		{
+			yield return MoveRandom();
 		}
 		else
 		{
-			yield return Follow();
+			yield return Animation("IDLE");
 		}
 	}
 
@@ -96,15 +95,6 @@ public class BasicMonsterAiScript : AiScript
 			target = mostHated;
 			StartRoutine("StopAndAttack", StopAndAttack());
 		}
-	}
-
-	private IEnumerable Follow()
-	{
-		while (!InRangeOf(this.Owner, MinFollowDistance))
-			yield return MoveTo(this.Owner.Position.GetRandomInRange2D(15, MinFollowDistance), wait: false);
-
-		yield return StopMove();
-		yield return Wait(1000);
 	}
 
 	private void CheckTarget()

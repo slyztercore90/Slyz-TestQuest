@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -102,6 +103,7 @@ namespace Melia.Zone.Commands
 			this.Add("recall", "<team name>", "Warps another character back.", this.HandleRecall);
 			this.Add("recallmap", "[map id/name]", "Warps all characters on given map back.", this.HandleRecallMap);
 			this.Add("recallall", "", "Warps all characters on the server back.", this.HandleRecallAll);
+			this.Add("heal", "[hp] [sp] [stamina]", "Heals the character's HP, SP, and Stamina.", this.HandleHeal);
 			this.Add("clearinv", "", "Removes all items from inventory.", this.HandleClearInventory);
 			this.Add("addjob", "<job id> [circle]", "Adds a job to character.", this.HandleAddJob);
 			this.Add("removejob", "<job id>", "Removes a job from character.", this.HandleRemoveJob);
@@ -156,9 +158,9 @@ namespace Melia.Zone.Commands
 		private CommandResult HandleWhere(Character sender, Character target, string message, string command, Arguments args)
 		{
 			if (sender == target)
-				sender.ServerMessage("You are here: {0} ({1}), {2} (Direction: {3:0.#####}°)", target.Map.Name, target.Map.Id, target.Position, target.Direction.DegreeAngle);
+				sender.ServerMessage("You are here: {0} ({1}), {2} (Direction: {3:0.#####}°)", target.Map.ClassName, target.Map.Id, target.Position, target.Direction.DegreeAngle);
 			else
-				sender.ServerMessage("{3} is here: {0} ({1}), {2} (Direction: {3:0.#####}°)", target.Map.Name, target.Map.Id, target.Position, target.TeamName, target.Direction.DegreeAngle);
+				sender.ServerMessage("{3} is here: {0} ({1}), {2} (Direction: {3:0.#####}°)", target.Map.ClassName, target.Map.Id, target.Position, target.TeamName, target.Direction.DegreeAngle);
 
 			return CommandResult.Okay;
 		}
@@ -852,11 +854,17 @@ namespace Melia.Zone.Commands
 		/// <returns></returns>
 		private CommandResult HandleMonsterInfo(Character sender, Character target, string message, string command, Arguments args)
 		{
+			var monsterRaces = new[] { "Unknown", "Insect", "Mutant", "Plant", "Demon", "Beast", "Item" };
+			var monsterElements = new[] { "None", "Fire", "Ice", "Poison", "Earth", "Melee", "Psychokinesis", "Lightning", "Holy", "Dark" };
+			var monsterArmors = new[] { "None", "Cloth", "Leather", "Iron", "Chain", "Ghost", "Shield", "Aries" };
+			var monsterSizes = new[] { "None", "Hidden", "S", "M", "L", "XL", "XXL" };
+
 			if (args.Count == 0)
 				return CommandResult.InvalidArgument;
 
 			var search = string.Join(" ", args.GetAll());
-			var monsters = ZoneServer.Instance.Data.MonsterDb.FindAll(search);
+
+			var monsters = ZoneServer.Instance.Data.MonsterDb.FindAllPreferExact(search);
 			if (monsters.Count == 0)
 			{
 				sender.ServerMessage("No monsters found for '{0}'.", search);
@@ -865,13 +873,64 @@ namespace Melia.Zone.Commands
 
 			var entries = monsters.OrderBy(a => a.Name.GetLevenshteinDistance(search)).ThenBy(a => a.Id).GetEnumerator();
 			var max = 20;
-			for (var i = 0; entries.MoveNext() && i < max; ++i)
-			{
-				var current = entries.Current;
-				sender.ServerMessage("{0}: {1}", current.Id, current.Name);
-			}
 
 			sender.ServerMessage("Results: {0} (Max. {1} shown)", monsters.Count, max);
+
+			for (var i = 0; entries.MoveNext() && i < max; ++i)
+			{
+				var monsterData = entries.Current;
+				var monsterEntry = new StringBuilder();
+
+				monsterEntry.AppendFormat("{{nl}}----- {0} ({1}, {2}) -----{{nl}}", monsterData.Name, monsterData.Id, monsterData.ClassName);
+				monsterEntry.AppendFormat("{0} / {1} / {2} / {3}{{nl}}", monsterRaces[(int)monsterData.Race], monsterElements[(int)monsterData.Element], monsterArmors[(int)monsterData.ArmorMaterial], monsterSizes[(int)monsterData.Size]);
+				monsterEntry.AppendFormat("HP: {0}  SP: {1}  EXP: {2}  CEXP: {3}{{nl}}", monsterData.Hp, monsterData.Sp, (int)(monsterData.Exp * ZoneServer.Instance.Conf.World.ExpRate / 100f), (int)(monsterData.ClassExp * ZoneServer.Instance.Conf.World.ClassExpRate / 100f));
+				monsterEntry.AppendFormat("Atk: {0}~{1}  MAtk: {2}~{3}  Def: {4}  MDef: {5}{{nl}}", monsterData.PhysicalAttackMin, monsterData.PhysicalAttackMax, monsterData.MagicalAttackMin, monsterData.MagicalAttackMax, monsterData.PhysicalDefense, monsterData.MagicalDefense);
+
+				if (monsterData.Drops.Count != 0)
+				{
+					monsterEntry.Append("Drops:");
+
+					foreach (var currentDrop in monsterData.Drops)
+					{
+						var itemData = ZoneServer.Instance.Data.ItemDb.Find(currentDrop.ItemId);
+						if (itemData != null)
+						{
+							var dropChance = Math2.Clamp(0, 100, Mob.GetAdjustedDropRate(currentDrop));
+							var isMoney = (currentDrop.ItemId == ItemId.Silver || currentDrop.ItemId == ItemId.Gold);
+
+							var minAmount = currentDrop.MinAmount;
+							var maxAmount = currentDrop.MaxAmount;
+							var hasAmount = (minAmount > 1 || maxAmount > 1);
+
+							if (isMoney)
+							{
+								minAmount = Math.Max(1, (int)(minAmount * (ZoneServer.Instance.Conf.World.SilverDropAmount / 100f)));
+								maxAmount = Math.Max(minAmount, (int)(maxAmount * (ZoneServer.Instance.Conf.World.SilverDropAmount / 100f)));
+							}
+
+							var displayAmount = isMoney || hasAmount;
+
+							if (displayAmount)
+							{
+								if (minAmount == maxAmount)
+									monsterEntry.AppendFormat("{{nl}}- {0} {1} ({2.####}%)", currentDrop.MinAmount, itemData.Name, dropChance);
+								else
+									monsterEntry.AppendFormat("{{nl}}- {0}~{1} {2} ({3.####}%){{nl}}", currentDrop.MinAmount, currentDrop.MaxAmount, itemData.Name, dropChance);
+							}
+							else
+							{
+								monsterEntry.AppendFormat("{{nl}}- {0} ({1.####}%)", itemData.Name, dropChance);
+							}
+						}
+					}
+				}
+				else
+				{
+					monsterEntry.Append("This monster has no drops.");
+				}
+
+				sender.ServerMessage(monsterEntry.ToString());
+			}
 
 			return CommandResult.Okay;
 		}
@@ -1092,6 +1151,94 @@ namespace Melia.Zone.Commands
 				sender.ServerMessage("You have called {0} characters to target's location.", characters.Length);
 				target.ServerMessage("{1} called {0} characters to your location.", characters.Length, sender.TeamName);
 			}
+		}
+
+		/// <summary>
+		/// Heals the target hp and optionally sp.
+		/// If no argument is given, heals fully.
+		/// Can also heal negative values.
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleHeal(Character sender, Character target, string message, string command, Arguments args)
+		{
+			if (args.Count > 3)
+				return CommandResult.InvalidArgument;
+
+			// TODO: Maybe refactor to take indexed arguments, named
+			//   ones, or combinations, so you can, for example, heal
+			//   stamina without specifying HP and SP like so:
+			//   >heal sp:10
+
+			// Fully heal HP and SP if no arguments are given
+			if (args.Count == 0)
+			{
+				target.ModifyHp(target.MaxHp);
+				target.ModifySp(target.MaxSp);
+
+				sender.ServerMessage("Healed HP and SP.");
+				if (sender != target)
+					target.ServerMessage("Your HP and SP were healed by {0}.", sender.TeamName);
+			}
+			// Modify only HP if one argument is given
+			else if (args.Count == 1)
+			{
+				if (!int.TryParse(args.Get(0), out var hpAmount))
+					return CommandResult.InvalidArgument;
+
+				target.ModifyHp(hpAmount);
+
+				sender.ServerMessage("Healed HP by {0} points.", hpAmount);
+				if (sender != target)
+					target.ServerMessage("{0} healed your HP by {1} points.", sender.TeamName, hpAmount);
+			}
+			// Modify HP and SP if two arguments are given
+			else if (args.Count == 2)
+			{
+				if (!int.TryParse(args.Get(0), out var hpAmount))
+					return CommandResult.InvalidArgument;
+
+				if (!int.TryParse(args.Get(1), out var spAmount))
+					return CommandResult.InvalidArgument;
+
+				target.ModifyHp(hpAmount);
+				target.ModifySp(spAmount);
+
+				sender.ServerMessage("Healed HP by {0} and SP by {1} points.", hpAmount, spAmount);
+				if (sender != target)
+					target.ServerMessage("{0} healed your HP by {1} and your SP by {2} points.", sender.TeamName, hpAmount, spAmount);
+			}
+			// Modify HP, SP, and Stamina if three arguments are given
+			else if (args.Count >= 3)
+			{
+				if (!int.TryParse(args.Get(0), out var hpAmount))
+					return CommandResult.InvalidArgument;
+
+				if (!int.TryParse(args.Get(1), out var spAmount))
+					return CommandResult.InvalidArgument;
+
+				if (!int.TryParse(args.Get(2), out var staminaAmount))
+					return CommandResult.InvalidArgument;
+
+				// Adjust Stamina to match the game's display value, since
+				// most users of this command wouldn't be aware of this
+				// property's value being 1000 times larger than displayed.
+				staminaAmount *= 1000;
+
+				target.ModifyHp(hpAmount);
+				target.ModifySp(spAmount);
+				target.ModifyStamina(staminaAmount);
+
+				sender.ServerMessage("Healed HP by {0}, SP by {1}, and Stamina by {2} points.", hpAmount, spAmount, staminaAmount);
+				if (sender != target)
+					target.ServerMessage("{0} healed your HP by {1}, SP by {2}, and Stamina by {3} points.", sender.TeamName, hpAmount, spAmount, staminaAmount);
+			}
+
+			return CommandResult.Okay;
 		}
 
 		/// <summary>

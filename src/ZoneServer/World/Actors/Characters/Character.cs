@@ -37,6 +37,8 @@ namespace Melia.Zone.World.Actors.Characters
 		private Character[] _visibleCharacters = new Character[0];
 		private ITriggerableArea[] _triggerAreas = new ITriggerableArea[0];
 
+		private readonly static TimeSpan ResurrectDialogDelay = TimeSpan.FromSeconds(2);
+		private TimeSpan _resurrectDialogTimer = ResurrectDialogDelay;
 		private readonly List<Companion> _companions = new List<Companion>();
 
 		/// <summary>
@@ -501,6 +503,37 @@ namespace Melia.Zone.World.Actors.Characters
 			//   it belongs. That will also technically allow monsters
 			//   to enter trigger areas, which we'll likely need.
 			this.UpdateTriggerAreas();
+
+			this.UpdateResurrection(elapsed);
+		}
+
+		/// <summary>
+		/// Sends the resurrection dialog as nexessary.
+		/// </summary>
+		/// <param name="elapsed"></param>
+		private void UpdateResurrection(TimeSpan elapsed)
+		{
+			// Why are we sending the resurrection dialog over and over on
+			// the update? Well, because certain packets sent to the client,
+			// such as hits, can cause it to close this dialog, which then
+			// leaves players with having to relog to get it again to be
+			// able to resurrect. Spamming isn't a great hotfix, but it is
+			// an effective one, as it will ensure that the dialog is always
+			// there when it should be. And of course, as you would expect,
+			// it appears that this is normal, based on the packet logs.
+			if (this.IsDead)
+			{
+				_resurrectDialogTimer -= elapsed;
+				if (_resurrectDialogTimer <= TimeSpan.Zero)
+				{
+					// TODO: Get a list of the appropriate resurrection
+					//   options and save them, to sanity check the coming
+					//   resurrection request.
+
+					Send.ZC_RESURRECT_DIALOG(this, ResurrectOptions.NearestRevivalPoint);
+					_resurrectDialogTimer = ResurrectDialogDelay;
+				}
+			}
 		}
 
 		/// <summary>
@@ -1304,6 +1337,32 @@ namespace Melia.Zone.World.Actors.Characters
 			//this.Died?.Invoke(this, killer);
 
 			Send.ZC_DEAD(this);
+
+			_resurrectDialogTimer = ResurrectDialogDelay;
+		}
+
+		/// <summary>
+		/// Resurrects the character if its dead.
+		/// </summary>
+		/// <param name="option"></param>
+		public void Resurrect(ResurrectOptions option)
+		{
+			var startHp = this.Properties.GetFloat(PropertyName.MHP) * 0.50f;
+			this.Heal(startHp, 0);
+
+			switch (option)
+			{
+				default:
+				case ResurrectOptions.NearestRevivalPoint:
+				{
+					var safePos = this.Map.GetSafePositionNear(this.Position, true);
+					this.Warp(this.MapId, safePos);
+					break;
+				}
+			}
+
+			Send.ZC_RESURRECT_SAVE_POINT_ACK(this);
+			Send.ZC_RESURRECT(this);
 		}
 
 		/// <summary>
