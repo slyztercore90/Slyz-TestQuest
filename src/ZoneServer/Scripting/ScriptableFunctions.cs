@@ -33,6 +33,8 @@ namespace Melia.Zone.Scripting
 		public static readonly DelegateCollection<CombatCalcFunction> Combat = new DelegateCollection<CombatCalcFunction>();
 		public static readonly DelegateCollection<SkillHitFunction> SkillHit = new DelegateCollection<SkillHitFunction>();
 		public static readonly DelegateCollection<ItemScriptFunc> Item = new DelegateCollection<ItemScriptFunc>();
+		public static readonly DelegateCollection<ItemEquipScriptFunc> Equip = new DelegateCollection<ItemEquipScriptFunc>();
+		public static readonly DelegateCollection<ItemUnequipScriptFunc> Unequip = new DelegateCollection<ItemUnequipScriptFunc>();
 		public static readonly DelegateCollection<NormalTxScriptFunc> NormalTx = new DelegateCollection<NormalTxScriptFunc>();
 		public static readonly DelegateCollection<NormalTxNumScriptFunc> NormalTxNum = new DelegateCollection<NormalTxNumScriptFunc>();
 		public static readonly DelegateCollection<DialogTxScriptFunc> DialogTx = new DelegateCollection<DialogTxScriptFunc>();

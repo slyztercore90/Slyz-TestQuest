@@ -115,7 +115,7 @@
 			public const int CutsceneTrack = 0x96;
 			public const int SetTrackFrame = 0x97;
 			public const int SetInvisible = 0x99;
-			public const int ShowUIEffect = 0x9C;
+			public const int ShowItemBalloon = 0x9C;
 			public const int ShowBook = 0x9E;
 			public const int ShowScroll = 0x9F;
 			public const int PetInfo = 0xA4;

@@ -1565,7 +1565,7 @@ namespace Melia.Zone.Network
 			/// <param name="item"></param>
 			/// <param name="style"></param>
 			/// <param name="type"></param>
-			public static void ShowItemBalloon(Character character, Item item, string type, string style = "{@st43}", string systemMsg = "AppraisalSuccess", float duration = 3)
+			public static void ShowItemBalloon(Character character, Item item = null, string type = "reward_itembox", string style = "{@st43}", string systemMsg = "AppraisalSuccess", float duration = 3)
 			{
 				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(style, out var styleData))
 				{
@@ -1587,11 +1587,11 @@ namespace Melia.Zone.Network
 			/// <param name="style"></param>
 			/// <param name="systemMsg"></param>
 			/// <param name="duration"></param>
-			public static void ShowItemBalloon(Character character, Item item = null, string type = "reward_itembox", int style = 2562289, int systemMsg = 4122, float duration = 3)
+			public static void ShowItemBalloon(Character character, Item item, string type, int style, int systemMsg, float duration)
 			{
 				var properties = item.Properties.GetAll();
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.ShowUIEffect);
+				packet.PutInt(NormalOp.Zone.ShowItemBalloon);
 
 				packet.PutByte(1);
 				packet.PutInt(character.Handle);

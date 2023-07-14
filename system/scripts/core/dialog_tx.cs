@@ -6,6 +6,7 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Melia.Shared.Tos.Const;
 using Melia.Zone;
 using Melia.Zone.Network;
@@ -102,6 +103,90 @@ public class DialogTxFunctionsScript : GeneralScript
 
 		Send.ZC_OBJECT_PROPERTY(character, equipItem.Item);
 		character.AddonMessage(AddonMessage.MSG_SUCCESS_GODDESS_REINFORCE_EXEC, "1", 1);
+
+		return DialogTxResult.Okay;
+	}
+
+	[ScriptableFunction("SCR_ITEM_APPRAISAL")]
+	public DialogTxResult APPRAISAL(Character character, DialogTxArgs args)
+	{
+		foreach (var txItem in args.TxItems)
+		{
+			var item = txItem.Item;
+
+			Send.ZC_ENABLE_CONTROL(character.Connection, "APPRAISER", false);
+			Send.ZC_LOCK_KEY(character, "APPRAISER", true);
+
+			Task.Delay(1500).ContinueWith(t =>
+			{
+				Send.ZC_ENABLE_CONTROL(character.Connection, "APPRAISER", true);
+				Send.ZC_LOCK_KEY(character, "APPRAISER", false);
+				item.GenerateRandomOptions();
+				Send.ZC_OBJECT_PROPERTY(character, item);
+				character.AddonMessage(AddonMessage.SUCCESS_APPRALSAL);
+				character.AddonMessage(AddonMessage.UPDATE_ITEM_APPRAISAL, "Equip");
+				Send.ZC_NORMAL.ShowItemBalloon(character, item);
+			});
+		}
+
+		return DialogTxResult.Okay;
+	}
+
+	[ScriptableFunction("SCR_REVERT_ITEM_OPTION")]
+	public DialogTxResult REVERT_ITEM_OPTION(Character character, DialogTxArgs args)
+	{
+		foreach (var txItem in args.TxItems)
+		{
+			var item = txItem.Item;
+
+			item.GenerateRandomOptions();
+			Send.ZC_OBJECT_PROPERTY(character, item);
+			character.AddonMessage(AddonMessage.MSG_SUCCESS_FREE_RANDOM_OPTION);
+			character.AddonMessage(AddonMessage.UPDATE_ITEM_APPRAISAL, "Equip");
+		}
+
+		return DialogTxResult.Okay;
+	}
+
+	[ScriptableFunction("EVENT_SHOP_1_THREAD1")]
+	public DialogTxResult EVENT_SHOP_1_THREAD1(Character character, DialogTxArgs args)
+	{
+		if (args.NumArgs.Length < 2 && args.StrArgs.Length < 1)
+			return DialogTxResult.Fail;
+
+		var shopItemId = args.NumArgs[0];
+		var shopItemAmount = args.NumArgs[1];
+		var shopType = args.StrArgs[0];
+
+		if (!ZoneServer.Instance.Data.TradeShopDb.TryFind(shopItemId, out var shopItem))
+		{
+			Log.Warning("EVENT_SHOP_1_THREAD1: User '{0}' tried to trade for an item that doesn't exist with id {1}.", character.Username, shopItemId);
+			return DialogTxResult.Fail;
+		}
+
+		if (shopItem.ShopType != shopType)
+		{
+			Log.Debug("EVENT_SHOP_1_THREAD1: User '{0}' tried to trade for an item that didn't match the trade shop type: {1}.", character.Username, shopType);
+			return DialogTxResult.Fail;
+		}
+
+		foreach (var txItem in args.TxItems)
+		{
+			var item = txItem.Item;
+			var amount = txItem.Amount;
+
+			if (!shopItem.RequiredItems.ContainsKey(item.Data.Id) || amount < (shopItemAmount * shopItem.RequiredItems[item.Data.Id]))
+				return DialogTxResult.Fail;
+		}
+
+		foreach (var txItem in args.TxItems)
+		{
+			character.Inventory.Remove(txItem.Item.ObjectId, txItem.Amount * shopItemAmount, InventoryItemRemoveMsg.Given);
+		}
+
+		character.AddItem(shopItem.ItemCraftedClassName, shopItem.ItemCraftedCount * shopItemAmount);
+		character.AddonMessage(AddonMessage.EARTHTOWERSHOP_BUY_ITEM, shopItem.ItemCraftedClassName);
+		character.AddonMessage(AddonMessage.EARTHTOWERSHOP_BUY_ITEM_RESULT, shopItem.ShopType + "/0/0");
 
 		return DialogTxResult.Okay;
 	}
