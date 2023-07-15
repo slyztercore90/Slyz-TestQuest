@@ -74,6 +74,11 @@ namespace Melia.Zone.World.Actors
 	public abstract class Actor : IActor
 	{
 		/// <summary>
+		/// Returns a list of effects that are attached to the actor.
+		/// </summary>
+		public ConcurrentBag<AttachableEffect> AttachableEffects { get; } = new ConcurrentBag<AttachableEffect>();
+
+		/// <summary>
 		/// Returns the actor's unique handle.
 		/// </summary>
 		public int Handle { get; } = ZoneServer.Instance.World.CreateHandle();

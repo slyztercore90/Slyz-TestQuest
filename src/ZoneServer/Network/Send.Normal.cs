@@ -803,6 +803,10 @@ namespace Melia.Zone.Network
 			/// <param name="actor"></param>
 			public static void SetScale(Actor actor, int animationType, float animationScale, float animationSpeed = 0, byte b1 = 0, short s1 = 0)
 			{
+				var account = character.Connection.Account;
+				var properties = account.Properties.GetAll();
+				var propertySize = properties.GetByteCount();
+
 				var packet = new Packet(Op.ZC_NORMAL);
 				packet.PutInt(NormalOp.Zone.SetScale);
 

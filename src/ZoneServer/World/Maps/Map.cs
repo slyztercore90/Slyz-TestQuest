@@ -516,28 +516,37 @@ namespace Melia.Zone.World.Maps
 		}
 
 		/// <summary>
-		/// Returns first attackable monster near another entity sorted 
-		/// by their distance in the given radius around position.
+		/// Returns all actors with the given type in the area.
 		/// </summary>
-		/// <param name="attacker"></param>
-		/// <param name="entity"></param>
-		/// <param name="radius"></param>
+		/// <typeparam name="TActor"></typeparam>
+		/// <param name="area"></param>
 		/// <returns></returns>
-		public ICombatEntity GetAttackableEntityInRangeAroundEntity(ICombatEntity attacker, ICombatEntity entity, float radius)
+		public List<TActor> GetActorsIn<TActor>(IShapeF area) where TActor : IActor
 		{
-			ICombatEntity result = null;
+			// Searching through both characters and monsters isn't the
+			// most efficient way to get actors of a specific type in an
+			// area, but it is simple and convenient, and it doesn't require
+			// us to create dozens of getters for various actor types.
+			// We can optimize this later if necessary.
+
+			var result = new List<TActor>();
 
 			lock (_monsters)
 			{
-				result = (ICombatEntity)_monsters.Values.Where(a => a is ICombatEntity combatEntity && entity.Handle != combatEntity.Handle && combatEntity.Position.InRange2D(entity.Position, radius) && attacker.CanAttack(combatEntity)).OrderBy(a => a.Position.Get2DDistance(entity.Position)).FirstOrDefault();
-				if (result != null)
-					return result;
-
+				foreach (var monster in _monsters.Values)
+				{
+					if (monster is TActor actor && area.IsInside(actor.Position))
+						result.Add(actor);
+				}
 			}
 
 			lock (_characters)
 			{
-				result = _characters.Values.Where(a => a is ICombatEntity combatEntity && entity.Handle != combatEntity.Handle && combatEntity.Position.InRange2D(entity.Position, radius) && attacker.CanAttack(combatEntity)).OrderBy(a => a.Position.Get2DDistance(entity.Position)).FirstOrDefault();
+				foreach (var character in _characters.Values)
+				{
+					if (character is TActor actor && area.IsInside(actor.Position))
+						result.Add(actor);
+				}
 			}
 
 			return result;

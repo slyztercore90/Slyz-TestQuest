@@ -80,7 +80,7 @@
 			/// </summary>
 			public const int Skill_45 = 0x45;
 			public const int SkillCancel = 0x46;
-			public const int AccountPropertyUpdate = 0x4D;
+			public const int AccountProperties = 0x4D;
 			public const int Skill_4D = 0x4F;
 			public const int Skill_4E = 0x50;
 			public const int NPC_PlayTrack = 0x53;

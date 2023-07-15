@@ -336,6 +336,7 @@
     <Compile Include="custom\test.cs" />
     <Compile Include="items\dolls.cs" />
     <Compile Include="items\gestures.cs" />
+    <Compile Include="items\campfire.cs" />
     <Compile Include="items\summoning.cs" />
     <Compile Include="items\trade_select_item.cs" />
     <Compile Include="items\add_tp.cs" />
