@@ -316,7 +316,7 @@ namespace Melia.Zone.Scripting
 			var initialSpawnDelay = TimeSpan.FromSeconds(0);
 			var minRespawnDelay = Math2.Max(TimeSpan.FromSeconds(3), respawn);
 			var maxRespawnDelay = minRespawnDelay.Multiply(3);
-			var minAmount = Math.Max(1, (int)(maxAmount * 0.25));
+			var minAmount = Math.Max(1, (int)(maxAmount * 0.10));
 
 			return AddSpawner(monsterClassId, minAmount, maxAmount, initialSpawnDelay, minRespawnDelay, maxRespawnDelay, map, area, tendency, propertyOverrides);
 		}

@@ -29,6 +29,7 @@ namespace Melia.Zone.Scripting
 
 		public static readonly DelegateCollection<CharacterCalcFunc> Character = new DelegateCollection<CharacterCalcFunc>();
 		public static readonly DelegateCollection<MonsterCalcFunc> Monster = new DelegateCollection<MonsterCalcFunc>();
+		public static readonly DelegateCollection<MonsterCharacterCalcFunc> MonsterCharacter = new DelegateCollection<MonsterCharacterCalcFunc>();
 		public static readonly DelegateCollection<SkillCalcFunc> Skill = new DelegateCollection<SkillCalcFunc>();
 		public static readonly DelegateCollection<CombatCalcFunction> Combat = new DelegateCollection<CombatCalcFunction>();
 		public static readonly DelegateCollection<SkillHitFunction> SkillHit = new DelegateCollection<SkillHitFunction>();
@@ -127,6 +128,14 @@ namespace Melia.Zone.Scripting
 	/// <param name="monster"></param>
 	/// <returns></returns>
 	public delegate float MonsterCalcFunc(Mob monster);
+
+	/// <summary>
+	/// A function that calculates a value for a monster based off a character.
+	/// </summary>
+	/// <param name="monster"></param>
+	/// <param name="character"></param>
+	/// <returns></returns>
+	public delegate float MonsterCharacterCalcFunc(Mob monster, Character character);
 
 	/// <summary>
 	/// A function that calculates a value for a skill.

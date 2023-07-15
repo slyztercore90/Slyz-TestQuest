@@ -337,8 +337,14 @@ namespace Melia.Zone.World.Actors.Monsters
 
 			if (killer is Character characterKiller)
 			{
+				var SCR_Get_MON_ExpPenalty = ScriptableFunctions.MonsterCharacter.Get("SCR_Get_MON_ExpPenalty");
+				var SCR_Get_MON_ClassExpPenalty = ScriptableFunctions.MonsterCharacter.Get("SCR_Get_MON_ClassExpPenalty");
+
+				var expPenalty = SCR_Get_MON_ExpPenalty(this, characterKiller);
+				var classExpPenalty = SCR_Get_MON_ClassExpPenalty(this, characterKiller);
+
 				this.DropItems(characterKiller);
-				this.DistributeExp(characterKiller, exp, classExp);
+				this.DistributeExp(characterKiller, (long)(exp * expPenalty), (long)(classExp * classExpPenalty));
 				characterKiller?.GiveExp(exp, classExp, this);
 			}
 

@@ -83,6 +83,7 @@
     <Compile Include="content\test\quests\kill_onions.cs" />
     <Compile Include="core\ability_price.cs" />
     <Compile Include="core\ability_unlock.cs" />
+    <Compile Include="core\calc_exp.cs" />
     <Compile Include="core\calc_monster.cs" />
     <Compile Include="core\calc_skill_override.cs" />
     <Compile Include="core\calc_skill.cs" />
