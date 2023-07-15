@@ -222,7 +222,7 @@ namespace Melia.Web
 				var url = string.Format("http://*:{0}/", this.Conf.Web.GuildPort);
 
 				Swan.Logging.Logger.NoLogging();
-				Swan.Logging.Logger.RegisterLogger<YggdrasilLogger>();
+				Swan.Logging.Logger.RegisterLogger(new YggdrasilLogger(this.Conf.Log.Filter));
 
 				EndPointManager.UseIpv6 = false;
 
@@ -275,7 +275,7 @@ namespace Melia.Web
 				var url = string.Format("http://*:{0}/", this.Conf.Web.MarketPort);
 
 				Swan.Logging.Logger.NoLogging();
-				Swan.Logging.Logger.RegisterLogger<YggdrasilLogger>();
+				Swan.Logging.Logger.RegisterLogger(new YggdrasilLogger(this.Conf.Log.Filter));
 
 				EndPointManager.UseIpv6 = false;
 
@@ -288,7 +288,6 @@ namespace Melia.Web
 				var webFolder = "system/web/";
 				if (Directory.Exists("user/web/"))
 					webFolder = "user/web/";
-
 
 				_marketServer
 					//.WithBearerToken("/", "0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJjbGF")
