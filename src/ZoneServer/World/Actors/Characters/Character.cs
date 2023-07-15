@@ -1642,17 +1642,30 @@ namespace Melia.Zone.World.Actors.Characters
 			Send.ZC_OBJECT_PROPERTY(this, propertyName);
 		}
 
-		public float GetWeaponSpeed()
+		/// <summary>
+		/// Set an account property and update the client.
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="value"></param>
+		public void SetAccountProperty(string propertyName, int value)
 		{
-			// Wand: 1.083666f Hammer: 1.054772f
-			return 1.083666f;
+			var properties = this.Connection.Account.Properties;
+			properties.SetFloat(propertyName, value);
+
+			var propertyList = properties.GetSelect(propertyName);
+			Send.ZC_NORMAL.AccountPropertyUpdate(this.Connection, propertyList);
 		}
 
+		/// <summary>
+		/// Modify an account property and update the client.
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="modifier"></param>
 		public void ModifyAccountProperty(string propertyName, float modifier)
 		{
 			var properties = this.Connection.Account.Properties;
 
-			this.Connection.Account.Properties.Modify(propertyName, modifier);
+			properties.Modify(propertyName, modifier);
 
 			var propertyList = properties.GetSelect(propertyName);
 			Send.ZC_OBJECT_PROPERTY(this.Connection, this.Connection.Account, propertyName);

@@ -207,6 +207,7 @@ namespace Melia.Zone.Network
 			// that have an overheat count.
 			var skillUpdateList = character.Skills.GetList(a => a.Data.OverheatCount > 0);
 			Send.ZC_UPDATE_SKL_SPDRATE_LIST(character, skillUpdateList);
+			Send.ZC_NORMAL.AccountPropertyUpdate(conn, conn.Account.Properties.GetAll());
 
 			if (character.HasCompanions)
 			{
