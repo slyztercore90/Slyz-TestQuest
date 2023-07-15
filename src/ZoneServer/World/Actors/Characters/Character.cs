@@ -916,7 +916,7 @@ namespace Melia.Zone.World.Actors.Characters
 					Send.ZC_ENTER_MONSTER(this.Connection, monster);
 
 					monster.Components?.Get<EffectsComponent>()?.ShowEffects(this.Connection);
-					
+
 					if (monster.AttachableEffects.Count != 0)
 					{
 						foreach (var effect in monster.AttachableEffects)
@@ -1567,8 +1567,7 @@ namespace Melia.Zone.World.Actors.Characters
 			var properties = this.Connection.Account.Properties;
 			properties.SetFloat(propertyName, value);
 
-			var propertyList = properties.GetSelect(propertyName);
-			Send.ZC_NORMAL.AccountPropertyUpdate(this.Connection, propertyList);
+			Send.ZC_NORMAL.AccountProperties(this, propertyName);
 		}
 
 		/// <summary>
@@ -1579,12 +1578,10 @@ namespace Melia.Zone.World.Actors.Characters
 		public void ModifyAccountProperty(string propertyName, float modifier)
 		{
 			var properties = this.Connection.Account.Properties;
-
 			properties.Modify(propertyName, modifier);
 
-			var propertyList = properties.GetSelect(propertyName);
 			Send.ZC_OBJECT_PROPERTY(this.Connection, this.Connection.Account, propertyName);
-			Send.ZC_NORMAL.AccountPropertyUpdate(this.Connection, propertyList);
+			Send.ZC_NORMAL.AccountProperties(this, propertyName);
 			Send.ZC_PC_PROP_UPDATE(this, (short)PropertyTable.GetId("Account", propertyName), 1);
 		}
 

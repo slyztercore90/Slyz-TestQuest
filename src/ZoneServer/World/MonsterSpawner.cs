@@ -23,7 +23,7 @@ namespace Melia.Zone.World
 	/// </summary>
 	public class MonsterSpawner
 	{
-		private const int MaxValidPositionTries = 1000;
+		private const int MaxValidPositionTries = 50;
 
 		private const float FlexIncreaseLimit = 100;
 		private const float FlexDecreaseLimit = -100;

@@ -1627,7 +1627,7 @@ namespace Melia.Zone.Database
 								var y = reader.GetFloat("y");
 								var z = reader.GetFloat("z");
 								member.Position = new Position(x, y, z);
-								member.IsOnline = false;
+								member.IsOnline = loadCharacter.DbId == member.DbId;
 								party.AddMember(member);
 							}
 							else

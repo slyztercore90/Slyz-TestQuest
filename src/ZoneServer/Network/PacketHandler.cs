@@ -208,7 +208,7 @@ namespace Melia.Zone.Network
 			// that have an overheat count.
 			var skillUpdateList = character.Skills.GetList(a => a.Data.OverheatCount > 0);
 			Send.ZC_UPDATE_SKL_SPDRATE_LIST(character, skillUpdateList);
-			Send.ZC_NORMAL.AccountPropertyUpdate(conn, conn.Account.Properties.GetAll());
+			Send.ZC_NORMAL.AccountProperties(character);
 
 			if (character.HasCompanions)
 			{
@@ -701,7 +701,7 @@ namespace Melia.Zone.Network
 			{
 				character.RemoveItem(ItemId.Silver, fixedCost);
 				account.Properties.Modify(PropertyName.AccountWareHouseExtend, 1);
-				Send.ZC_NORMAL.AccountPropertyUpdate(conn, account.Properties.GetSelect(PropertyName.AccountWareHouseExtend));
+				Send.ZC_NORMAL.AccountProperties(character, PropertyName.AccountWareHouseExtend);
 				Send.ZC_ADDON_MSG(character, AddonMessage.ACCOUNT_WAREHOUSE_ITEM_LIST);
 				Send.ZC_ADDON_MSG(character, AddonMessage.ACCOUNT_UPDATE);
 			}

@@ -24,14 +24,14 @@ namespace Melia.Zone.Skills.Handlers.Highlander
 			//buff.Skill = skill;
 			caster?.Components.Get<BuffComponent>()?.AddOrUpdate(buff);
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+				Send.ZC_NORMAL.Skill_DynamicCastStart(character, skill.Id);
 		}
 
 		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			caster.Components.Get<BuffComponent>()?.Remove(BuffId.StartUp_Charging_Buff);
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 2);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, 2);
 		}
 
 		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity target)

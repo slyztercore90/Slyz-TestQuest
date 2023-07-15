@@ -39,7 +39,7 @@ namespace Melia.Zone.World
 			var account = character.Connection.Account;
 			var properties = account.Properties;
 			properties.SetFloat(PropertyName.EVENT_IS_JOINED_GUILD, 1);
-			Send.ZC_NORMAL.AccountPropertyUpdate(character.Connection, properties.GetSelect(PropertyName.EVENT_IS_JOINED_GUILD));
+			Send.ZC_NORMAL.AccountProperties(character, PropertyName.EVENT_IS_JOINED_GUILD);
 			this.AddMember(character);
 		}
 
@@ -78,9 +78,9 @@ namespace Melia.Zone.World
 			base.RemoveMember(character);
 			var properties = character.Connection.Account.Properties;
 			properties.SetFloat(PropertyName.EVENT_IS_JOINED_GUILD, 0);
-			Send.ZC_NORMAL.AccountPropertyUpdate(character.Connection, properties.GetSelect(PropertyName.EVENT_IS_JOINED_GUILD));
+			Send.ZC_NORMAL.AccountProperties(character, PropertyName.EVENT_IS_JOINED_GUILD);
 			properties.SetString(PropertyName.LastServerGuildOutDay, DateTimeUtils.ToSPropertyDTNow);
-			Send.ZC_NORMAL.AccountPropertyUpdate(character.Connection, properties.GetSelect(PropertyName.LastServerGuildOutDay));
+			Send.ZC_NORMAL.AccountProperties(character, PropertyName.LastServerGuildOutDay);
 			character.Connection.Guild = null;
 		}
 	}

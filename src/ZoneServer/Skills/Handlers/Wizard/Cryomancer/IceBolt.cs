@@ -91,7 +91,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 			if (caster is Character character)
 			{
 				Send.ZC_PLAY_SOUND(character, character.Gender == Gender.Male ? "voice_wiz_m_icebolt_cast" : "voice_wiz_icebolt_cast");
-				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+				Send.ZC_NORMAL.Skill_DynamicCastStart(character, skill.Id);
 			}
 		}
 
@@ -103,7 +103,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 			if (caster is Character character)
 			{
 				Send.ZC_STOP_SOUND(character, character.Gender == Gender.Male ? "voice_wiz_m_icebolt_cast" : "voice_wiz_icebolt_cast");
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, maxCastTime);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, maxCastTime);
 			}
 		}
 	}

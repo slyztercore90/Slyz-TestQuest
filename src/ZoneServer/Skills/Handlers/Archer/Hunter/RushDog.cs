@@ -24,13 +24,13 @@ namespace Melia.Zone.Skills.Handlers.Hunter
 		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+				Send.ZC_NORMAL.Skill_DynamicCastStart(character, skill.Id);
 		}
 
 		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, maxCastTime);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, maxCastTime);
 		}
 
 		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity target)

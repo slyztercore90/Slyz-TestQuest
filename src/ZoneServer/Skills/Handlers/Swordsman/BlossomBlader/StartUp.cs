@@ -26,7 +26,7 @@ namespace Melia.Zone.Skills.Handlers.BlossomBlader
 			if (caster is Character character)
 			{
 				Send.ZC_PLAY_SOUND(caster, character.Gender == Gender.Male ? "voice_war_m_startup_cast" : "voice_war_f_startup_cast", 0, -1, 0);
-				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+				Send.ZC_NORMAL.Skill_DynamicCastStart(character, skill.Id);
 			}
 		}
 
@@ -36,7 +36,7 @@ namespace Melia.Zone.Skills.Handlers.BlossomBlader
 			if (caster is Character character)
 			{
 				Send.ZC_STOP_SOUND(character, character.Gender == Gender.Male ? "voice_war_m_startup_cast" : "voice_war_f_startup_cast");
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 2);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, 2);
 				Send.ZC_SKILL_DISABLE(caster);
 			}
 		}

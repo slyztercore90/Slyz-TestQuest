@@ -34,7 +34,7 @@ namespace Melia.Zone.Skills.Handlers.Barbarian
 			caster.Components.Get<BuffComponent>()?.AddOrUpdate(buff);
 			Send.ZC_PLAY_SOUND(caster, "voice_war_atk_long_cast");
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+				Send.ZC_NORMAL.Skill_DynamicCastStart(character, skill.Id);
 		}
 
 		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
@@ -44,7 +44,7 @@ namespace Melia.Zone.Skills.Handlers.Barbarian
 			if (caster is Character character)
 			{
 				Send.ZC_STOP_SOUND(character, "voice_war_atk_long_cast");
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 3.5f);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, 3.5f);
 			}
 			var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
 			Send.ZC_NORMAL.Skill(caster, skill, "Barbarian_Pouncing", caster.Position, caster.Direction, 0, 35, skillHandle, 45);

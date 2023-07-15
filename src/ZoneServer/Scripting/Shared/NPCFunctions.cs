@@ -1442,7 +1442,7 @@ namespace Melia.Zone.Scripting.Shared
 							if (isFree)
 							{
 								account.Properties.SetString(PropertyName.JUNK_BUY_COUNT_RESET_DAY, DateTimeUtils.ToSPropertyDTNow);
-								Send.ZC_NORMAL.AccountPropertyUpdate(character.Connection, account.Properties.GetSelect(PropertyName.JUNK_BUY_COUNT_RESET_DAY));
+								Send.ZC_NORMAL.AccountProperties(character, PropertyName.JUNK_BUY_COUNT_RESET_DAY);
 							}
 							else
 							{
@@ -1455,7 +1455,7 @@ namespace Melia.Zone.Scripting.Shared
 								character.RemoveItem(ItemId.Silver, fixedCost);
 							}
 							account.Properties.Modify(PropertyName.JUNK_SHOP_BUY_COUNT, 1);
-							Send.ZC_NORMAL.AccountPropertyUpdate(character.Connection, account.Properties.GetSelect(PropertyName.JUNK_SHOP_BUY_COUNT));
+							Send.ZC_NORMAL.AccountProperties(character, PropertyName.JUNK_SHOP_BUY_COUNT);
 							character.Inventory.Add(item);
 							Send.ZC_NORMAL.ShowItemBalloon(character);
 							Send.ZC_NORMAL.ShowItemBalloon(character, item, "junksilvergacha_itembox_low", "{@st43}", "JunkSilverGachaResultInRaidRewardSmall", 5);
