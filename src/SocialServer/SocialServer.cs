@@ -52,17 +52,16 @@ namespace Melia.Social
 		/// <param name="args"></param>
 		public override void Run(string[] args)
 		{
+			this.GetServerId(args, out var groupId, out var serverId);
+			var title = string.Format("Zone ({0}, {1})", groupId, serverId);
+
 			ConsoleUtil.WriteHeader(ConsoleHeader.ProjectName, "Social", ConsoleColor.DarkGreen, ConsoleHeader.Logo, ConsoleHeader.Credits);
 			ConsoleUtil.LoadingTitle();
 
 			// Set up social server specific logging or we might run into
 			// issues with multiple servers trying to write files at the
 			// same time.
-			if (args.Length != 0)
-			{
-				var serverId = this.GetServerId(args);
-				Log.Init("SocialServer" + serverId);
-			}
+			Log.Init("SocialServer" + serverId);
 
 			this.NavigateToRoot();
 
@@ -70,13 +69,12 @@ namespace Melia.Social
 			this.LoadConf();
 			this.LoadLocalization(this.Conf);
 			this.LoadData(ServerType.Social);
-			this.LoadServerList(this.Data.ServerDb);
+			this.LoadServerList(this.Data.ServerDb, ServerType.Social, groupId, serverId);
 			this.InitDatabase(this.Database, this.Conf);
 
 			// Get server data
 			if (args.Length != 0)
 			{
-				var serverId = this.GetServerId(args);
 				var serverInfo = this.GetServerInfo(ServerType.Social, serverId);
 
 				// Start listener

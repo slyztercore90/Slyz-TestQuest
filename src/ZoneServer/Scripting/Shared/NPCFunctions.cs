@@ -13,6 +13,7 @@ using Yggdrasil.Util;
 using Melia.Shared.Tos.Properties;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.Characters.Components;
 
 namespace Melia.Zone.Scripting.Shared
 {
@@ -96,34 +97,9 @@ namespace Melia.Zone.Scripting.Shared
 		/// <returns></returns>
 		public static async Task STATUE_WARP(Dialog dialog)
 		{
-			/**
-			var result = async Shortcuts.StartTimedEvent("WORSHIP", 1000, () =>
-			{
+			var result = await dialog.TimeAction("!@#$Auto_KyeongBae_Jung#@!", "WORSHIP", TimeSpan.FromSeconds(1));
+			if (result == TimeActionResult.Completed)
 				dialog.ExecuteScript("INTE_WARP_OPEN_BY_NPC()");
-			});
-			**/
-			var player = dialog.Player;
-			var timeConsumed = 1;
-			var type = "WORSHIP";
-
-			Send.ZC_NORMAL.TimeAction(dialog.Player, "!@#$Auto_KyeongBae_Jung#@!", "WORSHIP", timeConsumed, true, "Cancel");
-			player?.AddSessionObject(15509);
-			player.TimedEvents?.Add(TimeSpan.FromSeconds(timeConsumed), TimeSpan.Zero, 0, "timeaction", player1 =>
-			{
-				switch (type)
-				{
-					case "WORSHIP":
-						dialog.ExecuteScript("INTE_WARP_OPEN_BY_NPC()");
-						break;
-				}
-				Send.ZC_NORMAL.TimeActionState(player, true);
-			}, player1 =>
-			{
-				(player1 as Character)?.RemoveSessionObject(15509);
-				Send.ZC_NORMAL.TimeActionState(player, false);
-			});
-			dialog.Close();
-			await Task.Yield();
 		}
 
 		[DialogFunction("TEST_TP_SHOP")]
@@ -534,13 +510,13 @@ namespace Melia.Zone.Scripting.Shared
 			await dialog.Msg(RandomElement("SHOP_NPC_RAGANA_CITY_1_basic1",
 				"SHOP_NPC_RAGANA_CITY_1_basic2",
 				"SHOP_NPC_RAGANA_CITY_1_basic3"));
-			await dialog.ExecuteScript(ClientScripts.REQ_SILVER_GACHA_SHOP_OPEN);
+			dialog.ExecuteScript(ClientScripts.REQ_SILVER_GACHA_SHOP_OPEN);
 		}
 
 		[DialogFunction("KLAPEDA_FISHING_BOARD")]
 		public static async Task KLAPEDA_FISHING_BOARD(Dialog dialog)
 		{
-			await dialog.ExecuteScript(ClientScripts.FISHING_RANK_OPEN);
+			dialog.ExecuteScript(ClientScripts.FISHING_RANK_OPEN);
 		}
 
 		[DialogFunction("FISHING_SUB_NPC")]
@@ -600,22 +576,22 @@ namespace Melia.Zone.Scripting.Shared
 			switch (await dialog.Select("EP13CARE_TRADE_DLG1", "!@#$EP13CARE_TRADE1#@!", "!@#$EP13CARE_TRADE2#@!", "!@#$EP13CARE_TRADE3#@!", "!@#$EP13CARE_TRADE4#@!", "!@#$EP13CARE_TRADE5#@!", "!@#$EP13CARE_TRADE6#@!", "!@#$Auto_JongLyo#@!"))
 			{
 				case 1:
-					await dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_Moru");
+					dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_Moru");
 					break;
 				case 2:
-					await dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_ExtractKit");
+					dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_ExtractKit");
 					break;
 				case 3:
-					await dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_EnchantJewel");
+					dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_EnchantJewel");
 					break;
 				case 4:
-					await dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_UniqueMaterial");
+					dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_UniqueMaterial");
 					break;
 				case 5:
-					await dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_HiddenAbility");
+					dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_HiddenAbility");
 					break;
 				case 6:
-					await dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_Vibora");
+					dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "GoddessCare_Vibora");
 					break;
 			}
 		}
@@ -623,7 +599,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("BLESSED_CUBE")]
 		public static async Task BLESSED_CUBE(Dialog dialog)
 		{
-			await dialog.ExecuteScript(ClientScripts.BLESSED_CUBE_OPEN);
+			dialog.ExecuteScript(ClientScripts.BLESSED_CUBE_OPEN);
 		}
 
 		[DialogFunction("DUCTILITY_NPC")]
@@ -632,7 +608,7 @@ namespace Melia.Zone.Scripting.Shared
 			switch (await dialog.Select("COMMON_SKILL_ENCHANT_DLG1", "!@#$COMMON_SKILL_ENCHANT_MSG1#@!", "!@#$Auto_JongLyo#@!"))
 			{
 				case 1:
-					await dialog.ExecuteScript(ClientScripts.REQ_COMMON_SKILL_ENCHANT_UI_OPEN);
+					dialog.ExecuteScript(ClientScripts.REQ_COMMON_SKILL_ENCHANT_UI_OPEN);
 					break;
 			}
 		}
@@ -646,7 +622,7 @@ namespace Melia.Zone.Scripting.Shared
 					await dialog.Msg("EVENT_TOS_WHOLE_DLG2");
 					break;
 				case 2:
-					await dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "EVENT_TOS_WHOLE_SHOP");
+					dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "EVENT_TOS_WHOLE_SHOP");
 					break;
 			}
 			dialog.Close();
@@ -658,7 +634,7 @@ namespace Melia.Zone.Scripting.Shared
 			switch (await dialog.Select("EVENT_TREEDAY_SHOP_DLG1", "!@#$EVENT_2304_ARBOR_DAY_SHOP#@!", "!@#$Auto_JongLyo#@!"))
 			{
 				case 1:
-					await dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "EVENT_2304_ARBOR_DAY_SHOP");
+					dialog.ExecuteScript(ClientScripts.REQ_EVENT_SHOP_OPEN_COMMON, "EVENT_2304_ARBOR_DAY_SHOP");
 					break;
 			}
 		}
@@ -775,7 +751,7 @@ namespace Melia.Zone.Scripting.Shared
 					await dialog.OpenShop("Klapeda_Accessory");
 					break;
 				case 2:
-					await dialog.ExecuteScript(ClientScripts.REQ_BRIQUETTING_HAIR_ACC_UI_OPEN);
+					dialog.ExecuteScript(ClientScripts.REQ_BRIQUETTING_HAIR_ACC_UI_OPEN);
 					break;
 			}
 		}
@@ -1510,7 +1486,7 @@ namespace Melia.Zone.Scripting.Shared
 					await dialog.OpenShop("Master_Scout");
 					break;
 				case 2:
-					await dialog.ExecuteScript(ClientScripts.HIDDENABILITY_DECOMPOSE_UI_OPEN);
+					dialog.ExecuteScript(ClientScripts.HIDDENABILITY_DECOMPOSE_UI_OPEN);
 					break;
 			}
 		}

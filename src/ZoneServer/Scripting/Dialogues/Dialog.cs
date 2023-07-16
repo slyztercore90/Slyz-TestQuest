@@ -550,7 +550,7 @@ namespace Melia.Zone.Scripting.Dialogues
 		/// </summary>
 		/// <param name="script"></param>
 		/// <param name="args">arguments for the script</param>
-		public async Task ExecuteScript(string script, params object[] args)
+		public void ExecuteScript(string script, params object[] args)
 		{
 			this.State = DialogState.Ended;
 			Send.ZC_EXEC_CLIENT_SCP(this.Player.Connection, args.Length > 0 ? string.Format(script, args) : script);

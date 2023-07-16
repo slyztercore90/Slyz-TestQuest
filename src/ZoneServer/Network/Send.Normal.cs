@@ -26,6 +26,43 @@ namespace Melia.Zone.Network
 		public static class ZC_NORMAL
 		{
 			/// <summary>
+			/// Starts a time action, displaying a progress bar and
+			/// potentially putting the character in an animation.
+			/// </summary>
+			/// <param name="entity"></param>
+			/// <param name="timeAction"></param>
+			public static void TimeActionStart(Character character, TimeAction timeAction)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.TimeActionStart);
+
+				packet.PutInt(character.Handle);
+				packet.PutLpString(timeAction.DisplayText);
+				packet.PutLpString(timeAction.AnimationName);
+				packet.PutFloat((float)timeAction.Duration.TotalSeconds);
+				packet.PutByte(1);
+				packet.PutLpString(timeAction.ButtonText);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
+			/// Stops a time action, hiding the progress bar and reverting
+			/// to the default animation.
+			/// </summary>
+			/// <param name="character"></param>
+			public static void TimeActionEnd(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.TimeActionEnd);
+
+				packet.PutInt(character.Handle);
+				packet.PutByte(0);
+
+				character.Connection.Send(packet);
+			}
+
+			/// <summary>
 			/// Timed Action (Worship, Talk)
 			/// </summary>
 			/// <param name="character"></param>
@@ -37,7 +74,7 @@ namespace Melia.Zone.Network
 			public static void TimeAction(Character character, string dialog, string type, float duration, bool isOn = true, string buttonText = "None")
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.TimeAction);
+				packet.PutInt(NormalOp.Zone.TimeActionStart);
 
 				packet.PutInt(character.Handle);
 				packet.PutLpString(dialog);
@@ -57,7 +94,7 @@ namespace Melia.Zone.Network
 			public static void TimeActionState(IActor actor, bool isCompleted)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.TimeActionState);
+				packet.PutInt(NormalOp.Zone.TimeActionEnd);
 
 				packet.PutInt(actor.Handle);
 				packet.PutByte(isCompleted);
