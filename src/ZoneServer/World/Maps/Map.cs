@@ -267,6 +267,7 @@ namespace Melia.Zone.World.Maps
 					_combatEntities[character.Handle] = character;
 			}
 
+			ZoneServer.Instance.UpdateServerInfo();
 			ZoneServer.Instance.ServerEvents.OnPlayerEntersMap(character);
 			PlayerEnters?.Invoke(character);
 		}
@@ -284,6 +285,8 @@ namespace Melia.Zone.World.Maps
 				_combatEntities.Remove(character.Handle);
 
 			character.Map = null;
+
+			ZoneServer.Instance.UpdateServerInfo();
 		}
 
 		/// <summary>

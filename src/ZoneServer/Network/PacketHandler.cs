@@ -382,6 +382,7 @@ namespace Melia.Zone.Network
 			}
 
 			character.Movement.NotifyMove(position, direction, f1);
+			character.Components.Get<TimeActionComponent>().End(TimeActionResult.CancelledByMove);
 		}
 
 		/// <summary>
@@ -2596,12 +2597,17 @@ namespace Melia.Zone.Network
 			Send.ZC_COMMON_SKILL_LIST(conn);
 		}
 
+		/// <summary>
+		/// Send when clicking on a time action Cancel button.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
 		[PacketHandler(Op.CZ_STOP_TIMEACTION)]
 		public void CZ_STOP_TIMEACTION(IZoneConnection conn, Packet packet)
 		{
 			var character = conn.SelectedCharacter;
 
-			character.TimedEvents.Get("timeaction")?.Cancel();
+			character.Components.Get<TimeActionComponent>().End(TimeActionResult.Cancelled);
 		}
 
 		/// <summary>
