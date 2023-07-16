@@ -10,6 +10,7 @@ using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Houses;
 using Yggdrasil.Network.TCP;
 using System.Security.Cryptography;
+using Melia.Shared.Database;
 
 namespace Melia.Zone.Network
 {
@@ -138,6 +139,7 @@ namespace Melia.Zone.Network
 				character.Buffs.RemoveAll(a => !a.Data.Save);
 
 				ZoneServer.Instance.Database.SaveCharacter(character);
+				ZoneServer.Instance.Database.UpdateLoginState(this.Account.Id, 0, LoginState.LoggedOut);
 			}
 		}
 

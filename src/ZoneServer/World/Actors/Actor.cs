@@ -1,4 +1,6 @@
-﻿using Melia.Shared.World;
+﻿using System.Collections.Concurrent;
+using Melia.Shared.World;
+using Melia.Zone.Network;
 using Melia.Zone.World.Maps;
 using Yggdrasil.Composition;
 
@@ -33,6 +35,11 @@ namespace Melia.Zone.World.Actors
 		/// Returns the direction the actor is facing.
 		/// </summary>
 		Direction Direction { get; set; }
+
+		/// <summary>
+		/// Returns a list of effects that are attached to the actor.
+		/// </summary>
+		ConcurrentBag<AttachableEffect> AttachableEffects { get; }
 
 		/// <summary>
 		/// Returns the components the actor has.
@@ -74,6 +81,11 @@ namespace Melia.Zone.World.Actors
 	public abstract class Actor : IActor
 	{
 		/// <summary>
+		/// Returns a list of effects that are attached to the actor.
+		/// </summary>
+		public ConcurrentBag<AttachableEffect> AttachableEffects { get; } = new ConcurrentBag<AttachableEffect>();
+
+		/// <summary>
 		/// Returns the actor's unique handle.
 		/// </summary>
 		public int Handle { get; } = ZoneServer.Instance.World.CreateHandle();
@@ -91,7 +103,7 @@ namespace Melia.Zone.World.Actors
 			get => _map;
 			set => _map = value ?? Map.Limbo;
 		}
-		private Map _map;
+		private Map _map = Map.Limbo;
 
 		/// <summary>
 		/// Returns the actor's position on its current map.
@@ -102,6 +114,20 @@ namespace Melia.Zone.World.Actors
 		/// Returns the direction the actor is facing.
 		/// </summary>
 		public Direction Direction { get; set; }
+
+		/// <summary>
+		/// Attaches an effect to the actor that is displayed alongside it.
+		/// </summary>
+		/// <param name="packetString"></param>
+		/// <param name="scale"></param>
+		public void AttachEffect(string packetString, float scale = 1)
+		{
+			var effect = new AttachableEffect(packetString, scale);
+			this.AttachableEffects.Add(effect);
+
+			if (this.Map != Map.Limbo)
+				Send.ZC_NORMAL.AttachEffect(this, effect.PacketString, effect.Scale);
+		}
 
 		/// <summary>
 		/// Returns the components the actor has.
@@ -117,6 +143,33 @@ namespace Melia.Zone.World.Actors
 			//if (!actor.IsVisible(this))
 			//	return false;
 			return true;
+		}
+	}
+
+	/// <summary>
+	/// An effect that can be attached to an actor.
+	/// </summary>
+	public class AttachableEffect
+	{
+		/// <summary>
+		/// Returns the name of the effect in form of a packet string.
+		/// </summary>
+		public string PacketString { get; }
+
+		/// <summary>
+		/// Returns the effect's size multiplier.
+		/// </summary>
+		public float Scale { get; }
+
+		/// <summary>
+		/// Creates a new attachable effect.
+		/// </summary>
+		/// <param name="packetString"></param>
+		/// <param name="scale"></param>
+		public AttachableEffect(string packetString, float scale)
+		{
+			this.PacketString = packetString;
+			this.Scale = scale;
 		}
 	}
 }

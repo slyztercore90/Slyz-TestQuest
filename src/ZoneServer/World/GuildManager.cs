@@ -26,10 +26,13 @@ namespace Melia.Zone.World
 			var properties = account.Properties;
 
 			properties.SetFloat(PropertyName.EVENT_IS_JOINED_GUILD, 1);
-			Send.ZC_NORMAL.AccountPropertyUpdate(character.Connection, properties.GetSelect(PropertyName.EVENT_IS_JOINED_GUILD));
+			Send.ZC_NORMAL.AccountProperties(character, PropertyName.EVENT_IS_JOINED_GUILD);
+
 			guild.AddMember(character);
 			guild.Properties.SetString(PropertyName.CreateTime, guild.DateCreated.ToSPropertyDateTime().ToString());
+
 			Send.ZC_NORMAL.PartyPropertyUpdate(guild, guild.Properties.GetSelect(PropertyName.CreateTime));
+
 			this.Add(guild);
 			return guild;
 		}

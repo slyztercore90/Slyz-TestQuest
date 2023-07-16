@@ -23,7 +23,7 @@ namespace Melia.Zone.World
 	/// </summary>
 	public class MonsterSpawner
 	{
-		private const int MaxValidPositionTries = 1000;
+		private const int MaxValidPositionTries = 50;
 
 		private const float FlexIncreaseLimit = 100;
 		private const float FlexDecreaseLimit = -100;
@@ -200,37 +200,7 @@ namespace Melia.Zone.World
 					return;
 			}
 
-			foreach (var propertyOverride in propertyOverrides)
-			{
-				var propertyName = propertyOverride.Key;
-				var properties = monster.Properties as Properties;
-
-				// Calculated properties can't be overridden directly,
-				// instead we swap to the override properties that the
-				// calculation functions use.
-				if (properties.TryGet<CFloatProperty>(propertyName, out var calculatedProperty))
-					properties = monster.Properties.Overrides;
-
-				switch (propertyOverride.Value)
-				{
-					case int intValue:
-						properties.SetFloat(propertyName, intValue);
-						break;
-
-					case float floatValue:
-						properties.SetFloat(propertyName, floatValue);
-						break;
-
-					case string stringValue:
-						properties.SetString(propertyName, stringValue);
-						break;
-				}
-			}
-
-			monster.Properties.InvalidateAll();
-
-			monster.Properties.SetFloat(PropertyName.HP, monster.Properties.GetFloat(PropertyName.MHP));
-			monster.Properties.SetFloat(PropertyName.SP, monster.Properties.GetFloat(PropertyName.MSP));
+			monster.ApplyOverrides(propertyOverrides);
 		}
 
 		/// <summary>

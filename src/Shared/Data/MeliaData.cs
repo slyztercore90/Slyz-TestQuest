@@ -34,7 +34,7 @@ namespace Melia.Shared.Data
 		public PacketStringDb PacketStringDb { get; set; } = new PacketStringDb();
 		public PropertiesDb PropertiesDb { get; set; } = new PropertiesDb();
 		public RecipeDb RecipeDb { get; set; } = new RecipeDb();
-		public ResurrectionPointDb ResurrectionPointDb = new ResurrectionPointDb();
+		public ResurrectionPointDb ResurrectionPointDb { get; set; } = new ResurrectionPointDb();
 		public SelectItemDb SelectItemDb { get; set; } = new SelectItemDb();
 		public ServerDb ServerDb { get; set; }
 		public SessionObjectDb SessionObjectDb { get; set; } = new SessionObjectDb();

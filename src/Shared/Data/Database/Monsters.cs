@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml.Linq;
 using Melia.Shared.Tos.Const;
 using Newtonsoft.Json.Linq;
 using Yggdrasil.Data.JSON;
@@ -47,7 +46,7 @@ namespace Melia.Shared.Data.Database
 
 		public string Ai { get; set; }
 		public string Dialog { get; set; }
-		
+
 		public List<DropData> Drops { get; set; } = new List<DropData>();
 		public List<MonsterSkillData> Skills { get; set; } = new List<MonsterSkillData>();
 	}
@@ -82,18 +81,19 @@ namespace Melia.Shared.Data.Database
 		public MonsterData Find(string name)
 		{
 			name = name.ToLower();
-			return this.Entries.FirstOrDefault(a => a.Value.Name.ToLower() == name).Value;
+			return this.Entries.Values.FirstOrDefault(a => a.Name.ToLower() == name);
 		}
 
 		/// <summary>
-		/// Returns true if the monster with the given name was found.
-		/// Returns false if no matching entry was found.
+		/// Returns the monster with the given class name via out. Returns
+		/// false if no match was found.
 		/// </summary>
-		/// <param name="name">Class name of the monster (case-insensitive)</param>
+		/// <param name="className"></param>
+		/// <param name="data"></param>
 		/// <returns></returns>
 		public bool TryFind(string className, out MonsterData data)
 		{
-			data = this.Entries.FirstOrDefault(a => a.Value.ClassName.ToLower() == className.ToLower()).Value;
+			data = this.Entries.Values.FirstOrDefault(a => a.ClassName == className);
 			return data != null;
 		}
 
@@ -106,7 +106,24 @@ namespace Melia.Shared.Data.Database
 		public List<MonsterData> FindAll(string searchString)
 		{
 			searchString = searchString.ToLower();
-			return this.Entries.Where(a => a.Value.Name.ToLower().Contains(searchString)).Select(a => a.Value).ToList();
+			return this.Entries.Values.Where(a => a.Name.ToLower().Contains(searchString)).ToList();
+		}
+
+		/// <summary>
+		/// Returns a list of all monsters whose name contains the given
+		/// string. If there is an exact match, only that one is returned.
+		/// </summary>
+		/// <param name="searchString">String to search for (case-insensitive)</param>
+		/// <returns></returns>
+		public List<MonsterData> FindAllPreferExact(string searchString)
+		{
+			searchString = searchString.ToLower();
+
+			var exactMatches = this.Entries.Values.Where(a => a.Name.ToLower() == searchString);
+			if (exactMatches.Any())
+				return exactMatches.ToList();
+
+			return this.FindAll(searchString);
 		}
 
 		/// <summary>
@@ -152,10 +169,10 @@ namespace Melia.Shared.Data.Database
 			data.CritHitRate = entry.ReadInt("critHitRate");
 			data.CritDodgeRate = entry.ReadInt("critDodgeRate");
 			data.CritAttack = entry.ReadInt("critAttack");
-			
+
 			data.Ai = entry.ReadString("ai");
 			data.Dialog = entry.ReadString("dialog");
-			
+
 			if (entry.ContainsKey("skills"))
 			{
 				foreach (JObject skillEntry in entry["skills"])
@@ -168,7 +185,7 @@ namespace Melia.Shared.Data.Database
 					skillData.SkillId = skillEntry.ReadEnum<SkillId>("skillId");
 
 					data.Skills.Add(skillData);
-				}			
+				}
 			}
 
 			if (entry.ContainsKey("drops"))
@@ -181,8 +198,8 @@ namespace Melia.Shared.Data.Database
 
 					dropData.ItemId = dropEntry.ReadInt("itemId");
 					dropData.DropChance = dropEntry.ReadFloat("chance");
-					dropData.MinAmount = dropEntry.ReadInt("minQuantity", 1);
-					dropData.MaxAmount = dropEntry.ReadInt("maxQuantity", 1);
+					dropData.MinAmount = dropEntry.ReadInt("minAmount", 1);
+					dropData.MaxAmount = dropEntry.ReadInt("maxAmount", 1);
 
 					if (dropData.MaxAmount < dropData.MinAmount)
 						dropData.MaxAmount = dropData.MinAmount;

@@ -21,13 +21,13 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+				Send.ZC_NORMAL.Skill_DynamicCastStart(character, skill.Id);
 		}
 
 		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 0.5f);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, 0.5f);
 		}
 
 		/// <summary>

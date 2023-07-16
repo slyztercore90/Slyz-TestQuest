@@ -96,7 +96,7 @@ namespace Melia.Zone.Skills.Handlers.Doppelsoeldner
 			caster.Components.Get<BuffComponent>()?.Remove(BuffId.Cyclone_EnableMovingShot_Buff);
 			Send.ZC_NORMAL.SetSkill_7B(caster, skill.Id);
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 0);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, 0);
 		}
 
 		/// <summary>

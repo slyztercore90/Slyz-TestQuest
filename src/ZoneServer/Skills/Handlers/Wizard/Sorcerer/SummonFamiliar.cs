@@ -77,7 +77,7 @@ namespace Melia.Zone.Skills.Handlers.Sorcerer
 				skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
 				Send.ZC_SYNC_START(caster, skillHandle, 1);
 				if (caster is Character character)
-					Send.ZC_MSPD(character, summonedMonster, 0, summonedMonster.GetMoveSpeed());
+					Send.ZC_MSPD(character, summonedMonster, 0, summonedMonster.Properties.GetFloat(PropertyName.MSPD));
 				summonedMonster.Components.Get<BuffComponent>()?.AddOrUpdate(new Buff(BuffId.Ability_buff_PC_Summon, 0, 0, TimeSpan.Zero, summonedMonster, summonedMonster));
 				Send.ZC_IS_SUMMON_SORCERER_MONSTER(caster, summonedMonster);
 				Send.ZC_SYNC_END(caster, skillHandle, 0);

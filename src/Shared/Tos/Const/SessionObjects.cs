@@ -95,5 +95,10 @@
 		/// Session object for Hourly Missions (1시간별 미션)
 		/// </summary>
 		public const int Raid = 100000;
+
+		/// <summary>
+		/// Session object for timed actions
+		/// </summary>
+		public const int TemporaryStopEvent = 15509;
 	}
 }

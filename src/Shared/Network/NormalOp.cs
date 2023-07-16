@@ -80,9 +80,9 @@
 			/// </summary>
 			public const int Skill_45 = 0x45;
 			public const int SkillCancel = 0x46;
-			public const int AccountPropertyUpdate = 0x4D;
-			public const int Skill_4D = 0x4F;
-			public const int Skill_4E = 0x50;
+			public const int AccountProperties = 0x4D;
+			public const int Skill_DynamicCastStart = 0x4F;
+			public const int Skill_DynamicCastEnd = 0x50;
 			public const int NPC_PlayTrack = 0x53;
 			public const int SetNPCTrackPosition = 0x54;
 			public const int MiniGame = 0x55;
@@ -115,7 +115,7 @@
 			public const int CutsceneTrack = 0x96;
 			public const int SetTrackFrame = 0x97;
 			public const int SetInvisible = 0x99;
-			public const int ShowUIEffect = 0x9C;
+			public const int ShowItemBalloon = 0x9C;
 			public const int ShowBook = 0x9E;
 			public const int ShowScroll = 0x9F;
 			public const int PetInfo = 0xA4;

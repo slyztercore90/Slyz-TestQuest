@@ -85,7 +85,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 			{
 				Send.ZC_STOP_SOUND(character, "skl_eff_pyromancer_hellbreath_abil");
 				Send.ZC_NORMAL.SetSkill_7B(character, skill.Id);
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 0);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, 0);
 			}
 		}
 

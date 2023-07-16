@@ -298,8 +298,7 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Originally LevelUp but renamed for general purpose
-			/// Plays an effect used in certain situations like camp fire
+			/// Attaches effect to actor on client.
 			/// </summary>
 			/// <param name="actor"></param>
 			/// <param name="animationName"></param>
@@ -308,8 +307,58 @@ namespace Melia.Zone.Network
 			/// <param name="effectRelativeX">Offsets the effect's X position relative to the actor</param>
 			/// <param name="effectRelativeY">Offsets the effect's Y position relative to the actor</param>
 			/// <param name="effectRelativeZ">Offsets the effect's Z position relative to the actor</param>
+			public static void AttachEffect(IActor actor, string animationName, float scale, HeightOffset heightOffset = HeightOffset.UNK, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var animation))
+				{
+					Log.Warning("AttachEffect: Unable to find animationName: {0}", animationName);
+					return;
+				}
+				AttachEffect(actor, animation.Id, scale, heightOffset, effectRelativeX, effectRelativeY, effectRelativeZ, b1, b2, b3, b4);
+			}
+
+			/// <summary>
+			/// Attaches effect to actor on client.
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="packetString"></param>
+			/// <param name="scale"></param>
+			/// <param name="heightOffset">0 - Top, 1 - Mid, 2 - Bot</param>
+			/// <param name="effectRelativeX">Offsets the effect's X position relative to the actor</param>
+			/// <param name="effectRelativeY">Offsets the effect's Y position relative to the actor</param>
+			/// <param name="effectRelativeZ">Offsets the effect's Z position relative to the actor</param>
 			/// <param name="f4"></param>
-			public static void AttachEffect(IActor actor, string animationName, float scale, HeightOffset heightOffset, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
+			public static void AttachEffect(IActor actor, int packetString, float scale, HeightOffset heightOffset = HeightOffset.UNK, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.AttachEffect);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt(packetString);
+				packet.PutFloat(scale);
+				packet.PutInt((int)heightOffset);
+				packet.PutFloat(effectRelativeX);
+				packet.PutFloat(effectRelativeY);
+				packet.PutFloat(effectRelativeZ);
+				packet.PutByte(b1);
+				packet.PutByte(b2);
+				packet.PutByte(b3);
+				packet.PutByte(b4);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// Attaches effect to actor on client.
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="animationName"></param>
+			/// <param name="scale"></param>
+			/// <param name="heightOffset">0 - Top, 1 - Mid, 2 - Bot</param>
+			/// <param name="effectRelativeX">Offsets the effect's X position relative to the actor</param>
+			/// <param name="effectRelativeY">Offsets the effect's Y position relative to the actor</param>
+			/// <param name="effectRelativeZ">Offsets the effect's Z position relative to the actor</param>
+			public static void AttachEffect(IZoneConnection conn, IActor actor, string animationName, float scale, HeightOffset heightOffset = HeightOffset.UNK, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
 			{
 				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var animation))
 				{
@@ -331,39 +380,7 @@ namespace Melia.Zone.Network
 			/// <param name="effectRelativeY">Offsets the effect's Y position relative to the actor</param>
 			/// <param name="effectRelativeZ">Offsets the effect's Z position relative to the actor</param>
 			/// <param name="f4"></param>
-			public static void AttachEffect(IActor actor, int packetString, float scale, HeightOffset heightOffset, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.AttachEffect);
-
-				packet.PutInt(actor.Handle);
-				packet.PutInt(packetString);
-				packet.PutFloat(scale);
-				packet.PutInt((int)heightOffset);
-				packet.PutFloat(effectRelativeX);
-				packet.PutFloat(effectRelativeY);
-				packet.PutFloat(effectRelativeZ);
-				packet.PutByte(b1);
-				packet.PutByte(b2);
-				packet.PutByte(b3);
-				packet.PutByte(b4);
-
-				actor.Map.Broadcast(packet, actor);
-			}
-
-			/// <summary>
-			/// Originally LevelUp but renamed for general purpose
-			/// Plays an effect used in certain situations like camp fire
-			/// </summary>
-			/// <param name="actor"></param>
-			/// <param name="packetString"></param>
-			/// <param name="scale"></param>
-			/// <param name="heightOffset">0 - Top, 1 - Mid, 2 - Bot</param>
-			/// <param name="effectRelativeX">Offsets the effect's X position relative to the actor</param>
-			/// <param name="effectRelativeY">Offsets the effect's Y position relative to the actor</param>
-			/// <param name="effectRelativeZ">Offsets the effect's Z position relative to the actor</param>
-			/// <param name="f4"></param>
-			public static void AttachEffect(IZoneConnection conn, IActor actor, int packetString, float scale, HeightOffset heightOffset, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
+			public static void AttachEffect(IZoneConnection conn, IActor actor, int packetString, float scale, HeightOffset heightOffset = HeightOffset.UNK, float effectRelativeX = 0, float effectRelativeY = 0, float effectRelativeZ = 0, byte b1 = 0, byte b2 = 0, byte b3 = 0, byte b4 = 0)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
 				packet.PutInt(NormalOp.Zone.AttachEffect);
@@ -1016,63 +1033,59 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Updates account's given properties.
+			/// Sends account properties to character's client.
 			/// </summary>
-			/// <param name="conn"></param>
-			/// <param name="properties"></param>
-			public static void AccountPropertyUpdate(IZoneConnection conn, PropertyList properties)
+			/// <param name="character"></param>
+			/// <param name="propertyNames"></param>
+			public static void AccountProperties(Character character, params string[] propertyNames)
 			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.AccountPropertyUpdate);
+				var account = character.Connection.Account;
+				var properties = propertyNames != null ? account.Properties.GetSelect(propertyNames) : account.Properties.GetAll();
+				var propertySize = properties.GetByteCount();
 
-				packet.PutLong(conn.Account.Id);
-				packet.PutShort(properties.GetByteCount());
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.AccountProperties);
+
+				packet.PutLong(account.Id);
+				packet.PutShort(propertySize);
 				packet.AddProperties(properties);
 
-				conn.Send(packet);
+				character.Connection.Send(packet);
 			}
 
 			/// <summary>
-			/// Related to skills
-			/// Cast Start?
+			/// Starts an effect associated with dynamic casted skill.
 			/// </summary>
-			/// <remarks>
-			/// Might be broadcasted, to show casting start of a skill
-			/// </remarks>
 			/// <param name="character"></param>
 			/// <param name="skillId"></param>
-			public static void Skill_4D(Character character, SkillId skillId)
+			public static void Skill_DynamicCastStart(Character character, SkillId skillId)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Skill_4D);
+				packet.PutInt(NormalOp.Zone.Skill_DynamicCastStart);
 
 				packet.PutInt(character.Handle);
 				packet.PutInt((int)skillId);
 
-				character.Connection.Send(packet);
+				character.Map.Broadcast(packet, character);
 			}
 
 			/// <summary>
-			/// Related to skills
-			/// Cast End?
-			/// Cast Duration?
+			/// Ends an effect associated with dynamic casted skill.
 			/// </summary>
-			/// <remarks>
-			/// Might be broadcasted, to show end casting of a skill
-			/// </remarks>
 			/// <param name="character"></param>
 			/// <param name="skillId"></param>
 			/// <param name="value"></param>
-			public static void Skill_4E(Character character, SkillId skillId, float value)
+			public static void Skill_DynamicCastEnd(Character character, SkillId skillId, float value)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Skill_4E);
+				packet.PutInt(NormalOp.Zone.Skill_DynamicCastEnd);
 
+				packet.PutInt(character.Handle);
 				packet.PutInt((int)skillId);
 				packet.PutFloat(value);
 				packet.PutByte(0);
 
-				character.Connection.Send(packet);
+				character.Map.Broadcast(packet, character);
 			}
 
 			/// <summary>
@@ -1565,7 +1578,7 @@ namespace Melia.Zone.Network
 			/// <param name="item"></param>
 			/// <param name="style"></param>
 			/// <param name="type"></param>
-			public static void ShowItemBalloon(Character character, Item item, string type, string style = "{@st43}", string systemMsg = "AppraisalSuccess", float duration = 3)
+			public static void ShowItemBalloon(Character character, Item item = null, string type = "reward_itembox", string style = "{@st43}", string systemMsg = "AppraisalSuccess", float duration = 3)
 			{
 				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(style, out var styleData))
 				{
@@ -1587,11 +1600,11 @@ namespace Melia.Zone.Network
 			/// <param name="style"></param>
 			/// <param name="systemMsg"></param>
 			/// <param name="duration"></param>
-			public static void ShowItemBalloon(Character character, Item item = null, string type = "reward_itembox", int style = 2562289, int systemMsg = 4122, float duration = 3)
+			public static void ShowItemBalloon(Character character, Item item, string type, int style, int systemMsg, float duration)
 			{
 				var properties = item.Properties.GetAll();
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.ShowUIEffect);
+				packet.PutInt(NormalOp.Zone.ShowItemBalloon);
 
 				packet.PutByte(1);
 				packet.PutInt(character.Handle);
@@ -2082,8 +2095,6 @@ namespace Melia.Zone.Network
 			/// Server response on Party Property Change
 			/// </summary>
 			/// <param name="party"></param>
-			/// <param name="type"></param>
-			/// <param name="value"></param>
 			public static void PartyNameChange(Party party)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
@@ -3233,23 +3244,6 @@ namespace Melia.Zone.Network
 
 				party.Broadcast(packet);
 				packet.PutLong(character.ObjectId);
-			}
-
-			/// <summary>
-			/// Purpose unknown. Added for testing purposes, but turned
-			/// out to not be necessary.
-			/// </summary>
-			/// <param name="entity"></param>
-			/// <param name="b1"></param>
-			public static void Revive(ICombatEntity entity, bool b1)
-			{
-				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.Revive);
-
-				packet.PutInt(entity.Handle);
-				packet.PutByte(b1);
-
-				entity.Map.Broadcast(packet, entity);
 			}
 		}
 	}

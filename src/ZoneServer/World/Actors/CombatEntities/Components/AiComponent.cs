@@ -26,7 +26,8 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 				throw new ArgumentException($"No AI script with name '{aiName}' exists.");
 
 			this.Script = aiScript;
-			this.Script.SetOwner(owner);
+			if (owner != null)
+				this.Script.SetMaster(owner);
 		}
 
 		/// <summary>

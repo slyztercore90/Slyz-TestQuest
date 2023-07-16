@@ -94,13 +94,6 @@ namespace Melia.Zone.World.Actors
 		/// </summary>
 		/// <param name="killer"></param>
 		void Kill(ICombatEntity killer);
-
-		/// <summary>
-		/// Returns a weapon attack speed based on the entity's attack and
-		/// the skill's type.
-		/// </summary>
-		/// <returns></returns>
-		float GetWeaponSpeed();
 	}
 
 	/// <summary>
@@ -247,6 +240,23 @@ namespace Melia.Zone.World.Actors
 		/// <returns></returns>
 		public static Buff StartBuff(this ICombatEntity entity, BuffId buffId, float numArg1, float numArg2, TimeSpan duration, ICombatEntity caster)
 			=> entity.Components.Get<BuffComponent>()?.Start(buffId, numArg1, numArg2, duration, caster);
+
+		/// <summary>
+		/// Stops the buff with the given id.
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="buffId"></param>
+		public static void StopBuff(this ICombatEntity entity, BuffId buffId)
+			=> entity.Components.Get<BuffComponent>()?.Stop(buffId);
+
+		/// <summary>
+		/// Returns true if the buff with the given id is active.
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="buffId"></param>
+		/// <returns></returns>
+		public static bool IsBuffActive(this ICombatEntity entity, BuffId buffId)
+			=> entity.Components.Get<BuffComponent>()?.Has(buffId) ?? false;
 
 		/// <summary>
 		/// Returns true if the distance between the caster and the target

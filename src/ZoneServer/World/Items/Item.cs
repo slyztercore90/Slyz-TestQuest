@@ -463,5 +463,133 @@ namespace Melia.Zone.World.Items
 				this.Durability += amount;
 			Send.ZC_OBJECT_PROPERTY(character.Connection, this);
 		}
+
+		/// <summary>
+		/// Generate random options on an item.
+		/// </summary>
+		/// <param name="minOptions"></param>
+		/// <param name="maxOptions"></param>
+		public void GenerateRandomOptions(int minOptions = 1, int maxOptions = 5)
+		{
+			if (!this.NeedRandomOptions)
+				return;
+
+			this.Properties.SetFloat(PropertyName.NeedRandomOption, 0);
+			var random = RandomProvider.Get();
+			var options = random.Next(minOptions, maxOptions);
+			var utilOptions = new string[] { "CRTHR", "CRTDR", "BLK_BREAK", "BLK", "ADD_HR", "ADD_DR", "RHP", "MSP" };
+			var atkOptions = new string[] { "ADD_CLOTH", "ADD_LEATHER", "ADD_IRON", "ADD_SMALLSIZE", "ADD_MIDDLESIZE",
+				"ADD_LARGESIZE", "ADD_GHOST", "ADD_FORESTER", "ADD_WIDLING", "ADD_VELIAS",
+				"ADD_PARAMUNE", "ADD_KLAIDA", "MiddleSize_Def","Cloth_Def", "Leather_Def", "Iron_Def"};
+			var dmgOptions = new string[] { "ResAdd_Damage", "Add_Damage_Atk" };
+			var statOptions = new string[] { "LootingChance", "STR", "DEX", "CON", "INT", "MNA", "RSP" };
+			var staminaOption = "MSTA"; // Not used, seems useless
+										// TODO: Weighted Random Options
+			for (var i = 0; i < options; i++)
+			{
+				switch (i)
+				{
+					case 0:
+						this.AddRandomOption(i + 1, atkOptions[random.Next(0, atkOptions.Length)], "ATK", ((this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? random.Next(565, 1132) : random.Next(302, 605)));
+						break;
+					case 1:
+						this.AddRandomOption(i + 1, utilOptions[random.Next(0, utilOptions.Length)],
+							"UTIL_" + ((this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? "WEAPON" : "ARMOR"),
+							(this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? random.Next(283, 567) : random.Next(131, 303));
+						break;
+					case 2:
+						this.AddRandomOption(i + 1, dmgOptions[random.Next(0, dmgOptions.Length)], "ATK",
+							(this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? random.Next(565, 1132) : random.Next(302, 605));
+						break;
+					case 3:
+						this.AddRandomOption(i + 1, statOptions[random.Next(0, statOptions.Length)], "STAT",
+							(this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? random.Next(85, 171) : random.Next(45, 92));
+						break;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Add a random option to an item.
+		/// </summary>
+		/// <param name="optionIndex"></param>
+		/// <param name="optionType"></param>
+		/// <param name="optionGroup"></param>
+		/// <param name="optionValue"></param>
+		private void AddRandomOption(int optionIndex, string optionType, string optionGroup, float optionValue)
+		{
+			var optionPropId = string.Format("RandomOption_{0}", optionIndex);
+			var optionPropGroup = string.Format("RandomOptionGroup_{0}", optionIndex);
+			var optionPropValue = string.Format("RandomOptionValue_{0}", optionIndex);
+
+			this.Properties.SetString(optionPropId, optionType);
+			this.Properties.SetString(optionPropGroup, optionGroup);
+			this.Properties.SetFloat(optionPropValue, optionValue);
+		}
+
+		/// <summary>
+		/// This is based off the RandomOptions function,
+		/// so inaccuracies in options are a possibility.
+		/// </summary>
+		public void GenerateRandomHatOptions(int minOptions = 1, int maxOptions = 2)
+		{
+			var random = RandomProvider.Get();
+			var options = random.Next(minOptions, maxOptions);
+			var utilOptions = new string[] { "CRTHR", "CRTDR", "BLK_BREAK", "BLK", "ADD_HR", "ADD_DR", "RHP" };
+			var atkOptions = new string[] { "MSP", "ADD_CLOTH", "ADD_LEATHER", "ADD_IRON", "ADD_SMALLSIZE", "ADD_MIDDLESIZE",
+				"ADD_LARGESIZE", "ADD_GHOST", "ADD_FORESTER", "ADD_WIDLING", "ADD_VELIAS",
+				"ADD_PARAMUNE", "ADD_KLAIDA", "MiddleSize_Def","Cloth_Def", "Leather_Def", "Iron_Def"};
+			var dmgOptions = new string[] { "ResAdd_Damage", "Add_Damage_Atk" };
+			var statOptions = new string[] { "LootingChance", "STR", "DEX", "CON", "INT", "MNA", "RSP" };
+			var staminaOption = "MSTA"; // Not used, seems useless
+										// TODO: Weighted Random Options
+			for (var i = 0; i < options; i++)
+			{
+				switch (i)
+				{
+					case 0:
+						this.AddOption("HatProp", i + 1, atkOptions[random.Next(0, atkOptions.Length)], ((this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? random.Next(565, 1132) : random.Next(302, 605)));
+						break;
+					case 1:
+						this.AddOption("HatProp", i + 1, utilOptions[random.Next(0, utilOptions.Length)],
+							((this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? random.Next(283, 567) : random.Next(131, 303)));
+						break;
+					case 2:
+						this.AddOption("HatProp", i + 1, dmgOptions[random.Next(0, dmgOptions.Length)],
+							((this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? random.Next(565, 1132) : random.Next(302, 605)));
+						break;
+					case 3:
+						this.AddOption("HatProp", i, statOptions[random.Next(0, statOptions.Length)],
+							((this.Data.Group == ItemGroup.Weapon || this.Data.Group == ItemGroup.SubWeapon) ? random.Next(85, 171) : random.Next(45, 92)));
+						break;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Add an option to the item.
+		/// </summary>
+		/// <param name="optionPrefix"></param>
+		/// <param name="optionIndex"></param>
+		/// <param name="optionPropertyName"></param>
+		/// <param name="optionValue"></param>
+		private void AddOption(string optionPrefix, int optionIndex, string optionPropertyName, float optionValue)
+		{
+			var nameProp = string.Format("{0}Name_{1}", optionPrefix, optionIndex);
+			var valueProp = string.Format("{0}Value_{1}", optionPrefix, optionIndex);
+
+			// Reset previous value if it exists
+			var optionName = this.Properties.GetString(nameProp);
+			if (optionName != null && optionName != "None")
+			{
+				var prevValue = this.Properties.GetFloat(optionName);
+				// Can we just set it to 0, rather than modify it?
+				this.Properties.Modify(optionName, -prevValue);
+			}
+
+			this.Properties.SetString(nameProp, optionPropertyName);
+			this.Properties.SetFloat(valueProp, optionValue);
+			this.Properties.SetFloat(optionPropertyName, optionValue);
+		}
 	}
 }

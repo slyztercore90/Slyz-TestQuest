@@ -25,14 +25,14 @@ namespace Melia.Zone.Skills.Handlers.BlossomBlader
 			if (caster is Character character)
 			{
 				Send.ZC_PLAY_SOUND(character, 0);
-				Send.ZC_NORMAL.Skill_4D(character, skill.Id);
+				Send.ZC_NORMAL.Skill_DynamicCastStart(character, skill.Id);
 			}
 		}
 
 		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
 			if (caster is Character character)
-				Send.ZC_NORMAL.Skill_4E(character, skill.Id, 2);
+				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, 2);
 		}
 
 		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, IList<ICombatEntity> targets)

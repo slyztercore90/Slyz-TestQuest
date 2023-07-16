@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Melia.Shared.L10N;
 using Melia.Shared.Tos.Const;
 using Melia.Zone.Network;
+using Melia.Zone.Scripting;
+using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Items;
 using Yggdrasil.Logging;
 
@@ -518,6 +521,12 @@ namespace Melia.Zone.World.Actors.Characters.Components
 
 			this.Equipped?.Invoke(this.Character, item);
 
+			// Try to execute script
+			var script = item.Data.Script;
+
+			if (ScriptableFunctions.Equip.TryGet("SCP_ON_EQUIP_ITEM_" + item.Data.ClassName, out var scriptFunc))
+				scriptFunc(this.Character, item, script.StrArg, script.NumArg1, script.NumArg2);
+
 			return InventoryResult.Success;
 		}
 
@@ -544,6 +553,12 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			this.Add(item, InventoryAddType.NotNew);
 
 			this.Unequipped?.Invoke(this.Character, item);
+
+			// Try to execute script
+			var script = item.Data.Script;
+
+			if (ScriptableFunctions.Unequip.TryGet("SCP_ON_UNEQUIP_ITEM_" + item.Data.ClassName, out var scriptFunc))
+				scriptFunc(this.Character, item, script.StrArg, script.NumArg1, script.NumArg2);
 
 			return InventoryResult.Success;
 		}

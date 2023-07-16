@@ -46,5 +46,6 @@ namespace Melia.Shared.Tos.Const
 		TOP = 0,
 		MID = 1,
 		BOT = 2,
+		UNK = 3,
 	}
 }
