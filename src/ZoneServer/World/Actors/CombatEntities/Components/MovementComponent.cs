@@ -426,7 +426,10 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 					continue;
 
 				var dialog = new Dialog(this.Entity, triggerArea);
-				triggerArea.EnterFunc.Invoke(dialog);
+				if (this.Entity is Character character)
+					triggerArea.EnterFunc.Invoke(dialog);
+				else
+					triggerArea.EnterFunc.Invoke(dialog);
 			}
 
 			foreach (var triggerArea in leftTriggerAreas)

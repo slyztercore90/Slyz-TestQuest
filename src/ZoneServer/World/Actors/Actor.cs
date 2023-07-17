@@ -1,6 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using Melia.Shared.World;
 using Melia.Zone.Network;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.Components;
+using Melia.Zone.World.Actors.Effects;
 using Melia.Zone.World.Maps;
 using Yggdrasil.Composition;
 
@@ -35,6 +38,11 @@ namespace Melia.Zone.World.Actors
 		/// Returns the direction the actor is facing.
 		/// </summary>
 		Direction Direction { get; set; }
+
+		/// <summary>
+		/// Returns the actor's visibility.
+		/// </summary>
+		public ActorVisibility Visibility { get; set; }
 
 		/// <summary>
 		/// Returns a list of effects that are attached to the actor.
@@ -116,6 +124,32 @@ namespace Melia.Zone.World.Actors
 		public Direction Direction { get; set; }
 
 		/// <summary>
+		/// Returns the components the actor has.
+		/// </summary>
+		public ComponentCollection Components { get; set; }
+
+		/// <summary>
+		/// Returns the actor's visibility.
+		/// </summary>
+		public ActorVisibility Visibility { get; set; } = ActorVisibility.Everyone;
+
+		/// <summary>
+		/// Returns a specific visibility id (Character, Party)
+		/// </summary>
+		public long VisibilityId { get; set; }
+
+		/// <summary>
+		/// Set a specific visibilty limiter.
+		/// </summary>
+		/// <param name="visibility"></param>
+		/// <param name="id"></param>
+		public void SetVisibilty(ActorVisibility visibility, long id)
+		{
+			this.Visibility = visibility;
+			this.VisibilityId = id;
+		}
+
+		/// <summary>
 		/// Attaches an effect to the actor that is displayed alongside it.
 		/// </summary>
 		/// <param name="packetString"></param>
@@ -130,20 +164,65 @@ namespace Melia.Zone.World.Actors
 		}
 
 		/// <summary>
-		/// Returns the components the actor has.
+		/// Add an effect to an actor.
 		/// </summary>
-		public ComponentCollection Components { get; set; }
+		/// <param name="effect"></param>
+		public void AddEffect(Effect effect)
+		{
+			if (!this.Components.Has<EffectsComponent>())
+				this.Components.Add(new EffectsComponent(this));
+			this.Components.Get<EffectsComponent>()?.AddEffect(effect);
+		}
 
-		public bool CanSee(IActor actor)
+		public bool CanSee(Actor actor)
 		{
 			if (actor == null)
 				return false;
 			if (!this.Position.InRange2D(actor.Position, Map.VisibleRange))
 				return false;
-			//if (!actor.IsVisible(this))
-			//	return false;
+			if (!actor.IsVisible(this))
+				return false;
 			return true;
 		}
+
+		public bool IsVisible(Actor actor)
+		{
+			if (actor is Character character)
+			{
+				switch (actor.Visibility)
+				{
+					case ActorVisibility.Individual:
+						if (this.VisibilityId == character.ObjectId)
+							return true;
+						break;
+					case ActorVisibility.Party:
+						if (character.Connection.Party != null)
+							return this.VisibilityId == character.Connection.Party.ObjectId;
+						break;
+					case ActorVisibility.Track:
+						if (character.Tracks != null && character.Tracks.ActiveTrack != null)
+							return this.VisibilityId == character.ObjectId;
+						break;
+					case ActorVisibility.Everyone:
+						return true;
+					default:
+						return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	/// <summary>
+	/// Defines an actor's visibility.
+	/// </summary>
+	public enum ActorVisibility
+	{
+		NoOne,
+		Individual,
+		Party,
+		Track,
+		Everyone,
 	}
 
 	/// <summary>

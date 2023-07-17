@@ -573,6 +573,17 @@ namespace Melia.Zone.Scripting.Dialogues
 		}
 
 		/// <summary>
+		/// Hook into current dialog state.
+		/// </summary>
+		/// <param name="hookId"></param>
+		/// <param name="hookName"></param>
+		/// <returns></returns>
+		public async Task<bool> Hook(string hookId, string hookName)
+		{
+			return await ScriptHook.Run(hookId, hookName, this);
+		}
+
+		/// <summary>
 		/// Custom dialog, predefined dialogs in the client
 		/// </summary>
 		/// <param name="function"></param>

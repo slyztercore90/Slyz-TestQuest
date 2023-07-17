@@ -8667,6 +8667,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("SIAUL_WEST_MEET_TITAS_AUTO")]
 		public static async Task SIAUL_WEST_MEET_TITAS_AUTO(Dialog dialog)
 		{
+			await dialog.Hook(dialog.Npc.EnterName, "BeforeStart");
 			await Task.Yield();
 		}
 

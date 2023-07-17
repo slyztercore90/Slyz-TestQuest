@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
+using Melia.Shared.Data.Database;
 using Melia.Shared.ObjectProperties;
 using Melia.Zone.Scripting;
 
@@ -56,6 +57,16 @@ namespace Melia.Zone.World.Quests
 		public QuestData Data { get; }
 
 		/// <summary>
+		/// Returns the quest's static data.
+		/// </summary>
+		public QuestStaticData QuestStaticData { get; private set; }
+
+		/// <summary>
+		/// Returns the quest's session object data.
+		/// </summary>
+		public SessionObjectData SessionObjectStaticData { get; private set; }
+
+		/// <summary>
 		/// Returns a list with the quest's objectives' progresses.
 		/// </summary>
 		public ReadOnlyCollection<QuestProgress> Progresses => _progresses.AsReadOnly();
@@ -86,6 +97,17 @@ namespace Melia.Zone.World.Quests
 
 			this.InitProgresses();
 			this.InitialUnlock();
+
+			Load();
+		}
+
+		/// <summary>
+		/// Load Static Data from Database
+		/// </summary>
+		private void Load()
+		{
+			this.QuestStaticData = ZoneServer.Instance.Data.QuestDb.Find(this.Data.Id);
+			this.SessionObjectStaticData = ZoneServer.Instance.Data.SessionObjectDb.Find(QuestStaticData.QuestSSN);
 		}
 
 		/// <summary>

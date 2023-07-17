@@ -73,7 +73,7 @@ namespace Melia.Shared
 			Directory.SetCurrentDirectory(appDirectory);
 
 			var folderNames = new[] { "lib", "user", "system" };
-			var tries = 4;
+			var tries = 6;
 
 			var cwd = Directory.GetCurrentDirectory();
 			for (var i = 0; i < tries; ++i)
@@ -241,6 +241,7 @@ namespace Melia.Shared
 					this.LoadDb(this.Data.NormalTxDb, "db/normal_tx_scripts.txt");
 					this.LoadDb(this.Data.PacketStringDb, "db/packetstrings.txt");
 					this.LoadDb(this.Data.PropertiesDb, "db/properties.txt");
+					this.LoadDb(this.Data.QuestDb, "db/quests.txt");
 					this.LoadDb(this.Data.RecipeDb, "db/recipes.txt");
 					this.LoadDb(this.Data.ResurrectionPointDb, "db/resurrection_points.txt");
 					this.LoadDb(this.Data.ServerDb, "db/servers.txt");

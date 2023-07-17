@@ -34,6 +34,11 @@ namespace Melia.Zone.World.Quests
 		public bool Cancelable { get; set; } = false;
 
 		/// <summary>
+		/// Gets or sets the quest's track (cutscene).
+		/// </summary>
+		public string Track { get; set; }
+
+		/// <summary>
 		/// Gets or sets the start delay between meeting the quests
 		/// prerequisites and receiving it automatically. Applies only
 		/// to quests that start automatically.

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Threading.Tasks;
 using Melia.Shared.Configuration.Files;
+using Melia.Shared.Data.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
@@ -76,6 +77,40 @@ namespace Melia.Zone.Scripting
 		/// <returns></returns>
 		public static string LNF(string key, string keyPlural, int n, params object[] args)
 			=> string.Format(Localization.GetPlural(key, keyPlural, n), args);
+
+		public static Npc AddNpc(int genType, int monsterId, string name, string map, double x, double y, double z, double direction)
+		{
+			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
+				throw new ArgumentException($"Map '{map}' not found.");
+
+			var pos = new Position((float)x, (float)y, (float)z);
+
+			// Wrap name in localization code if applicable
+			if (Dialog.IsLocalizationKey(name))
+			{
+				name = Dialog.WrapLocalizationKey(name);
+			}
+			// Insert line breaks in tagged NPC names that don't have one
+			else if (name.StartsWith("[") && !name.Contains("{nl}"))
+			{
+				var endIndex = name.LastIndexOf("] ");
+				if (endIndex != -1)
+				{
+					// Remove space and insert new line instead.
+					name = name.Remove(endIndex + 1, 1);
+					name = name.Insert(endIndex + 1, "{nl}");
+				}
+			}
+
+			var location = new Location(mapObj.Id, pos);
+			var dir = new Direction(direction);
+
+			var monster = new Npc(monsterId, name, location, dir);
+
+			mapObj.AddMonster(monster);
+
+			return monster;
+		}
 
 		/// <summary>
 		/// Adds new NPC to the world.
@@ -174,9 +209,7 @@ namespace Melia.Zone.Scripting
 			if (dialog != null)
 				monster.SetClickTrigger(dialogFuncName, dialog);
 			if (enter != null || leave != null)
-			{
 				monster.SetTriggerArea(Spot(monster.Position.X, monster.Position.Z, range));
-			}
 			if (enter != null)
 			{
 				monster.SetEnterTrigger(enterFuncName, enter);

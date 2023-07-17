@@ -1354,7 +1354,7 @@ namespace Melia.Zone.Network
 			/// <param name="character"></param>
 			/// <param name="trackName"></param>
 			/// <param name="actors"></param>
-			public static void StartCutscene(Character character, string trackName, params Actor[] actors)
+			public static void StartCutscene(Character character, string trackName, params IActor[] actors)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
 				packet.PutInt(NormalOp.Zone.CutsceneTrack);

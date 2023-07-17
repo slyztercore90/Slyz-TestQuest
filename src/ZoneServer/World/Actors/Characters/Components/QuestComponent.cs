@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Const.Web;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting;
 using Melia.Zone.World.Quests;
@@ -439,16 +441,41 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		private void UpdateClient_AddQuest(Quest quest)
 		{
-			var questTable = this.QuestToTable(quest);
+			if (!ZoneServer.Instance.Data.QuestDb.TryFind(quest.Data.Id, out var questData))
+			{
+				var questTable = this.QuestToTable(quest);
 
-			var table = new LuaTable();
-			table.Insert("Op", "QuestAdd");
-			table.Insert("Data", questTable);
+				var table = new LuaTable();
+				table.Insert("Op", "QuestAdd");
+				table.Insert("Data", questTable);
 
-			var lua = "Melia.Quests.Add(" + questTable.Serialize() + ")";
-			Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
+				var lua = "Melia.Quests.Add(" + questTable.Serialize() + ")";
+				Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
 
-			//Log.Debug(lua);
+				//Log.Debug(lua);
+				return;
+			}
+			if (quest.QuestStaticData != null)
+			{
+				var main = this.Character.SessionObjects.Main;
+
+				if (!string.IsNullOrWhiteSpace(quest.QuestStaticData.QStartZone)
+					&& quest.QuestStaticData.QStartZone != main.Properties.GetString(PropertyName.QSTARTZONETYPE))
+				{
+					main.Properties.SetString(PropertyName.QSTARTZONETYPE, quest.QuestStaticData.QStartZone);
+					Send.ZC_OBJECT_PROPERTY(this.Character, main, PropertyName.QSTARTZONETYPE);
+				}
+			}
+			if (quest.SessionObjectStaticData != null)
+			{
+				var questSessionObject = this.Character.SessionObjects.GetOrCreate(quest.SessionObjectStaticData.Id);
+				if (questSessionObject != null)
+				{
+					if (quest.SessionObjectStaticData.QuestData.InfoMaxCount.Count > 0)
+						questSessionObject.Properties.SetFloat(PropertyName.QuestInfoValue1, 0f);
+					Send.ZC_SESSION_OBJ_ADD(this.Character, questSessionObject, quest.QuestStaticData.Id);
+				}
+			}
 		}
 
 		/// <summary>
@@ -457,18 +484,22 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		private void UpdateClient_UpdateQuest(Quest quest)
 		{
-			var objectivesTable = this.ObjectivesToTable(quest);
+			if (!ZoneServer.Instance.Data.QuestDb.TryFind(quest.Data.Id, out var questData))
+			{
+				var objectivesTable = this.ObjectivesToTable(quest);
 
-			var questTable = new LuaTable();
-			questTable.Insert("ObjectId", "0x" + quest.ObjectId.ToString("X16"));
-			questTable.Insert("Status", quest.Status.ToString());
-			questTable.Insert("Done", quest.ObjectivesCompleted);
-			questTable.Insert("Objectives", objectivesTable);
+				var questTable = new LuaTable();
+				questTable.Insert("ObjectId", "0x" + quest.ObjectId.ToString("X16"));
+				questTable.Insert("Status", quest.Status.ToString());
+				questTable.Insert("Done", quest.ObjectivesCompleted);
+				questTable.Insert("Objectives", objectivesTable);
 
-			var lua = "Melia.Quests.Update(" + questTable.Serialize() + ")";
-			Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
+				var lua = "Melia.Quests.Update(" + questTable.Serialize() + ")";
+				Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
+				return;
 
-			//Log.Debug(lua);
+				//Log.Debug(lua);
+			}
 		}
 
 		/// <summary>
@@ -477,8 +508,19 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		private void UpdateClient_RemoveQuest(Quest quest)
 		{
-			var lua = $"Melia.Quests.Remove('{quest.ObjectIdStr}')";
-			Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
+			if (!ZoneServer.Instance.Data.QuestDb.TryFind(quest.Data.Id, out var questData))
+			{
+				var lua = $"Melia.Quests.Remove('{quest.ObjectIdStr}')";
+				Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
+				return;
+			}
+			if (quest.SessionObjectStaticData != null)
+			{
+				var main = this.Character.SessionObjects.Main;
+
+				this.Character.SessionObjects.Remove(quest.SessionObjectStaticData.Id);
+				Send.ZC_SESSION_OBJ_REMOVE(this.Character, quest.SessionObjectStaticData.Id);
+			}
 		}
 
 		/// <summary>
@@ -487,8 +529,20 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		private void UpdateClient_CompleteQuest(Quest quest)
 		{
-			var lua = $"Melia.Quests.Remove('{quest.ObjectIdStr}')";
-			Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
+			if (!ZoneServer.Instance.Data.QuestDb.TryFind(quest.Data.Id, out var questData))
+			{
+				var lua = $"Melia.Quests.Remove('{quest.ObjectIdStr}')";
+				Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
+				return;
+			}
+			if (!string.IsNullOrEmpty(questData.QuestProperty))
+			{
+				var main = this.Character.SessionObjects.Main;
+				var propertyName = questData.QuestProperty;
+
+				main.Properties.SetFloat(propertyName, 1);
+				Send.ZC_OBJECT_PROPERTY(this.Character, main, propertyName);
+			}
 		}
 
 		/// <summary>

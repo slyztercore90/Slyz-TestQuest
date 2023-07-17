@@ -4,6 +4,7 @@ using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Effects;
 using Yggdrasil.Geometry;
 using Yggdrasil.Util;
 

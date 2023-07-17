@@ -33,6 +33,7 @@ namespace Melia.Shared.Data
 		public NormalTxDb NormalTxDb { get; set; } = new NormalTxDb();
 		public PacketStringDb PacketStringDb { get; set; } = new PacketStringDb();
 		public PropertiesDb PropertiesDb { get; set; } = new PropertiesDb();
+		public QuestDb QuestDb { get; set; } = new QuestDb();
 		public RecipeDb RecipeDb { get; set; } = new RecipeDb();
 		public ResurrectionPointDb ResurrectionPointDb { get; set; } = new ResurrectionPointDb();
 		public SelectItemDb SelectItemDb { get; set; } = new SelectItemDb();

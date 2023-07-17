@@ -28,6 +28,11 @@ namespace Melia.Zone.Scripting
 		public int QuestId => this.Data.Id;
 
 		/// <summary>
+		/// Returns the id of the track associated with this script.
+		/// </summary>
+		public string TrackId => this.Data.Track;
+
+		/// <summary>
 		/// Initializes script, creating the quest and saving it for
 		/// later use.
 		/// </summary>
@@ -196,6 +201,12 @@ namespace Melia.Zone.Scripting
 		/// <param name="startDelay"></param>
 		protected void SetDelay(TimeSpan startDelay)
 			=> this.Data.StartDelay = startDelay;
+
+		protected void SetTrack(string startCondition, string endCondition, string track, int trackValue = 0)
+			=> this.Data.Track = track;
+
+		protected void SetTrack(string startCondition, string endCondition, string track, string effectName)
+			=> this.Data.Track = track;
 
 		/// <summary>
 		/// Adds objective to quest, that needs to be completed to finish
