@@ -110,6 +110,7 @@ namespace Melia.Zone
 			this.LoadDialogFunctions();
 			this.LoadScripts("system/scripts/scripts_zone.txt");
 			this.LoadIesMods();
+			this.StartWorld();
 
 			this.StartCommunicator();
 			this.StartAcceptor();
@@ -230,6 +231,15 @@ namespace Melia.Zone
 			Log.Info("Initializing world...");
 			this.World.Initialize();
 			Log.Info("  done loading {0} maps.", this.World.Count);
+		}
+
+		/// <summary>
+		/// Starts the world's update loop, aka the hearbeat.
+		/// </summary>
+		private void StartWorld()
+		{
+			Log.Info("Starting world update...");
+			this.World.Start();
 		}
 
 		/// <summary>

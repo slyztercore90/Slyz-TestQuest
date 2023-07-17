@@ -17,6 +17,7 @@
 			public const int TeamUI = 0x0C;
 			public const int ZoneTraffic = 0x0D;
 			public const int PlayAnimation = 0x0E;
+			public const int StartGameFailed = 0x0F;
 			public const int Run = 0x10;
 			public const int Mailbox = 0x11;
 			public const int MailboxState = 0x13;

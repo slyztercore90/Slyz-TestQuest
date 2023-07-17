@@ -55,11 +55,6 @@ namespace Melia.Zone.World.Maps
 		private readonly Dictionary<int, ITriggerableArea> _triggerableAreas = new Dictionary<int, ITriggerableArea>();
 
 		/// <summary>
-		/// Collection of monster spawners.
-		/// </summary>
-		private readonly List<MonsterSpawner> _spawners = new List<MonsterSpawner>();
-
-		/// <summary>
 		/// Monsters to add to the map on the next update.
 		/// </summary>
 		private readonly Queue<IMonster> _addMonsters = new Queue<IMonster>();
@@ -167,7 +162,6 @@ namespace Melia.Zone.World.Maps
 			this.Disappearances();
 			this.UpdateVisibility();
 			this.UpdateEntities(elapsed);
-			this.UpdateSpawners(elapsed);
 		}
 
 		/// <summary>
@@ -367,48 +361,6 @@ namespace Melia.Zone.World.Maps
 			=> this.GetCharacters(a => a != character && character.Position.InRange2D(a.Position, VisibleRange));
 
 		/// <summary>
-		/// Adds the spawner to the map.
-		/// </summary>
-		/// <param name="spawner"></param>
-		public void AddSpawner(MonsterSpawner spawner)
-		{
-			lock (_spawners)
-				_spawners.Add(spawner);
-		}
-
-		/// <summary>
-		/// Removes all spawners from the map.
-		/// </summary>
-		public void RemoveSpawners()
-		{
-			lock (_spawners)
-				_spawners.Clear();
-		}
-
-		/// <summary>
-		/// Returns a list with all spawners.
-		/// </summary>
-		/// <returns></returns>
-		public MonsterSpawner[] GetSpawners()
-		{
-			lock (_spawners)
-				return _spawners.ToArray();
-		}
-
-		/// <summary>
-		/// Updates all spawners, spawning monsters as necessary.
-		/// </summary>
-		/// <param name="elapsed"></param>
-		public void UpdateSpawners(TimeSpan elapsed)
-		{
-			lock (_spawners)
-			{
-				foreach (var spawner in _spawners)
-					spawner.Update(elapsed);
-			}
-		}
-
-		/// <summary>
 		/// Adds monster to map.
 		/// </summary>
 		/// <param name="monster"></param>
@@ -582,6 +534,31 @@ namespace Melia.Zone.World.Maps
 		}
 
 		/// <summary>
+		/// Returns the first monster that matches the given predicate
+		/// via out. Returns false if no monster was found.
+		/// </summary>
+		/// <param name="predicate"></param>
+		/// <param name="monster"></param>
+		/// <returns></returns>
+		public bool TryGetMonster(Func<IMonster, bool> predicate, out IMonster monster)
+		{
+			lock (_monsters)
+			{
+				foreach (var m in _monsters.Values)
+				{
+					if (predicate(m))
+					{
+						monster = m;
+						return true;
+					}
+				}
+			}
+
+			monster = null;
+			return false;
+		}
+
+		/// <summary>
 		/// Returns combat entity by handle, or null if it doesn't exist.
 		/// </summary>
 		/// <param name="handle"></param>
@@ -688,8 +665,6 @@ namespace Melia.Zone.World.Maps
 
 			foreach (var monster in toRemove)
 				this.RemoveMonster(monster);
-
-			this.RemoveSpawners();
 		}
 
 		/// <summary>
