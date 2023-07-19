@@ -13,7 +13,6 @@ using Melia.Zone.Scripting.Dialogues;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Components;
 using Melia.Zone.World.Actors.Monsters;
-using Melia.Zone.World.Spawning;
 using Yggdrasil.Geometry;
 using Yggdrasil.Geometry.Shapes;
 using Yggdrasil.Util;
@@ -441,7 +440,7 @@ namespace Melia.Zone.Scripting
 			var points = new List<Vector2F>();
 			for (var i = 0; i < coordinates.Length;)
 			{
-				var point = new Vector2F((int)coordinates[i++], (int)coordinates[i++]);
+				var point = new Vector2F((float)coordinates[i++], (float)coordinates[i++]);
 				points.Add(point);
 			}
 
@@ -455,26 +454,33 @@ namespace Melia.Zone.Scripting
 		/// <param name="z"></param>
 		/// <param name="radius"></param>
 		/// <returns></returns>
-		public static IShapeF Spot(double x, double z, double radius = 0)
+		public static IShapeF Spot(double x, double y, double radius = 0)
 		{
-			var center = new Vector2F((int)x, (int)z);
+			var center = new Vector2F((float)x, (float)y);
 			return new CircleF(center, (int)radius);
 		}
 
 		/// <summary>
-		/// Returns a rectangle centered at the given coordinates, height and width.
-		/// If width is set to 0 returns a square.
+		/// Returns a rectangular shape at the given coordinates.
 		/// </summary>
-		/// <param name="x"></param>
-		/// <param name="z"></param>
-		/// <param name="height"></param>
-		/// <param name="width"></param>
+		/// <remarks>
+		/// The rectangle is created centered around the given coordinates,
+		/// stretching out in all directions based on the width and height
+		/// arguments.
+		/// </remarks>
+		/// <param name="x">X-coordinate of the shape's center.</param>
+		/// <param name="y">Z-Coordinate of the shape's center.</param>
+		/// <param name="width">Width of the rectangle.</param>
+		/// <param name="height">Height of the rectangle. Defaults to width.</param>
 		/// <returns></returns>
-		public static IShapeF Rectangle(double x, double z, double height, double width = 0)
+
+
+		public static IShapeF Rectangle(double x, double y, double width, double height = 0)
 		{
-			var center = new Vector2F((float)x, (float)z);
-			var size = new Vector2F((float)height, (float)(width != 0 ? width : height));
-			return Yggdrasil.Geometry.Shapes.RectangleF.Centered(center, size);
+			var center = new Vector2F((float)x, (float)y);
+			var size = new Vector2F((float)width, (float)(height != 0 ? height : width));
+			return RectangleF.Centered(center, size);
+
 		}
 
 		/// <summary>

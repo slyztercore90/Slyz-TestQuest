@@ -144,15 +144,25 @@ namespace Melia.Barracks
 		{
 			//Log.Debug("Message received from '{0}': {1}", sender, message);
 
-			if (message is ServerUpdateMessage serverUpdateMessage)
+			switch (message)
 			{
-				if (serverUpdateMessage.ServerType == ServerType.Zone)
-					_zoneServerNames[sender] = serverUpdateMessage.ServerId;
+				case ServerUpdateMessage serverUpdateMessage:
+				{
+					if (serverUpdateMessage.ServerType == ServerType.Zone)
+						_zoneServerNames[sender] = serverUpdateMessage.ServerId;
 
-				this.ServerList.Update(serverUpdateMessage);
-				this.Communicator.Broadcast("ServerUpdates", serverUpdateMessage);
+					this.ServerList.Update(serverUpdateMessage);
+					this.Communicator.Broadcast("ServerUpdates", serverUpdateMessage);
 
-				Send.BC_NORMAL.ZoneTraffic();
+					Send.BC_NORMAL.ZoneTraffic();
+					break;
+				}
+				case ReqPlayerCountMessage reqPlayerCountMessage:
+				{
+					var playerCount = this.ServerList.GetAll(ServerType.Zone).Sum(server => server.CurrentPlayers);
+					this.Communicator.Send(sender, new ResPlayerCountMessage(playerCount));
+					break;
+				}
 			}
 		}
 

@@ -65,6 +65,15 @@ namespace Melia.Shared.Network
 		}
 
 		/// <summary>
+		/// Returns a list with the information of all servers of the
+		/// given type.
+		/// </summary>
+		/// <param name="serverType"></param>
+		/// <returns></returns>
+		public ServerInfo[] GetAll(ServerType serverType)
+			=> _servers.Where(a => a.Type == serverType).ToArray();
+
+		/// <summary>
 		/// Returns a list of social servers.
 		/// </summary>
 		/// <returns></returns>
