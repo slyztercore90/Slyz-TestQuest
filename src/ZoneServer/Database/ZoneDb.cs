@@ -890,9 +890,10 @@ namespace Melia.Zone.Database
 					mc.ExecuteNonQuery();
 				}
 
-				var i = 0;
-				foreach (var item in character.Inventory.GetWarehouseItems())
+				var items = character.Inventory.GetWarehouseItems();
+				for (var i = 0; i < items.Count; i++)
 				{
+					var item = items[i];
 					var newId = 0L;
 
 					// Save the actual items into the items table and the
@@ -915,7 +916,7 @@ namespace Melia.Zone.Database
 					{
 						cmd.Set("characterId", character.DbId);
 						cmd.Set("itemId", newId);
-						cmd.Set("sort", i++);
+						cmd.Set("sort", i);
 
 						cmd.Execute();
 					}

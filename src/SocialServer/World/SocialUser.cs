@@ -50,6 +50,7 @@ namespace Melia.Social.World
 		{
 			this.Connection = connection;
 			this.Account = account;
+			this.Account.Connection = connection;
 
 			this.Friends = new FriendsList(this);
 		}

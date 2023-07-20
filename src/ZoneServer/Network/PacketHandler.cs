@@ -2609,6 +2609,24 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Swap items in an inventory
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_SWAP_ITEM_IN_WAREHOUSE)]
+		public void CZ_SWAP_ITEM_IN_WAREHOUSE(IZoneConnection conn, Packet packet)
+		{
+			var fromSlot = packet.GetInt();
+			var toSlot = packet.GetInt();
+			var item1ObjectId = packet.GetLong();
+			var item2ObjectId = packet.GetLong();
+
+			var character = conn.SelectedCharacter;
+
+			character.Inventory.Swap(item1ObjectId, item2ObjectId, InventoryType.Warehouse);
+		}
+
+		/// <summary>
 		/// Send when clicking on a time action Cancel button.
 		/// </summary>
 		/// <param name="conn"></param>

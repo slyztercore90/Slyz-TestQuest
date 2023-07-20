@@ -135,7 +135,6 @@ namespace Melia.Barracks.Network
 		{
 			var unkByte = packet.GetByte();
 			var serviceNation = packet.GetString(64); // [i373230 (2023-05-10)] Might've been added before
-			var socialServers = BarracksServer.Instance.ServerList.GetSocialServers();
 
 			var socialServers = BarracksServer.Instance.ServerList.GetAll(ServerType.Social);
 

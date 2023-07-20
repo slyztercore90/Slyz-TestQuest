@@ -72,14 +72,14 @@ namespace Melia.Social.World
 		/// <returns></returns>
 		public ChatRoom CreateChatRoom(Account owner)
 		{
-			var chatRoom = new ChatRoom(owner);
+			var chatRoom = new ChatRoom("", ChatRoomType.Group, owner);
 			chatRoom.AddMember(owner);
 			this.AddChatRoom(chatRoom);
 
 			var chatMessage = new ChatMessage(owner, "!@#$NewRoomHasBeenCreated#@!");
 			chatRoom.AddMessage(chatMessage);
 
-			//Send.SC_NORMAL.ChatRoomMessage(owner.Connection, chatRoom, chatMessage);
+			Send.SC_NORMAL.ChatRoomMessage(owner.Connection, chatRoom, chatMessage);
 			Send.SC_NORMAL.ChatLog(owner.Connection, chatRoom, chatMessage);
 			Send.SC_NORMAL.Chat(owner.Connection, chatRoom, chatMessage);
 

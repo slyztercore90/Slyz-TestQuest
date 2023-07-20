@@ -806,10 +806,10 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="worldId1"></param>
 		/// <param name="worldId2"></param>
 		/// <returns></returns>
-		public InventoryResult Swap(long worldId1, long worldId2)
+		public InventoryResult Swap(long worldId1, long worldId2, InventoryType inventoryType = InventoryType.Inventory)
 		{
-			var item1 = this.GetItem(worldId1);
-			var item2 = this.GetItem(worldId2);
+			var item1 = this.GetItem(worldId1, inventoryType);
+			var item2 = this.GetItem(worldId2, inventoryType);
 
 			if (item1 == null || item2 == null)
 				return InventoryResult.ItemNotFound;
@@ -821,7 +821,16 @@ namespace Melia.Zone.World.Actors.Characters.Components
 
 			lock (_syncLock)
 			{
-				var list = _items[category];
+				IList<Item> list;
+				switch (inventoryType)
+				{
+					case InventoryType.Warehouse:
+						list = _warehouse;
+						break;
+					default:
+						list = _items[category];
+						break;
+				}
 				var index1 = list.IndexOf(item1);
 				var index2 = list.IndexOf(item2);
 
