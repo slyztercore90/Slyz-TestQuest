@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Melia.Shared.Database;
+using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
-using MySqlConnector;
+using MySql.Data.MySqlClient;
 
 namespace Melia.Social.Database
 {
@@ -11,33 +12,39 @@ namespace Melia.Social.Database
 		/// <summary>
 		/// Returns account with given name, or null if it doesn't exist.
 		/// </summary>
-		/// <param name="name"></param>
+		/// <param name="accountName"></param>
 		/// <returns></returns>
-		public Account GetAccount(string name)
+		public bool TryGetAccount(string accountName, out Account account)
 		{
 			using (var conn = this.GetConnection())
 			using (var mc = new MySqlCommand("SELECT * FROM `accounts` WHERE `name` = @name", conn))
 			{
-				mc.Parameters.AddWithValue("@name", name);
+				mc.Parameters.AddWithValue("@name", accountName);
 
 				using (var reader = mc.ExecuteReader())
 				{
 					if (!reader.Read())
-						return null;
+					{
+						account = null;
+						return false;
+					}
 
-					var account = new Account();
+					account = new Account();
+
 					account.Id = reader.GetInt64("accountId");
 					account.Name = reader.GetStringSafe("name");
 					account.TeamName = reader.GetStringSafe("teamName");
 					account.Password = reader.GetStringSafe("password");
+					account.CharacterId = reader.GetInt64("loginCharacter") | ObjectIdRanges.Characters;
 
-					return account;
+					return true;
 				}
 			}
 		}
 
 		/// <summary>
-		/// Returns account with a given team name, or null if it doesn't exist.
+		/// Returns account with a given team name, or null if it doesn't
+		/// exist.
 		/// </summary>
 		/// <param name="teamName"></param>
 		/// <returns></returns>
@@ -54,6 +61,7 @@ namespace Melia.Social.Database
 						return null;
 
 					var account = new Account();
+
 					account.Id = reader.GetInt64("accountId");
 					account.Name = reader.GetStringSafe("name");
 					account.TeamName = reader.GetStringSafe("teamName");
@@ -74,7 +82,16 @@ namespace Melia.Social.Database
 
 			using (var conn = this.GetConnection())
 			{
-				using (var mc = new MySqlCommand("SELECT f.`friendId`, f.`group`, f.`note`, f.`state`, c.`characterId`, c.`accountId`, c.`name`, c.`teamName`, c.`job`, c.`gender`, c.`hair`, c.`level` FROM `friends` AS `f` INNER JOIN `characters` AS c ON f.`friendAccountId` = c.`accountId` WHERE f.`accountId` = @accountId GROUP BY `f`.`friendAccountId`", conn))
+				var query = @"
+					SELECT f.`friendId`, f.`group`, f.`note`, f.`state`, a.`accountId`, a.`lastLogin`, a.`teamName`, a.`loginCharacter` AS `characterId`,
+					       IFNULL('', c.`name`) AS `name`, IFNULL(0, c.`job`) AS `job`, IFNULL(0, c.`gender`) AS `gender`, IFNULL(0, c.`hair`) AS `hair`, IFNULL(0, c.`level`) AS `level`
+					FROM `friends` AS `f`
+					LEFT JOIN `accounts` AS a ON f.`friendAccountId` = a.`accountId`
+					LEFT JOIN `characters` AS c ON a.`loginCharacter` = c.`characterId`
+					WHERE f.`accountId` = @accountId
+				";
+
+				using (var mc = new MySqlCommand(query, conn))
 				{
 					mc.Parameters.AddWithValue("@accountId", accountId);
 
@@ -83,24 +100,29 @@ namespace Melia.Social.Database
 						while (reader.Read())
 						{
 							var friend = new Friend();
+
 							friend.Id = reader.GetInt64("friendId");
-							friend.CharacterId = reader.GetInt64("characterId");
 							friend.AccountId = reader.GetInt64("accountId");
-							friend.State = (FriendState)reader.GetByte("state");
 							friend.TeamName = reader.GetStringSafe("teamName");
-							friend.Name = reader.GetStringSafe("name");
-							friend.JobId = (JobId)reader.GetInt16("job");
-							friend.Gender = (Gender)reader.GetByte("gender");
-							friend.Hair = reader.GetInt32("hair");
-							friend.Level = reader.GetInt32("level");
+							friend.State = (FriendState)reader.GetByte("state");
 							friend.Group = reader.GetStringSafe("group");
 							friend.Note = reader.GetStringSafe("note");
+							friend.LastLogin = reader.GetDateTimeSafe("lastLogin");
+
+							friend.Character.Id = reader.GetInt64("characterId");
+							friend.Character.Name = reader.GetStringSafe("name");
+							friend.Character.TeamName = reader.GetStringSafe("teamName");
+							friend.Character.JobId = (JobId)reader.GetInt32("job");
+							friend.Character.Gender = (Gender)reader.GetInt32("gender");
+							friend.Character.Hair = reader.GetInt32("hair");
+							friend.Character.Level = reader.GetInt32("level");
 
 							friends.Add(friend);
 						}
 					}
 				}
 			}
+
 			return friends;
 		}
 
@@ -138,11 +160,11 @@ namespace Melia.Social.Database
 		public bool DeleteFriend(long friendId)
 		{
 			using (var conn = this.GetConnection())
-			using (var mc = new MySqlCommand("DELETE FROM `friends` WHERE `friendId` = @friendId", conn))
+			using (var cmd = new MySqlCommand("DELETE FROM `friends` WHERE `friendId` = @friendId", conn))
 			{
-				mc.Parameters.AddWithValue("@friendId", friendId);
+				cmd.Parameters.AddWithValue("@friendId", friendId);
 
-				return mc.ExecuteNonQuery() > 0;
+				return cmd.ExecuteNonQuery() > 0;
 			}
 		}
 
@@ -157,6 +179,7 @@ namespace Melia.Social.Database
 			using (var cmd = new UpdateCommand("UPDATE `friends` SET {0} WHERE `friendId` = @friendId", conn))
 			{
 				cmd.AddParameter("@friendId", friend.Id);
+
 				cmd.Set("state", (byte)friend.State);
 				cmd.Set("group", friend.Group);
 				cmd.Set("note", friend.Note);

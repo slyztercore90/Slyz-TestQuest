@@ -1,10 +1,9 @@
-﻿using System;
+﻿using System.Text.RegularExpressions;
 using Melia.Social.Database;
 using Melia.Social.Network;
-using Yggdrasil.Geometry.Shapes;
+using Melia.Social.World;
 using Yggdrasil.Logging;
 using Yggdrasil.Util.Commands;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Melia.Social.Commands
 {
@@ -24,7 +23,7 @@ namespace Melia.Social.Commands
 		}
 
 		/// <summary>
-		/// Official whisper command
+		/// Request to send a whisper message to another user.
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="target"></param>
@@ -32,63 +31,54 @@ namespace Melia.Social.Commands
 		/// <param name="command"></param>
 		/// <param name="args"></param>
 		/// <returns></returns>
-		private CommandResult HandleWhisper(Account sender, Account target, string message, string command, Arguments args)
+		private CommandResult HandleWhisper(SocialUser user, string message, string command, Arguments args)
 		{
 			if (args.Count < 2)
 			{
-				Log.Debug("HandleWhisper: Invalid call by user '{0}': {1}", sender.Connection.Account.Name, command);
+				Log.Debug("HandleWhisper: Invalid call by user '{0}' ('{1}').", user.Account.Name, message);
 				return CommandResult.Okay;
 			}
 
 			var teamName = args.Get(0);
+
 			if (!SocialServer.Instance.Database.TeamNameExists(teamName))
 			{
-				// Send client message 101080 = TargetUserNotExist
-				Send.SC_NORMAL.SystemMessage(sender.Connection, 101080, 1, 0);
+				Send.SC_NORMAL.SystemMessage(user.Connection, "TargetUserNotExist", 1, 0);
 				return CommandResult.Okay;
 			}
 
 			var whisperTarget = SocialServer.Instance.Database.GetAccountByTeamName(teamName);
 			if (whisperTarget == null)
 			{
-				Log.Warning("HandleWhisper: Unable to find account by team name {0}", teamName);
+				Log.Warning("HandleWhisper: Unable to find account by team name {0}.", teamName);
 				return CommandResult.Okay;
 			}
 
 			// TODO: Find previous chat room
-			var chatRoom = SocialServer.Instance.ChatManager.GetChatRoom(sender.Connection.Account.Id, whisperTarget.Id);
+			var chatRoom = SocialServer.Instance.ChatManager.GetChatRoom(user.Account.Id, whisperTarget.Id);
 			if (chatRoom == null)
 			{
-				chatRoom = new ChatRoom()
-				{
-					Id = SocialServer.Instance.ChatManager.GetNewChatId,
-					Owner = sender,
-					Type = ChatRoomType.OneToOne
-				};
+				chatRoom = new ChatRoom(user.Account);
 				SocialServer.Instance.ChatManager.AddChatRoom(chatRoom);
 				// sender.ChatRooms.Add(chatRoom.Id, chatRoom);
 			}
-			chatRoom.AddMember(sender);
+
+			chatRoom.AddMember(user.Account);
 			chatRoom.AddMember(whisperTarget);
 
-			var whisperText = message.Substring(message.IndexOf(args.Get(0)) + args.Get(0).Length + 1);
-			var chatMessage = new ChatMessage()
-			{
-				Sender = sender,
-				Message = whisperText,
-				Recipient = whisperTarget,
-				TimeStamp = DateTime.Now
-			};
+			var text = Regex.Replace(message, @"^.*?(?:\s+|$)", "");
+
+			var chatMessage = new ChatMessage(user.Account, whisperTarget, text);
 			chatRoom.AddMessage(chatMessage);
 
-			Send.SC_NORMAL.ChatLog(sender.Connection, chatRoom, chatMessage);
-			Send.SC_NORMAL.Chat(sender.Connection, chatRoom, chatMessage);
+			Send.SC_NORMAL.ChatLog(user.Connection, chatRoom, chatMessage);
+			Send.SC_NORMAL.Chat(user.Connection, chatRoom, chatMessage);
 
 			return CommandResult.Okay;
 		}
 
 		/// <summary>
-		/// Official chatroom chat command
+		/// Request to send a message in a chat room.
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="target"></param>
@@ -96,38 +86,33 @@ namespace Melia.Social.Commands
 		/// <param name="command"></param>
 		/// <param name="args"></param>
 		/// <returns></returns>
-		private CommandResult HandleChatRoomChat(Account sender, Account target, string message, string command, Arguments args)
+		private CommandResult HandleChatRoomChat(SocialUser user, string message, string command, Arguments args)
 		{
 			if (args.Count < 2)
 			{
-				Log.Debug("HandleChatRoomChat: Invalid call by user '{0}': {1}", sender.Connection.Account.Name, command);
+				Log.Debug("HandleChatRoomChat: Invalid call by user '{0}' ('{1}').", user.Account.Name, message);
 				return CommandResult.Okay;
 			}
 
 			if (!long.TryParse(args.Get(0), out var chatId))
 			{
-				// Send client message 101080 = TargetUserNotExist
-				Send.SC_NORMAL.SystemMessage(sender.Connection, 101080, 1, 0);
+				Send.SC_NORMAL.SystemMessage(user.Connection, "TargetUserNotExist", 1, 0);
 				return CommandResult.Okay;
 			}
 
 			if (!SocialServer.Instance.ChatManager.TryGetChatRoom(chatId, out var chatRoom))
 			{
-				Log.Warning("HandleChatRoomChat: Unable to find chat room by id {0}", chatId);
+				Log.Warning("HandleChatRoomChat: Unable to find chat room by id {0}.", chatId);
 				return CommandResult.Okay;
 			}
 
-			var text = message.Substring(message.IndexOf(args.Get(0)) + args.Get(0).Length + 1);
-			var chatMessage = new ChatMessage()
-			{
-				Sender = sender,
-				Message = text,
-				TimeStamp = DateTime.Now
-			};
+			var text = Regex.Replace(message, @"^.*?(?:\s+|$)", "");
+
+			var chatMessage = new ChatMessage(user.Account, text);
 			chatRoom.AddMessage(chatMessage);
 
-			Send.SC_NORMAL.ChatLog(sender.Connection, chatRoom, chatMessage);
-			Send.SC_NORMAL.Chat(sender.Connection, chatRoom, chatMessage);
+			Send.SC_NORMAL.ChatLog(user.Connection, chatRoom, chatMessage);
+			Send.SC_NORMAL.Chat(user.Connection, chatRoom, chatMessage);
 
 			return CommandResult.Okay;
 		}

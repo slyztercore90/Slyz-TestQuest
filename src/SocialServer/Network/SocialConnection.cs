@@ -4,7 +4,7 @@ using Melia.Shared.Network;
 using Melia.Social.Database;
 using Yggdrasil.Logging;
 using Yggdrasil.Network.TCP;
-using Yggdrasil.Network.Framing;
+using Melia.Social.World;
 
 namespace Melia.Social.Network
 {
@@ -14,9 +14,9 @@ namespace Melia.Social.Network
 	public interface ISocialConnection : IConnection
 	{
 		/// <summary>
-		/// Gets or sets the account associated with the connection.
+		/// Gets or sets the user associated with the connection.
 		/// </summary>
-		Account Account { get; set; }
+		SocialUser User { get; set; }
 	}
 
 	/// <summary>
@@ -25,10 +25,11 @@ namespace Melia.Social.Network
 	public class SocialConnection : Connection, ISocialConnection
 	{
 		protected new readonly TosSocialFramer _framer = new TosSocialFramer(1024 * 50);
+
 		/// <summary>
-		/// Gets or sets the account associated with the connection.
+		/// Gets or sets the user associated with the connection.
 		/// </summary>
-		public Account Account { get; set; }
+		public SocialUser User { get; set; }
 
 		/// <summary>
 		/// Creates new connection.
@@ -45,15 +46,7 @@ namespace Melia.Social.Network
 		/// <param name="length"></param>
 		protected override void ReceiveData(byte[] buffer, int length)
 		{
-			try
-			{
-				_framer.ReceiveData(buffer, length);
-			}
-			catch (InvalidMessageSizeException)
-			{
-				Log.Warning("Invalid Message Size from {0}. Killing connection.", this.Address);
-				this.Close();
-			}
+			_framer.ReceiveData(buffer, length);
 		}
 
 		/// <summary>
@@ -64,10 +57,7 @@ namespace Melia.Social.Network
 		{
 			var packet = new Packet(buffer);
 
-			// Log.Debug("Recv: " + packet);
-
-			// Check login state
-			if (packet.Op != Op.CB_LOGIN && packet.Op != Op.CB_LOGIN_BY_PASSPORT && packet.Op != Op.CZ_CONNECT && packet.Op != Op.CS_LOGIN && !this.LoggedIn)
+			if (packet.Op != Op.CS_LOGIN && !this.LoggedIn)
 			{
 				Log.Warning("Non-login packet ({0:X4}) sent before login from '{1}'. Killing connection.", packet.Op, this.Address);
 				this.Close();
@@ -110,7 +100,6 @@ namespace Melia.Social.Network
 
 			try
 			{
-				// Log.Debug("Send: " + packet);
 				this.Send(buffer);
 			}
 			catch (SocketException)
@@ -125,6 +114,7 @@ namespace Melia.Social.Network
 		/// <param name="packet"></param>
 		protected override void OnPacketReceived(Packet packet)
 		{
+			//Log.Debug("in: " + Environment.NewLine + packet);
 			SocialServer.Instance.PacketHandler.Handle(this, packet);
 		}
 
@@ -134,8 +124,12 @@ namespace Melia.Social.Network
 		/// <param name="type"></param>
 		protected override void OnClosed(ConnectionCloseType type)
 		{
-			SocialServer.Instance.AccountManager.Remove(this);
 			base.OnClosed(type);
+
+			foreach (var friend in this.User.Friends.GetFriends())
+				SocialServer.Instance.Database.SaveFriend(friend);
+
+			SocialServer.Instance.UserManager.Remove(this.User.Id);
 		}
 	}
 }

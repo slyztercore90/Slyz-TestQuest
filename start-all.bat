@@ -48,4 +48,5 @@ exit
 start start-barracks
 start start-zone-1
 start start-zone-2
+start start-social
 start start-web

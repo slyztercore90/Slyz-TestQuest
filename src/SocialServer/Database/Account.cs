@@ -6,8 +6,10 @@ namespace Melia.Social.Database
 {
 	public class Account
 	{
-		private readonly List<Friend> _friends = new List<Friend>();
 		private readonly Dictionary<long, ChatRoom> _chatRooms = new Dictionary<long, ChatRoom>();
+
+		// Temporary solution for testing liking
+		private readonly Dictionary<long, int> _likes = new Dictionary<long, int>();
 
 		/// <summary>
 		/// Connection this account uses.
@@ -32,107 +34,15 @@ namespace Melia.Social.Database
 		/// <summary>
 		/// Gets or sets account's team name and updates all characters.
 		/// </summary>
-		public string TeamName
-		{
-			get { return _teamName; }
-			set { _teamName = value; }
-		}
-		private string _teamName;
+		public string TeamName { get; set; }
 
 		/// <summary>
-		/// Loads account with given name from database
-		/// and returns it.
+		/// Gets or sets the id of the character that is currently logged in.
 		/// </summary>
-		/// <param name="accountName"></param>
-		/// <returns></returns>
-		public static Account LoadFromDb(string accountName)
-		{
-			var account = SocialServer.Instance.Database.GetAccount(accountName);
-			if (account == null)
-				return null;
-
-			foreach (var friend in SocialServer.Instance.Database.GetFriends(account.Id))
-				account.AddFriend(friend);
-
-			return account;
-		}
+		public long CharacterId { get; set; }
 
 		/// <summary>
-		/// Adds friend to account object.
-		/// </summary>
-		/// <param name="friend"></param>
-		public void AddFriend(Friend friend)
-		{
-			lock (_friends)
-				_friends.Add(friend);
-		}
-
-		/// <summary>
-		/// Adds friend to account object.
-		/// </summary>
-		/// <param name="friend"></param>
-		public void RemoveFriend(Friend friend)
-		{
-			lock (_friends)
-				_friends.Remove(friend);
-		}
-
-		/// <summary>
-		/// Gets a friend or null with a given account id.
-		/// </summary>
-		/// <param name="accountId"></param>
-		public Friend GetFriend(long accountId)
-		{
-			lock (_friends)
-			{
-				return _friends.FirstOrDefault(f => f.AccountId == accountId);
-			}
-		}
-
-		/// <summary>
-		/// Returns list of all friends on account.
-		/// </summary>
-		/// <returns></returns>
-		public Friend[] GetFriends()
-		{
-			lock (_friends)
-				return _friends.ToArray();
-		}
-
-		/// <summary>
-		/// Adds friend to the account and the database.
-		/// </summary>
-		/// <param name="character"></param>
-		public void CreateFriend(Friend friend)
-		{
-			SocialServer.Instance.Database.CreateFriend(this.Id, friend);
-			this.AddFriend(friend);
-		}
-
-		/// <summary>
-		/// Removes friend from the account and the database.
-		/// </summary>
-		/// <param name="friend"></param>
-		/// <returns></returns>
-		public bool DeleteFriend(Friend friend)
-		{
-			lock (_friends)
-			{
-				if (!_friends.Contains(friend))
-					return false;
-			}
-
-			// If the deletion on the db fails, the character shouldn't
-			// have been shown to begin with and should be removed.
-			// If it doesn't fail, the removal is valid as well,
-			// do this regardless of the query result.
-			this.RemoveFriend(friend);
-
-			return SocialServer.Instance.Database.DeleteFriend(friend.Id);
-		}
-
-		/// <summary>
-		/// Add a reference to the object in an account's chatrooms.
+		/// Add a reference to the object in Account's chatrooms.
 		/// </summary>
 		/// <param name="chatRoom"></param>
 		public void AddChatRoom(ChatRoom chatRoom)
@@ -145,7 +55,7 @@ namespace Melia.Social.Database
 		}
 
 		/// <summary>
-		/// Removes a object from an account's chatrooms.
+		/// Removes a object from Account's chatrooms.
 		/// </summary>
 		/// <param name="id"></param>
 		public void RemoveChatRoom(long id)
@@ -158,7 +68,7 @@ namespace Melia.Social.Database
 		}
 
 		/// <summary>
-		/// Returns list of all chatrooms associated with this account.
+		/// Returns list of all friends on account.
 		/// </summary>
 		/// <returns></returns>
 		public ChatRoom[] GetChatRooms()
@@ -168,14 +78,48 @@ namespace Melia.Social.Database
 		}
 
 		/// <summary>
-		/// Saves friends in database.
+		/// Adds a like to the given character.
 		/// </summary>
-		public void Save()
+		/// <param name="characterId"></param>
+		public void AddLike(long characterId)
 		{
-			lock (_friends)
+			lock (_likes)
 			{
-				foreach (var friend in _friends)
-					SocialServer.Instance.Database.SaveFriend(friend);
+				if (!_likes.TryGetValue(characterId, out var likes))
+					_likes[characterId] = 0;
+
+				_likes[characterId]++;
+			}
+		}
+
+		/// <summary>
+		/// Removes a like for the given character.
+		/// </summary>
+		/// <param name="characterId"></param>
+		public void RemoveLike(long characterId)
+		{
+			lock (_likes)
+			{
+				if (!_likes.TryGetValue(characterId, out var likes))
+					_likes[characterId] = 0;
+
+				_likes[characterId]--;
+			}
+		}
+
+		/// <summary>
+		/// Returns the number of likes the given character received.
+		/// </summary>
+		/// <param name="characterId"></param>
+		/// <returns></returns>
+		public int GetLikes(long characterId)
+		{
+			lock (_likes)
+			{
+				if (!_likes.TryGetValue(characterId, out var likes))
+					return 0;
+
+				return likes;
 			}
 		}
 	}

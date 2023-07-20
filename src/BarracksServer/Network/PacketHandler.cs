@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using Melia.Barracks.Database;
+using Melia.Shared.Data.Database;
 using Melia.Shared.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Network;
@@ -89,6 +90,7 @@ namespace Melia.Barracks.Network
 			conn.LoggedIn = true;
 
 			BarracksServer.Instance.Database.UpdateLoginState(conn.Account.DbId, 0, LoginState.Barracks);
+			BarracksServer.Instance.Database.UpdateLastLogin(conn.Account.DbId);
 
 			Log.Info("User '{0}' logged in.", conn.Account.Name);
 
@@ -134,6 +136,8 @@ namespace Melia.Barracks.Network
 			var unkByte = packet.GetByte();
 			var serviceNation = packet.GetString(64); // [i373230 (2023-05-10)] Might've been added before
 			var socialServers = BarracksServer.Instance.ServerList.GetSocialServers();
+
+			var socialServers = BarracksServer.Instance.ServerList.GetAll(ServerType.Social);
 
 			Send.BC_IES_MODIFY_LIST(conn);
 			if (socialServers.Length >= 2)

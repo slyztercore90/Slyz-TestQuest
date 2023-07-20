@@ -103,30 +103,36 @@ switch (type)
 
     // Friend List Member
     case 0x08:
-        FriendState friendType; // 1,2,3,4,5,6,7,8 (Friend Index)?
-        int64 accountId; // 76561199199698202 (Social ID)?
-        int i0; // 1
-        int i1; // 0
-        int i1; // 0
-        int64 accountId; // 76561199199698202
-        char teamName[128];
-        int level;
-        char name[128];
-        short s0;
-        short jobId;
-        short jobId2;
-        short s1;
-        int i2;
-        short gender;
-        int i3;
-        byte bin[26];
-        ubyte bin2[4];
-        byte bin3[18];
-        ShortDate timeStamp;
-        byte bin4[33];
-        int mapId;
-        lpString parameter;
-        lpString message;
+    	typedef struct
+        {
+            int64 l1; // 0
+            int64 accountId2;
+            char teamName[64];
+            char str1[56];
+            int64 l2;
+            int level;
+            char name[128];
+            short gender;
+            int jobId;
+            short s1;
+            int i2;
+            short s2;
+            int hair;
+            byte bin[26];
+            ubyte bin2[4];
+            byte bin3[18];
+            ShortDate lastLogin;
+            byte bin4[36];
+            byte b1;
+            lpString group;
+            lpString note;
+        }
+        Friend <optimize=false>;
+
+        FriendState friendType;
+        int64 accountId;
+        int count;
+        Friend friends[count];
         break;
 
     case 0x09:
@@ -223,11 +229,23 @@ switch (type)
         break;
 
     case 0x19:
-        int64 accountId; // 76561198023169014
-        int64 accountId; // 76561198023169014
+        int64 accountId1; // 76561198023169014
+        int64 accountId2; // 76561198023169014
         byte bin[16]; // 0s
         lpString str; // WEEK
         int64 l1; // 1
+        break;
+
+    // LikeSuccess
+    case 0x7D05:
+        int64 accountId;
+		lpString teamName;
+        break;
+
+    // UnlikeSuccess
+    case 0x7D07:
+        int64 accountId;
+		lpString teamName;
         break;
 
     // 32009?
@@ -235,6 +253,7 @@ switch (type)
         int i1; // 1
         lpString teamName;
         break;
+		
     case 0x7D0A:
         int i1; // 2
         lpString teamName;
@@ -243,5 +262,11 @@ switch (type)
         lpString teamName2;
         FILETIME time2; // 01/14/2022 13:35:39
         byte b2; // 1
+        break;
+		
+	// LikeCount
+    case 0x7D0B:
+        int64 accountId;
+		int count;
         break;
 }

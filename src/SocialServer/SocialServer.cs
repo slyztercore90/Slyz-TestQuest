@@ -5,6 +5,7 @@ using Melia.Social.Commands;
 using Melia.Social.Database;
 using Melia.Social.Network;
 using Melia.Social.World;
+using Yggdrasil.Collections;
 using Yggdrasil.Logging;
 using Yggdrasil.Network.TCP;
 using Yggdrasil.Util;
@@ -24,7 +25,7 @@ namespace Melia.Social
 		/// <summary>
 		/// Returns a reference to the server's packet handlers.
 		/// </summary>
-		public PacketHandler PacketHandler { get; } = new PacketHandler();
+		public PacketHandler PacketHandler { get; private set; }
 
 		/// <summary>
 		/// Returns reference to the server's database interface.
@@ -39,7 +40,7 @@ namespace Melia.Social
 		/// <summary>
 		/// Returns reference to the server's account manager.
 		/// </summary>
-		public UserManager AccountManager { get; } = new UserManager();
+		public UserManager UserManager { get; } = new UserManager();
 
 		/// <summary>
 		/// Returns reference to the server's chat manager.
@@ -53,52 +54,49 @@ namespace Melia.Social
 		public override void Run(string[] args)
 		{
 			this.GetServerId(args, out var groupId, out var serverId);
-			var title = string.Format("Zone ({0}, {1})", groupId, serverId);
+			var title = string.Format("Social ({0}, {1})", groupId, serverId);
 
-			ConsoleUtil.WriteHeader(ConsoleHeader.ProjectName, "Social", ConsoleColor.DarkGreen, ConsoleHeader.Logo, ConsoleHeader.Credits);
+			ConsoleUtil.WriteHeader(ConsoleHeader.ProjectName, title, ConsoleColor.DarkCyan, ConsoleHeader.Logo, ConsoleHeader.Credits);
 			ConsoleUtil.LoadingTitle();
 
-			// Set up social server specific logging or we might run into
-			// issues with multiple servers trying to write files at the
-			// same time.
-			Log.Init("SocialServer" + serverId);
+			Log.Init($"SocialServer_{groupId}_{serverId}");
 
 			this.NavigateToRoot();
 
-			// Load data
 			this.LoadConf();
 			this.LoadLocalization(this.Conf);
 			this.LoadData(ServerType.Social);
 			this.LoadServerList(this.Data.ServerDb, ServerType.Social, groupId, serverId);
 			this.InitDatabase(this.Database, this.Conf);
+			this.LoadPacketHandler();
 
-			// Get server data
-			if (args.Length != 0)
-			{
-				var serverInfo = this.GetServerInfo(ServerType.Social, serverId);
-
-				// Start listener
-				_acceptor = new TcpConnectionAcceptor<SocialConnection>(serverInfo.Port);
-				_acceptor.ConnectionAccepted += this.OnConnectionAccepted;
-				_acceptor.Listen();
-
-				Log.Status("Server ready, listening on {0}.", _acceptor.Address);
-			}
-			else
-			{
-				foreach (var serverInfo in this.ServerList.GetSocialServers())
-				{
-					// Start listener
-					_acceptor = new TcpConnectionAcceptor<SocialConnection>(serverInfo.Ip, serverInfo.Port);
-					_acceptor.ConnectionAccepted += this.OnConnectionAccepted;
-					_acceptor.Listen();
-
-					Log.Status("Server ready, listening on {0}.", _acceptor.Address);
-				}
-			}
+			this.StartAcceptors();
 
 			ConsoleUtil.RunningTitle();
 			new ConsoleCommands().Wait();
+		}
+
+		/// <summary>
+		/// Initializes packet handler based on the server type.
+		/// </summary>
+		private void LoadPacketHandler()
+		{
+			if (this.ServerInfo.Id == 1)
+				this.PacketHandler = new PacketHandlerChat();
+			else
+				this.PacketHandler = new PacketHandlerRelation();
+		}
+
+		/// <summary>
+		/// Starts the server's TCP connection acceptors.
+		/// </summary>
+		private void StartAcceptors()
+		{
+			_acceptor = new TcpConnectionAcceptor<SocialConnection>(this.ServerInfo.Port);
+			_acceptor.ConnectionAccepted += this.OnConnectionAccepted;
+			_acceptor.Listen();
+
+			Log.Status("Server ready, listening on {0}.", _acceptor.Address);
 		}
 
 		/// <summary>

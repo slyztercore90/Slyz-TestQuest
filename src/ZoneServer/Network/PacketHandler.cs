@@ -112,6 +112,7 @@ namespace Melia.Zone.Network
 
 			ZoneServer.Instance.Database.SaveSessionKey(character.DbId, conn.SessionKey);
 			ZoneServer.Instance.Database.UpdateLoginState(conn.Account.Id, character.DbId, LoginState.Zone);
+			ZoneServer.Instance.Database.UpdateLastLogin(conn.Account.Id);
 
 			Send.ZC_CONNECT_OK(conn, character);
 		}
