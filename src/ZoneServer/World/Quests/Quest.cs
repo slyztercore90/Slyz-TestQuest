@@ -221,6 +221,43 @@ namespace Melia.Zone.World.Quests
 		}
 
 		/// <summary>
+		/// Iterates over the quest's modifiers and runs the given function
+		/// on all modifiers with the given type. If any progresses changed,
+		/// the ChangesOnLastUpdate property will be true.
+		/// </summary>
+		/// <typeparam name="TModifier"></typeparam>
+		/// <param name="updater"></param>
+		public void UpdateModifiers<TModifier>(QuestModifiersUpdateFunc<TModifier> updater) where TModifier : QuestModifier
+		{
+			var quest = this;
+			var anythingChanged = false;
+
+			for (var j = 0; j < quest.Progresses.Count; j++)
+			{
+				var progress = quest.Progresses[j];
+				if (!progress.Unlocked)
+					continue;
+
+				var count = progress.Count;
+				var done = progress.Done;
+				var unlocked = progress.Unlocked;
+
+				for (var i = 0; i < quest.Data.Modifiers.Count; i++)
+				{
+					var modifier = quest.Data.Modifiers[i];
+					if (modifier is not TModifier tModifier)
+						continue;
+					updater(this, tModifier, progress);
+				}
+
+				if (progress.Count != count || progress.Done != done || progress.Unlocked != unlocked)
+					anythingChanged = true;
+			}
+
+			this.ChangesOnLastUpdate = anythingChanged;
+		}
+
+		/// <summary>
 		/// Marks all of the quest's objectives as done.
 		/// </summary>
 		public void CompleteObjectives()
@@ -237,7 +274,16 @@ namespace Melia.Zone.World.Quests
 	/// <param name="quest"></param>
 	/// <param name="objective"></param>
 	/// <param name="progress"></param>
-	public delegate void QuestObjectivesUpdateFunc<TObjective>(Quest quest, TObjective objective, QuestProgress progress) where TObjective : QuestObjective;
+	public delegate void QuestObjectivesUpdateFunc<in TObjective>(Quest quest, TObjective objective, QuestProgress progress) where TObjective : QuestObjective;
+
+	/// <summary>
+	/// A function used to update a quest's modifiers.
+	/// </summary>
+	/// <typeparam name="TModifier"></typeparam>
+	/// <param name="quest"></param>
+	/// <param name="modifier"></param>
+	/// <param name="progress"></param>
+	public delegate void QuestModifiersUpdateFunc<in TModifier>(Quest quest, TModifier modifier, QuestProgress progress) where TModifier : QuestModifier;
 
 	/// <summary>
 	/// Specifies a quest's current status.
@@ -248,21 +294,68 @@ namespace Melia.Zone.World.Quests
 		/// The quest hasn't been started yet and the character has yet
 		/// to actually receive it.
 		/// </summary>
-		NotStarted,
+		NotStarted = 0,
 
 		/// <summary>
 		/// The quest is currently in progress.
 		/// </summary>
-		InProgress,
+		InProgress = 200,
 
 		/// <summary>
 		/// The quest was completed successfully.
 		/// </summary>
-		Completed,
+		Completed = 300,
 
 		/// <summary>
 		/// The quest was given up.
 		/// </summary>
-		Canceled,
+		Canceled = -10,
+
+		/// <summary>
+		/// When quest is reset due to rank reset.
+		/// </summary>
+		RankReset = -10000,
+
+		/// <summary>
+		/// The "system" cancelled the quest
+		/// </summary>
+		SystemCancel = -1000,
+
+		/// <summary>
+		/// The quest hasn't been started yet and the character can't
+		/// receive it.
+		/// </summary>
+		Impossible = -200,
+
+		/// <summary>
+		/// The quest was failed.
+		/// </summary>
+		Failed = -100,
+
+		/// <summary>
+		/// The quest was given up.
+		/// </summary>
+		Abandoned = -10,
+
+		/// <summary>
+		/// The quest has been restarted after being abandoned
+		/// </summary>
+		Restarted = 1,
+
+		/// <summary>
+		/// The quest hasn't been started yet and the character has yet
+		/// to actually receive it.
+		/// </summary>
+		Possible = 11,
+
+		/// <summary>
+		/// The quest is started but no progress made.
+		/// </summary>
+		Started = 100,
+
+		/// <summary>
+		/// The quest objectives are met.
+		/// </summary>
+		Succeeded = 250,
 	}
 }

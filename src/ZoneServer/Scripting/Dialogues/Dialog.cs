@@ -455,7 +455,18 @@ namespace Melia.Zone.Scripting.Dialogues
 		/// <returns></returns>
 		public async Task<bool> Hooks(string hookName)
 		{
-			var hooks = ScriptHooks.GetAll<DialogHook>(this.Npc.UniqueName, hookName);
+			return await this.Hooks(this.Npc.UniqueName, hookName);
+		}
+
+		/// <summary>
+		/// Executes the given hooks, if any, and returns true if any were
+		/// executed.
+		/// </summary>
+		/// <param name="hookName"></param>
+		/// <returns></returns>
+		public async Task<bool> Hooks(string owner, string hookName)
+		{
+			var hooks = ScriptHooks.GetAll<DialogHook>(owner, hookName);
 			if (hooks.Length == 0)
 				return false;
 
@@ -611,17 +622,6 @@ namespace Melia.Zone.Scripting.Dialogues
 		}
 
 		/// <summary>
-		/// Hook into current dialog state.
-		/// </summary>
-		/// <param name="hookId"></param>
-		/// <param name="hookName"></param>
-		/// <returns></returns>
-		public async Task<bool> Hook(string hookId, string hookName)
-		{
-			return await ScriptHook.Run(hookId, hookName, this);
-		}
-
-		/// <summary>
 		/// Custom dialog, predefined dialogs in the client
 		/// </summary>
 		/// <param name="function"></param>
@@ -664,6 +664,16 @@ namespace Melia.Zone.Scripting.Dialogues
 		public void ShowHelp(string helpName)
 		{
 			this.Player.ShowHelp(helpName);
+		}
+
+		public void UnHideNPC(string npcName)
+		{
+			Log.Debug("Warning - UnHideNPC is not implemented yet.");
+		}
+
+		public void HideNPC(string npcName)
+		{
+			Log.Debug("Warning - HideNPC is not implemented yet.");
 		}
 	}
 

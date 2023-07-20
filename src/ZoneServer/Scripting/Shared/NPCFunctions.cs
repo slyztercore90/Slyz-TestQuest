@@ -2304,6 +2304,8 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("SIAUL_WEST_CAMP_MANAGER")]
 		public static async Task SIAUL_WEST_CAMP_MANAGER(Dialog dialog)
 		{
+			await dialog.Hooks(dialog.Npc.DialogName, "BeforeStart");
+			await dialog.Hooks(dialog.Npc.DialogName, "BeforeEnd");
 			await dialog.Msg("SIAUL_WEST_CAMP_MANAGER_basic1");
 			dialog.Close();
 		}

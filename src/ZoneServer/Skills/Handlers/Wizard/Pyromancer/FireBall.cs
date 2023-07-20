@@ -33,7 +33,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 		/// <summary>
 		/// Handles skill behavior
 		/// </summary>
-		public void Handle(Skill skill, ICombatEntity caster, ICombatEntity? target)
+		public void Handle(Skill skill, ICombatEntity caster, ICombatEntity target)
 		{
 			Send.ZC_NORMAL.TextEffect(caster, "I_SYS_Text_Effect_None", "LV 1");
 

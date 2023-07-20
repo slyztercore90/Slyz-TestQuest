@@ -176,9 +176,9 @@ namespace Melia.Zone.Network
 			/// <param name="duration1"></param>
 			/// <param name="animationId2"></param>
 			/// <param name="duration2"></param>
-			/// <param name="size"></param>
+			/// <param name="count"></param>
 			/// <param name="scale"></param>
-			public static void Skill_MissileThrow(IActor actor, Position position, int animationId1, float duration1, int animationId2, float duration2, float size, float scale)
+			public static void Skill_MissileThrow(IActor actor, Position position, int animationId1, float duration1, int animationId2, float duration2, float count, float scale)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
 				packet.PutInt(NormalOp.Zone.Skill_MissileThrow);
@@ -191,7 +191,7 @@ namespace Melia.Zone.Network
 				packet.PutFloat(position.X);
 				packet.PutFloat(position.Y);
 				packet.PutFloat(position.Z);
-				packet.PutFloat(size);
+				packet.PutFloat(count);
 				packet.PutFloat(scale);
 				packet.PutFloat(0);
 				packet.PutFloat(0);

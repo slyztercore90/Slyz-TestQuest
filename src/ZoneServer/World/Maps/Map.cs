@@ -4,13 +4,11 @@ using System.Linq;
 using System.Threading;
 using Melia.Shared.Data.Database;
 using Melia.Shared.Network;
-using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
 using Melia.Zone.Scripting;
 using Melia.Zone.Skills.SplashAreas;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
-using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Monsters;
 using Yggdrasil.Geometry;
 using Yggdrasil.Logging;
@@ -20,7 +18,7 @@ namespace Melia.Zone.World.Maps
 {
 	public class Map : IUpdateable
 	{
-		public int _layer = 0;
+		private int _layer = 1;
 
 		/// <summary>
 		/// Range a character can see.
@@ -30,7 +28,7 @@ namespace Melia.Zone.World.Maps
 		/// <summary>
 		/// Collection of combat entities, which can be both characters
 		/// and monsters.
-		/// <para>Key: <see cref="ICombatEntity.Handle"/></para>
+		/// <pa ra>Key: <see cref="ICombatEntity.Handle"/></para>
 		/// <para>Value: <see cref="ICombatEntity"/></para>
 		/// </summary>
 		private readonly Dictionary<int, ICombatEntity> _combatEntities = new Dictionary<int, ICombatEntity>();
@@ -73,7 +71,7 @@ namespace Melia.Zone.World.Maps
 		/// List of property overrides for monsters spawned on this map.
 		/// </summary>
 		private readonly Dictionary<int, PropertyOverrides> _monsterPropertyOverrides = new Dictionary<int, PropertyOverrides>();
-		
+
 		/// <summary>
 		/// Returns the unique id for this map
 		/// </summary>
@@ -652,7 +650,7 @@ namespace Melia.Zone.World.Maps
 		/// <returns></returns>
 		public IMonster[] GetVisibleMonsters(Character character)
 			// TODO: Move responsibility about visibility to Character.
-			=> this.GetMonsters(a => (!(a is Npc npc) || npc.State != NpcState.Invisible) && character.Position.InRange2D(a.Position, VisibleRange));
+			=> this.GetMonsters(a => character.CanSee(a));
 
 		/// <summary>
 		/// Removes all scripted entities, like NPCs, monsters, and warps.

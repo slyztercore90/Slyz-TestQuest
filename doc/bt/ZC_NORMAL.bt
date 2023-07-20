@@ -1100,14 +1100,14 @@ switch (type)
         break;
     
     // Invite to party
-    case 0xFA:
-    	PartyType type; // Party Type
-    	int64 inviterAccountId;
-    	lpString inviterteamName;
-    	break;
+    //case 0xF9:
+    //	PartyType type; // Party Type
+    //	int64 inviterAccountId;
+    //	lpString inviterteamName;
+    //	break;
 
     // Share Quest/Party Property Update for Specific Member
-    case 0xFB:
+    case 0xFA:
         PartyType type; // Party Type
         int64 partyId; // Party Id
         int64 accountId; // ?

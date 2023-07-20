@@ -412,6 +412,56 @@ namespace Melia.Zone.World.Actors.Monsters
 		}
 
 		/// <summary>
+		/// Drops an item.
+		/// </summary>
+		public void DropItem(Character killer, int itemId, float dropChance, int dropMinAmount = 1, int dropMaxAmount = 1)
+		{
+			var rnd = RandomProvider.Get();
+			var autoloot = killer?.Variables.Temp.Get("Autoloot", 0) ?? 0;
+
+			var dropSuccess = rnd.NextDouble() < dropChance / 100f;
+			if (!dropSuccess)
+				return;
+
+			if (!ZoneServer.Instance.Data.ItemDb.TryFind(itemId, out var itemData))
+			{
+				Log.Warning("Monster.Kill: Drop item '{0}' not found.", itemId);
+				return;
+			}
+
+			var dropItem = new Item(itemData.Id);
+			var minAmount = dropMinAmount;
+			var maxAmount = dropMaxAmount;
+
+			if (itemId == ItemId.Silver || itemId == ItemId.Gold)
+			{
+				minAmount = Math.Max(1, (int)(minAmount * (ZoneServer.Instance.Conf.World.SilverDropAmount / 100f)));
+				maxAmount = Math.Max(minAmount, (int)(maxAmount * (ZoneServer.Instance.Conf.World.SilverDropAmount / 100f)));
+			}
+
+			dropItem.Amount = rnd.Next(minAmount, maxAmount + 1);
+
+			if (killer == null || dropChance > autoloot)
+			{
+				var direction = new Direction(rnd.Next(0, 360));
+				var dropRadius = ZoneServer.Instance.Conf.World.DropRadius;
+				var distance = rnd.Next(dropRadius / 2, dropRadius + 1);
+
+				dropItem.SetLootProtection(killer, TimeSpan.FromSeconds(ZoneServer.Instance.Conf.World.LootPrectionSeconds));
+				dropItem.Drop(this.Map, this.Position, direction, distance);
+			}
+			else
+			{
+				var party = killer.Connection.Party;
+
+				if (party != null)
+					party.GiveItem(killer, dropItem, InventoryAddType.PickUp);
+				else
+					killer.Inventory.Add(dropItem, InventoryAddType.PickUp);
+			}
+		}
+
+		/// <summary>
 		/// Drops random items from the monster's drop table.
 		/// </summary>
 		/// <param name="killer"></param>
@@ -420,53 +470,10 @@ namespace Melia.Zone.World.Actors.Monsters
 			if (this.Data.Drops == null)
 				return;
 
-			var rnd = RandomProvider.Get();
-			var autoloot = killer?.Variables.Temp.Get("Autoloot", 0) ?? 0;
-
-			foreach (var dropItemData in this.Data.Drops)
+			foreach (var dropItemData in Data.Drops)
 			{
 				var dropChance = GetAdjustedDropRate(dropItemData);
-
-				var dropSuccess = rnd.NextDouble() < dropChance / 100f;
-				if (!dropSuccess)
-					continue;
-
-				if (!ZoneServer.Instance.Data.ItemDb.TryFind(dropItemData.ItemId, out var itemData))
-				{
-					Log.Warning("Monster.Kill: Drop item '{0}' not found.", dropItemData.ItemId);
-					continue;
-				}
-
-				var dropItem = new Item(itemData.Id);
-				var minAmount = dropItemData.MinAmount;
-				var maxAmount = dropItemData.MaxAmount;
-
-				if (dropItemData.ItemId == ItemId.Silver || dropItemData.ItemId == ItemId.Gold)
-				{
-					minAmount = Math.Max(1, (int)(minAmount * (ZoneServer.Instance.Conf.World.SilverDropAmount / 100f)));
-					maxAmount = Math.Max(minAmount, (int)(maxAmount * (ZoneServer.Instance.Conf.World.SilverDropAmount / 100f)));
-				}
-
-				dropItem.Amount = rnd.Next(minAmount, maxAmount + 1);
-
-				if (killer == null || dropChance > autoloot)
-				{
-					var direction = new Direction(rnd.Next(0, 360));
-					var dropRadius = ZoneServer.Instance.Conf.World.DropRadius;
-					var distance = rnd.Next(dropRadius / 2, dropRadius + 1);
-
-					dropItem.SetLootProtection(killer, TimeSpan.FromSeconds(ZoneServer.Instance.Conf.World.LootPrectionSeconds));
-					dropItem.Drop(this.Map, this.Position, direction, distance);
-				}
-				else
-				{
-					var party = killer.Connection.Party;
-
-					if (party != null)
-						party.GiveItem(killer, dropItem, InventoryAddType.PickUp);
-					else
-						killer.Inventory.Add(dropItem, InventoryAddType.PickUp);
-				}
+				this.DropItem(killer, dropItemData.ItemId, dropChance, dropItemData.MinAmount, dropItemData.MaxAmount);
 			}
 		}
 

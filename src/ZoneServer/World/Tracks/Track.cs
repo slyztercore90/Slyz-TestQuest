@@ -11,7 +11,7 @@ namespace Melia.Zone.World.Tracks
 		/// <summary>
 		/// Returns the track's id.
 		/// </summary>
-		public string Id { get; set; }
+		public string Id => this.Data.Id;
 
 		/// <summary>
 		/// Returns the track's data.
@@ -27,6 +27,7 @@ namespace Melia.Zone.World.Tracks
 		/// Returns the track's start time.
 		/// </summary>
 		public DateTime StartTime { get; set; }
+
 		/// <summary>
 		/// Returns the associated dialog.
 		/// </summary>
@@ -46,9 +47,9 @@ namespace Melia.Zone.World.Tracks
 		/// Creates new quest.
 		/// </summary>
 		/// <param name="trackId"></param>
-		public Track(string trackId)
+		public Track(TrackData trackData)
 		{
-			this.Id = trackId;
+			this.Data = trackData;
 		}
 
 		/// <summary>
@@ -67,7 +68,7 @@ namespace Melia.Zone.World.Tracks
 				throw new ArgumentException($"Track '{trackId}' not found.");
 			}
 
-			var result = new Track(trackId);
+			var result = new Track(trackScript.Data);
 			return result;
 		}
 	}

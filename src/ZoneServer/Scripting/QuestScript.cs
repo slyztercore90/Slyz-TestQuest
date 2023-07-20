@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using Melia.Zone.Scripting.Hooking;
 using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.Prerequisites;
 using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Modifiers;
 using Melia.Zone.World.Quests.Prerequisites;
 using Yggdrasil.Scripting;
 
@@ -44,12 +46,15 @@ namespace Melia.Zone.Scripting
 
 			if (this.Data.Id == 0)
 				throw new MissingFieldException($"Quest '{this.GetType().Name}' has no id defined.");
-			if (this.Data.Name == null)
-				throw new MissingFieldException($"Quest '{this.GetType().Name}' has no name defined.");
-			if (this.Data.Description == null)
-				throw new MissingFieldException($"Quest '{this.GetType().Name}' has no description defined.");
-			if (this.Data.Objectives.Count == 0)
-				throw new MissingFieldException($"Quest '{this.GetType().Name}' has no objectives defined.");
+			if (!ZoneServer.Instance.Data.QuestDb.Contains(this.Data.Id))
+			{
+				if (this.Data.Name == null)
+					throw new MissingFieldException($"Quest '{this.GetType().Name}' has no name defined.");
+				if (this.Data.Description == null)
+					throw new MissingFieldException($"Quest '{this.GetType().Name}' has no description defined.");
+				if (this.Data.Objectives.Count == 0)
+					throw new MissingFieldException($"Quest '{this.GetType().Name}' has no objectives defined.");
+			}
 
 			lock (ScriptsSyncLock)
 			{
@@ -209,6 +214,30 @@ namespace Melia.Zone.Scripting
 		protected void SetTrack(string startCondition, string endCondition, string track, string effectName)
 			=> this.Data.Track = track;
 
+		protected void AddDrop(string itemClassName, float dropChance, params string[] monsterIds)
+		{
+			if (!ZoneServer.Instance.Data.ItemDb.TryFind(itemClassName, out var itemData))
+				throw new ArgumentException($"AddDrop: Item '{itemClassName}' not found.");
+			this.AddDrop(new ItemDropModifier(itemData.Id, dropChance, monsterIds));
+		}
+
+		protected void AddDrop(string itemClassName, float dropChance, params int[] monsterIds)
+		{
+			if (!ZoneServer.Instance.Data.ItemDb.TryFind(itemClassName, out var itemData))
+				throw new ArgumentException($"AddDrop: Item '{itemClassName}' not found.");
+			this.AddDrop(new ItemDropModifier(itemData.Id, dropChance, monsterIds));
+		}
+
+		/// <summary>
+		/// Add an item drop modifier to a specific monster(s)
+		/// for the duration of an active quest.
+		/// </summary>
+		/// <param name="itemDrop"></param>
+		private void AddDrop(ItemDropModifier itemDrop)
+		{
+			this.Data.Modifiers.Add(itemDrop);
+		}
+
 		/// <summary>
 		/// Adds objective to quest, that needs to be completed to finish
 		/// the quest.
@@ -251,9 +280,10 @@ namespace Melia.Zone.Scripting
 		/// Adds prerequisite to the quest.
 		/// </summary>
 		/// <param name="prerequisite"></param>
-		protected void AddPrerequisite(QuestPrerequisite prerequisite)
+		protected void AddPrerequisite(params QuestPrerequisite[] prerequisites)
 		{
-			this.Data.Prerequisites.Add(prerequisite);
+			foreach (var prerequisite in prerequisites)
+				this.Data.Prerequisites.Add(prerequisite);
 		}
 
 		/// <summary>

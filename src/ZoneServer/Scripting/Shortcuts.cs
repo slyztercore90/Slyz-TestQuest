@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Threading;
 using System.Threading.Tasks;
 using Melia.Shared.Configuration.Files;
 using Melia.Shared.Data.Database;
@@ -13,6 +14,7 @@ using Melia.Zone.Scripting.Dialogues;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Components;
 using Melia.Zone.World.Actors.Monsters;
+using Melia.Zone.World.Spawning;
 using Yggdrasil.Geometry;
 using Yggdrasil.Geometry.Shapes;
 using Yggdrasil.Util;
@@ -229,44 +231,18 @@ namespace Melia.Zone.Scripting
 			ZoneServer.Instance.DialogFunctions.TryGet(enterFuncName, out var enter);
 			ZoneServer.Instance.DialogFunctions.TryGet(leaveFuncName, out var leave);
 
+			var uniqueId = Interlocked.Increment(ref UniqueNpcNameId);
+			var uniqueName = $"__NPC{uniqueId}__";
 			var monster = new Npc(monsterId, name, location, dir);
+			monster.UniqueName = uniqueName;
 			if (dialog != null)
 				monster.SetClickTrigger(dialogFuncName, dialog);
 			if (enter != null || leave != null)
 				monster.SetTriggerArea(Spot(monster.Position.X, monster.Position.Z, range));
 			if (enter != null)
-			{
 				monster.SetEnterTrigger(enterFuncName, enter);
-				/**
-				monster.Triggers.Add("EnterHook", TriggerType.Enter, Spot(monster.Position.X, monster.Position.Z, range), character =>
-				{
-					if (character.Triggers.Has(monster.LeaveName + "_LeaveHook"))
-						character.Triggers.Remove(monster.LeaveName + "_LeaveHook");
-					if (!character.Triggers.Has(monster.EnterName + "_EnterHook"))
-					{
-						character.Triggers.Add(monster.EnterName + "_EnterHook", TriggerType.Enter, null, null);
-						Send.ZC_ENTER_HOOK(character, monster.ClassId);
-						monster.OnEnterFunc.Invoke(new Dialog(character, monster));
-					}
-				});
-				**/
-			}
 			if (leave != null)
-			{
 				monster.SetLeaveTrigger(leaveFuncName, leave);
-				/**
-				monster.Triggers.Add("LeaveHook", TriggerType.Leave, Spot(monster.Position.X, monster.Position.Z, range), character =>
-				{
-					if (!character.Triggers.Has(monster.EnterName + "_LeaveHook") && character.Triggers.Has(monster.EnterName + "_EnterHook"))
-					{
-						character.Triggers.Remove(monster.EnterName + "_EnterHook");
-						character.Triggers.Add(monster.LeaveName + "_LeaveHook", TriggerType.Leave, null, null);
-						Send.ZC_LEAVE_HOOK(character, monster.ClassId);
-						monster.OnLeaveFunc.Invoke(new Dialog(character, monster));
-					}
-				});
-				**/
-			}
 
 			mapObj.AddMonster(monster);
 
@@ -295,113 +271,6 @@ namespace Melia.Zone.Scripting
 			fromMap.AddMonster(monster);
 
 			return monster;
-		}
-
-		/// <summary>
-		/// Adds monster spawner to the world.
-		/// </summary>
-		/// <param name="monsterClassName"></param>
-		/// <param name="maxAmount"></param>
-		/// <param name="respawn"></param>
-		/// <param name="map"></param>
-		/// <param name="area"></param>
-		/// <returns></returns>
-		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(string monsterClassName, int maxAmount, TimeSpan respawn, string map, IShapeF area)
-		{
-			if (!ZoneServer.Instance.Data.MonsterDb.TryFind(a => a.ClassName == monsterClassName, out var monsterData))
-				throw new ArgumentException($"Monster '{monsterClassName}' not found.");
-
-			return AddSpawner(monsterData.Id, maxAmount, respawn, map, area, TendencyType.Peaceful, null);
-		}
-
-		/// <summary>
-		/// Adds monster spawner to the world.
-		/// </summary>
-		/// <param name="monsterClassId"></param>
-		/// <param name="maxAmount"></param>
-		/// <param name="respawn"></param>
-		/// <param name="map"></param>
-		/// <param name="area"></param>
-		/// <returns></returns>
-		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShapeF area)
-			=> AddSpawner(monsterClassId, maxAmount, respawn, map, area, TendencyType.Peaceful, null);
-
-		/// <summary>
-		/// Adds monster spawner to the world.
-		/// </summary>
-		/// <param name="monsterClassId"></param>
-		/// <param name="maxAmount"></param>
-		/// <param name="respawn"></param>
-		/// <param name="map"></param>
-		/// <param name="area"></param>
-		/// <param name="tendency"></param>
-		/// <returns></returns>
-		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShapeF area, TendencyType tendency)
-			=> AddSpawner(monsterClassId, maxAmount, respawn, map, area, tendency, null);
-
-		/// <summary>
-		/// Adds monster spawner to the world.
-		/// </summary>
-		/// <param name="monsterClassId"></param>
-		/// <param name="maxAmount"></param>
-		/// <param name="respawn"></param>
-		/// <param name="map"></param>
-		/// <param name="area"></param>
-		/// <param name="propertyOverrides"></param>
-		/// <returns></returns>
-		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShapeF area, PropertyOverrides propertyOverrides)
-			=> AddSpawner(monsterClassId, maxAmount, respawn, map, area, TendencyType.Peaceful, propertyOverrides);
-
-		/// <summary>
-		/// Adds monster spawner to the world.
-		/// </summary>
-		/// <param name="monsterClassId"></param>
-		/// <param name="maxAmount"></param>
-		/// <param name="respawn"></param>
-		/// <param name="map"></param>
-		/// <param name="area"></param>
-		/// <param name="tendency"></param>
-		/// <param name="propertyOverrides"></param>
-		/// <returns></returns>
-		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int maxAmount, TimeSpan respawn, string map, IShapeF area, TendencyType tendency, PropertyOverrides propertyOverrides)
-		{
-			var initialSpawnDelay = TimeSpan.FromSeconds(0);
-			var minRespawnDelay = Math2.Max(TimeSpan.FromSeconds(3), respawn);
-			var maxRespawnDelay = minRespawnDelay.Multiply(3);
-			var minAmount = Math.Max(1, (int)(maxAmount * 0.10));
-
-			return AddSpawner(monsterClassId, minAmount, maxAmount, initialSpawnDelay, minRespawnDelay, maxRespawnDelay, map, area, tendency, propertyOverrides);
-		}
-
-		/// <summary>
-		/// Adds monster spawner to the world.
-		/// </summary>
-		/// <param name="monsterClassId"></param>
-		/// <param name="minAmount"></param>
-		/// <param name="maxAmount"></param>
-		/// <param name="initialSpawnDelay"></param>
-		/// <param name="minRespawnDelay"></param>
-		/// <param name="maxRespawnDelay"></param>
-		/// <param name="map"></param>
-		/// <param name="area"></param>
-		/// <param name="tendency"></param>
-		/// <param name="propertyOverrides"></param>
-		/// <returns></returns>
-		/// <exception cref="ArgumentException"></exception>
-		public static MonsterSpawner AddSpawner(int monsterClassId, int minAmount, int maxAmount, TimeSpan initialSpawnDelay, TimeSpan minRespawnDelay, TimeSpan maxRespawnDelay, string map, IShapeF area, TendencyType tendency, PropertyOverrides propertyOverrides)
-		{
-			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
-				throw new ArgumentException($"Map '{map}' not found.");
-
-			var spawner = new MonsterSpawner(monsterClassId, minAmount, maxAmount, map, area, initialSpawnDelay, minRespawnDelay, maxRespawnDelay, tendency, propertyOverrides);
-			mapObj.AddSpawner(spawner);
-
-			return spawner;
 		}
 
 		/// <summary>
@@ -440,7 +309,7 @@ namespace Melia.Zone.Scripting
 			var points = new List<Vector2F>();
 			for (var i = 0; i < coordinates.Length;)
 			{
-				var point = new Vector2F((float)coordinates[i++], (float)coordinates[i++]);
+				var point = new Vector2F((int)coordinates[i++], (int)coordinates[i++]);
 				points.Add(point);
 			}
 
@@ -451,13 +320,13 @@ namespace Melia.Zone.Scripting
 		/// Returns a circular shape with the given coordinates and radius.
 		/// </summary>
 		/// <param name="x"></param>
-		/// <param name="z"></param>
+		/// <param name="y"></param>
 		/// <param name="radius"></param>
 		/// <returns></returns>
 		public static IShapeF Spot(double x, double y, double radius = 0)
 		{
 			var center = new Vector2F((float)x, (float)y);
-			return new CircleF(center, (int)radius);
+			return new CircleF(center, (float)radius);
 		}
 
 		/// <summary>
@@ -473,14 +342,12 @@ namespace Melia.Zone.Scripting
 		/// <param name="width">Width of the rectangle.</param>
 		/// <param name="height">Height of the rectangle. Defaults to width.</param>
 		/// <returns></returns>
-
-
 		public static IShapeF Rectangle(double x, double y, double width, double height = 0)
 		{
 			var center = new Vector2F((float)x, (float)y);
 			var size = new Vector2F((float)width, (float)(height != 0 ? height : width));
-			return RectangleF.Centered(center, size);
 
+			return Yggdrasil.Geometry.Shapes.RectangleF.Centered(center, size);
 		}
 
 		/// <summary>

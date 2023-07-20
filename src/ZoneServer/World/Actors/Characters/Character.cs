@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using Melia.Shared.Data.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Network.Helpers;
 using Melia.Shared.ObjectProperties;
@@ -11,8 +9,6 @@ using Melia.Shared.Tos.Const;
 using Melia.Shared.Tos.Properties;
 using Melia.Shared.World;
 using Melia.Zone.Network;
-using Melia.Zone.Scripting.Dialogues;
-using Melia.Zone.Skills.Combat;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Components;
@@ -31,7 +27,6 @@ namespace Melia.Zone.World.Actors.Characters
 	{
 		private bool _warping;
 		private int _destinationChannelId;
-		private int _currentLayer = 0;
 
 		private readonly object _lookAroundLock = new object();
 		private readonly object _hpLock = new object();
@@ -297,6 +292,7 @@ namespace Melia.Zone.World.Actors.Characters
 		/// Returns the character's quests manager.
 		/// </summary>
 		public QuestComponent Quests { get; }
+
 		/// <summary>
 		/// Character's timed events.
 		/// </summary>
@@ -1594,22 +1590,21 @@ namespace Melia.Zone.World.Actors.Characters
 		/// <summary>
 		/// Used to setup a "new" instance of a map in the client.
 		/// </summary>
-		/// <param name="layer"></param>
-		public void StartLayer(int layer = 0)
+		public int StartLayer()
 		{
-			if (layer == 0)
-				_currentLayer = this.Map.GetNewLayer();
-			else
-				_currentLayer = layer;
-			Send.ZC_SET_LAYER(this, _currentLayer, true);
+			this.Layer = this.Map.GetNewLayer();
+			Send.ZC_SET_LAYER(this, this.Layer, true);
+
+			return this.Layer;
 		}
 
 		/// <summary>
 		/// Used to remove a "new" instance of a map in the client.
 		/// </summary>
-		public void StopLayer(int layer = 0)
+		public void StopLayer()
 		{
-			Send.ZC_SET_LAYER(this, (layer == 0) ? _currentLayer : layer, false);
+			this.Layer = 0;
+			Send.ZC_SET_LAYER(this, this.Layer, false);
 		}
 	}
 }

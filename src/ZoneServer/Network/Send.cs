@@ -1721,7 +1721,7 @@ namespace Melia.Zone.Network
 		/// <param name="index">Index of the item in the inventory.</param>
 		/// <param name="amount">Amount to add.</param>
 		/// <param name="addType">The way the add is displayed?</param>
-		public static void ZC_ITEM_ADD(Character character, Item item, int index, int amount, InventoryAddType addType)
+		public static void ZC_ITEM_ADD(Character character, Item item, int index, int amount, InventoryAddType addType, InventoryType inventoryType = InventoryType.Inventory, float notificationDelay = 0f)
 		{
 			// For some reason this packet requires properties on the item,
 			// otherwise the client crashes. Let's catch this here for the
@@ -1742,8 +1742,8 @@ namespace Melia.Zone.Network
 			packet.PutInt(item.Id);
 			packet.PutShort(propertiesSize);
 			packet.PutByte((byte)addType);
-			packet.PutFloat(0f); // Notification delay
-			packet.PutByte(0); // InvType
+			packet.PutFloat(notificationDelay); // Notification delay
+			packet.PutByte((byte)inventoryType); // InvType
 			packet.PutByte(0);
 			packet.PutByte(0);
 			packet.AddProperties(propertyList);
@@ -4929,7 +4929,7 @@ namespace Melia.Zone.Network
 		/// <param name="character"></param>
 		/// <param name="type"></param>
 		/// <param name="items"></param>
-		public static void ZC_SOLD_ITEM_DIVISION_LIST(Character character, InventoryType type, List<Item> items)
+		public static void ZC_SOLD_ITEM_DIVISION_LIST(Character character, InventoryType type, IList<Item> items, byte b3 = 1)
 		{
 			var packet = new Packet(Op.ZC_SOLD_ITEM_DIVISION_LIST);
 
@@ -4937,7 +4937,7 @@ namespace Melia.Zone.Network
 			packet.PutInt(items.Count);
 			packet.PutByte(1);
 			packet.PutByte(1);
-			packet.PutByte(1);
+			packet.PutByte(b3);
 
 			if (items.Count != 0)
 			{

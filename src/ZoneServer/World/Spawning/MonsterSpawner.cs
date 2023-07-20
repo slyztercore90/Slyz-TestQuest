@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using Melia.Shared.Data.Database;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.World;
 using Melia.Zone.Scripting;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.CombatEntities.Components;
@@ -165,7 +166,6 @@ namespace Melia.Zone.World.Spawning
 
 				var monster = new Mob(_monsterData.Id, MonsterType.Mob);
 				monster.Position = pos;
-				monster.SpawnLocation = new Location(this._map.Id, pos);
 				monster.FromGround = true;
 				monster.Tendency = this.Tendency;
 				monster.Died += this.OnMonsterDied;

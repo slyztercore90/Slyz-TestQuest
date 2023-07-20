@@ -225,6 +225,23 @@ namespace Melia.Shared.Data.Database
 		}
 
 		/// <summary>
+		/// Try to find item by class name if null then search by item name.
+		/// </summary>
+		/// <param name="name"></param>
+		/// <param name="item"></param>
+		/// <returns>If item is found or not</returns>
+		public bool TryFind(string name, out ItemData item)
+		{
+			item = this.FindByClass(name);
+			if (item != null)
+				return true;
+			item = this.Find(name);
+			if (item != null)
+				return true;
+			return false;
+		}
+
+		/// <summary>
 		/// Reads given entry and adds it to the database.
 		/// </summary>
 		/// <param name="entry"></param>
@@ -376,6 +393,9 @@ namespace Melia.Shared.Data.Database
 
 			if (entry.ContainsKey("maxSocketCount"))
 				data.MaxSocketCount = entry.ReadInt("maxSocketCount");
+
+			if (entry.ContainsKey("cooldown"))
+				data.Cooldown = entry.ReadInt("cooldown");
 
 
 			if (entry.TryGetObject("script", out var scriptEntry))

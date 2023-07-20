@@ -972,6 +972,16 @@ namespace Melia.Zone.Network
 		public void CZ_DIALOG_ACK(IZoneConnection conn, Packet packet)
 		{
 			var type = packet.GetInt();
+			var character = conn.SelectedCharacter;
+
+			// Cutscene Tracker
+			if (character.Tracks.ActiveTrack != null)
+			{
+				var track = character.Tracks.ActiveTrack;
+				Send.ZC_DIALOG_CLOSE(conn);
+				Send.ZC_NORMAL.SetTrackFrame(character, track.Frame);
+				return;
+			}
 
 			// Check state
 			if (conn.CurrentDialog == null)
@@ -2830,17 +2840,21 @@ namespace Melia.Zone.Network
 			var isView = packet.GetByte() == 1;
 			var isLike = packet.GetByte() == 1;
 
-			var character = conn.SelectedCharacter.Map.GetCharacter(handle);
-			if (character == null)
+			var targetCharacter = conn.SelectedCharacter.Map.GetCharacter(handle);
+			if (targetCharacter == null)
 			{
 				Log.Warning("Attempted to compare an unknown character '{0}'.", handle);
 				return;
 			}
 
-			Send.ZC_PROPERTY_COMPARE(conn, character, isView);
+			Send.ZC_PROPERTY_COMPARE(conn, targetCharacter, isView);
 			if (isLike)
 			{
+				var character = conn.SelectedCharacter;
 				//TODO Send poses and rotate?
+				Send.ZC_NORMAL.Skill_MissileThrow(character, character.Position.GetRandomInRange2D(50, 100), "I_like_force#Dummy_bufficon", 1, null, 1, 3.5f, 100f);
+				character.PlayEffect("F_sys_like3#Bip01 Pelvis", 2);
+				character.SystemMessage("{Name}Like{Who}", new MsgParameter("Name", character.TeamName), new MsgParameter("Who", targetCharacter.TeamName));
 			}
 		}
 
@@ -3132,9 +3146,19 @@ namespace Melia.Zone.Network
 				return;
 			}
 
+			IList<Item> items;
+			switch (type)
+			{
+				case InventoryType.Warehouse:
+					items = character.Inventory.GetWarehouseItems();
+					break;
+				default:
+					items = new List<Item>();
+					break;
+			}
 			// ToDo load list of warehouse items and send them
 			// Currently sending an empty list
-			Send.ZC_SOLD_ITEM_DIVISION_LIST(character, type, new List<Item>());
+			Send.ZC_SOLD_ITEM_DIVISION_LIST(character, type, items);
 		}
 
 		/// <summary>
@@ -3225,12 +3249,16 @@ namespace Melia.Zone.Network
 					Log.Warning("CZ_WAREHOUSE_CMD: Failed to remove an item from user '{0}' inventory.", conn.Account.Name);
 					return;
 				}
+				if (item.Amount > 0)
+				{
+					item = new Item(item.Id, amount);
+				}
 				// Try to add item to warehouse
 				character.Inventory.Add(item, InventoryAddType.New, InventoryType.Warehouse);
 			}
 			else
 			{
-				// Try to remove item
+				// Try to remove item from warehouse
 				if (character.Inventory.Remove(item.ObjectId, amount, InventoryItemRemoveMsg.Sold, InventoryType.Warehouse) != InventoryResult.Success)
 				{
 					Log.Warning("CZ_WAREHOUSE_CMD: Failed to remove an item from user '{0}' inventory.", conn.Account.Name);

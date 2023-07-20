@@ -1,9 +1,6 @@
 ﻿using System;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
-using Melia.Shared.World;
-using Melia.Zone.World.Maps;
-using Yggdrasil.Composition;
 
 namespace Melia.Zone.World.Actors.Monsters
 {

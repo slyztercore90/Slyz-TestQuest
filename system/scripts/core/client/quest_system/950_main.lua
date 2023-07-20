@@ -18,5 +18,5 @@ function M_QUESTS_UPDATE_LIST()
 	M_QUESTS_DRAW_LIST(gb_progressQuest, quests)
 end
 
---RemoveObsoleteUiElements()
+RemoveObsoleteUiElements()
 M_QUESTS_UPDATE_LIST()

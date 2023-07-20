@@ -15,7 +15,6 @@
 
 ClientHeaderFixed header;
 
-int questId; // quest id? session object?
-int handle; // npc handle?
-byte bin[32];
+int questIds[5];
+byte bin[20];
 short s1;

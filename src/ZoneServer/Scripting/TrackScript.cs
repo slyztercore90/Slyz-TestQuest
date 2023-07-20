@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Melia.Zone.Network;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.Monsters;
 using Melia.Zone.World.Quests;
 using Melia.Zone.World.Quests.Prerequisites;
 using Melia.Zone.World.Tracks;
@@ -111,7 +112,7 @@ namespace Melia.Zone.Scripting
 			=> this.Data.StartDelay = startDelay;
 
 		/// <summary>
-		/// Called when a character receives this track.
+		/// Called when a character starts this track.
 		/// </summary>
 		/// <remarks>
 		/// Called before the track is added to the track log, allowing
@@ -119,12 +120,12 @@ namespace Melia.Zone.Scripting
 		/// </remarks>
 		public virtual IActor[] OnStart(Character character, Track track)
 		{
-			Send.ZC_SET_LAYER(character, character.Map.GetNewLayer(), true);
+			character.StartLayer();
 			return Array.Empty<IActor>();
 		}
 
 		/// <summary>
-		/// Called when a character completes this track successfully.
+		/// Called when a character progresses this track.
 		/// </summary>
 		/// <remarks>
 		/// Called after the track was marked as completed, but before
@@ -145,7 +146,12 @@ namespace Melia.Zone.Scripting
 		/// </remarks>
 		public virtual void OnComplete(Character character, Track track)
 		{
-			Send.ZC_SET_LAYER(character, 0, false);
+			character.StopLayer();
+			foreach (var actor in track.Actors)
+			{
+				if (actor != character && actor is IMonster monster)
+					character.Map.RemoveMonster(monster);
+			}
 		}
 
 		/// <summary>
@@ -157,7 +163,12 @@ namespace Melia.Zone.Scripting
 		/// </remarks>
 		public virtual void OnCancel(Character character, Track track)
 		{
-			Send.ZC_SET_LAYER(character, 0, false);
+			character.StopLayer();
+			foreach (var actor in track.Actors)
+			{
+				if (actor != character && actor is IMonster monster)
+					character.Map.RemoveMonster(monster);
+			}
 		}
 	}
 

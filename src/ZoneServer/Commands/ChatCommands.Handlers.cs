@@ -7,6 +7,7 @@ using System.Text;
 using Melia.Shared.Data.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Network;
+using Melia.Shared.Network.Inter.Messages;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.Tos.Const.Web;

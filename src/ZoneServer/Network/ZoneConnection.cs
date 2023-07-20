@@ -134,9 +134,30 @@ namespace Melia.Zone.Network
 			if (character != null)
 			{
 				character.Map.RemoveCharacter(character);
+				if (character.HasCompanions)
+				{
+					foreach (var companion in character.GetCompanions())
+					{
+						if (companion.IsActivated)
+							character.Map.RemoveMonster(companion);
+					}
+				}
 
 				// Remove all buffs that are not supposed to be saved
 				character.Buffs.RemoveAll(a => !a.Data.Save);
+
+				if (this.Party != null)
+				{
+					var member = this.Party.GetMember(character.ObjectId);
+					member.IsOnline = false;
+					this.Party.UpdateMember(character);
+				}
+				if (this.Guild != null)
+				{
+					var member = this.Guild.GetMember(character.ObjectId);
+					member.IsOnline = false;
+					this.Guild.UpdateMember(character);
+				}
 
 				ZoneServer.Instance.Database.SaveCharacter(character);
 				ZoneServer.Instance.Database.UpdateLoginState(this.Account.Id, 0, LoginState.LoggedOut);

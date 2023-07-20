@@ -119,6 +119,10 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// with the spawn.
 		/// </summary>
 		public int AssociatedHandle { get; set; }
+
+		/// <summary>
+		/// Gets or sets the spawn location.
+		/// </summary>
 		public Location SpawnLocation { get; set; }
 
 		/// <summary>

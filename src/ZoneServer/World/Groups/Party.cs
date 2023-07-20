@@ -51,13 +51,13 @@ namespace Melia.Zone.World
 		/// <summary>
 		/// Return a member if found, otherwise null.
 		/// </summary>
-		/// <param name="characterId"></param>
+		/// <param name="characterObjectId"></param>
 		/// <returns></returns>
-		public PartyMember GetMember(long characterId)
+		public PartyMember GetMember(long characterObjectId)
 		{
 			lock (_members)
 			{
-				if (_members.TryGetValue(characterId, out var member))
+				if (_members.TryGetValue(characterObjectId, out var member))
 					return member;
 			}
 			return null;

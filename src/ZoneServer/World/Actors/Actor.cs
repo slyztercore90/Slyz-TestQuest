@@ -1,9 +1,11 @@
 ﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Components;
 using Melia.Zone.World.Actors.Effects;
+using Melia.Zone.World.Actors.Prerequisites;
 using Melia.Zone.World.Maps;
 using Yggdrasil.Composition;
 
@@ -40,6 +42,11 @@ namespace Melia.Zone.World.Actors
 		Direction Direction { get; set; }
 
 		/// <summary>
+		/// Returns the actor's track layer.
+		/// </summary>
+		public int Layer { get; set; }
+
+		/// <summary>
 		/// Returns the actor's visibility.
 		/// </summary>
 		public ActorVisibility Visibility { get; set; }
@@ -53,6 +60,13 @@ namespace Melia.Zone.World.Actors
 		/// Returns the components the actor has.
 		/// </summary>
 		ComponentCollection Components { get; }
+
+		/// <summary>
+		/// Returns if an actor is visible.
+		/// </summary>
+		/// <param name="actor"></param>
+		/// <returns></returns>
+		bool IsVisible(IActor actor);
 	}
 
 	/// <summary>
@@ -139,6 +153,17 @@ namespace Melia.Zone.World.Actors
 		public long VisibilityId { get; set; }
 
 		/// <summary>
+		/// Returns a list of the visibility prerequisites, that need to be
+		/// met to for the entity to be visible.
+		/// </summary>
+		public List<Prerequisite> VisibilityPrerequisites { get; } = new List<Prerequisite>();
+
+		/// <summary>
+		/// Returns the layer on which this actor exists.
+		/// </summary>
+		public int Layer { get; set; } = 0;
+
+		/// <summary>
 		/// Set a specific visibilty limiter.
 		/// </summary>
 		/// <param name="visibility"></param>
@@ -169,12 +194,14 @@ namespace Melia.Zone.World.Actors
 		/// <param name="effect"></param>
 		public void AddEffect(Effect effect)
 		{
+			if (this.Components == null)
+				this.Components = new ComponentCollection();
 			if (!this.Components.Has<EffectsComponent>())
 				this.Components.Add(new EffectsComponent(this));
 			this.Components.Get<EffectsComponent>()?.AddEffect(effect);
 		}
 
-		public bool CanSee(Actor actor)
+		public bool CanSee(IActor actor)
 		{
 			if (actor == null)
 				return false;
@@ -185,8 +212,28 @@ namespace Melia.Zone.World.Actors
 			return true;
 		}
 
-		public bool IsVisible(Actor actor)
+		/// <summary>
+		/// Adds prerequisite to the entity.
+		/// </summary>
+		/// <param name="prerequisites"></param>
+		public void AddVisibilityPrerequisite(params Prerequisite[] prerequisites)
 		{
+			foreach (var prerequisite in prerequisites)
+				this.VisibilityPrerequisites.Add(prerequisite);
+		}
+
+		public bool IsVisible(IActor actor)
+		{
+			for (var i = 0; i < this.VisibilityPrerequisites.Count; ++i)
+			{
+				var prerequisite = this.VisibilityPrerequisites[i];
+				if (!prerequisite.Met(actor))
+					return false;
+			}
+
+			if (this.Layer != actor.Layer)
+				return false;
+
 			if (actor is Character character)
 			{
 				switch (actor.Visibility)

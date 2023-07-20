@@ -22,6 +22,8 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <returns></returns>
 		public bool Start(string trackId)
 		{
+			if (!this.Character.EyesOpen)
+				return false;
 			if (this.ActiveTrack != null)
 				return false;
 
@@ -74,6 +76,20 @@ namespace Melia.Zone.World.Actors.Characters.Components
 
 			if (TrackScript.TryGet(trackId, out var trackScript))
 				trackScript.OnComplete(this.Character, this.ActiveTrack);
+
+			this.ActiveTrack = null;
+		}
+
+		/// <summary>
+		/// Cancel a track.
+		/// </summary>
+		public void Cancel()
+		{
+			if (this.ActiveTrack == null)
+				return;
+
+			if (TrackScript.TryGet(this.ActiveTrack.Id, out var trackScript))
+				trackScript.OnCancel(this.Character, this.ActiveTrack);
 
 			this.ActiveTrack = null;
 		}
