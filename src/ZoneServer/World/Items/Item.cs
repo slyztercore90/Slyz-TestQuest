@@ -305,6 +305,7 @@ namespace Melia.Zone.World.Items
 			if (this.Data.MagicMeleeAtk != 0) this.Properties.SetFloat(PropertyName.Magic_Melee_Atk, this.Data.MagicMeleeAtk);
 			if (this.Data.MagicFireAtk != 0) this.Properties.SetFloat(PropertyName.Magic_Fire_Atk, this.Data.MagicFireAtk);
 			if (this.Data.MagicLightningAtk != 0) this.Properties.SetFloat(PropertyName.Magic_Lightning_Atk, this.Data.MagicLightningAtk);
+			if (this.Data.Cooldown != 0) this.Properties.SetFloat(PropertyName.CoolDown, this.Data.Cooldown);
 		}
 
 		/// <summary>

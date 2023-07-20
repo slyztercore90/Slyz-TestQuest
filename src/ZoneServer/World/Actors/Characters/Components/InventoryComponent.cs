@@ -21,6 +21,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		private Dictionary<InventoryCategory, List<Item>> _items = new Dictionary<InventoryCategory, List<Item>>();
 		private readonly Dictionary<long, Item> _itemsWorldIndex = new Dictionary<long, Item>();
 		private readonly Dictionary<EquipSlot, Item> _equip = new Dictionary<EquipSlot, Item>(InventoryDefaults.EquipSlotCount);
+		private readonly List<Item> _warehouse = new List<Item>();
 
 		/// <summary>
 		/// Raised when the character equipped an item.
@@ -151,6 +152,16 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		}
 
 		/// <summary>
+		/// Returns a list with all items in the warehouse.
+		/// </summary>
+		/// <returns></returns>
+		public IList<Item> GetWarehouseItems()
+		{
+			lock (_syncLock)
+				return this._warehouse;
+		}
+
+		/// <summary>
 		/// Returns a dictionary with all items' inventory indices and
 		/// object ids.
 		/// </summary>
@@ -220,14 +231,26 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		}
 
 		/// <summary>
+		/// Returns true if an item with the given class name exist in the inventory.
+		/// </summary>
+		/// <param name="itemClassName">Item's ClassName</param>
+		/// <param name="amount">Item Amount</param>
+		/// <returns></returns>
+		public bool HasItem(string itemClassName, int amount = 1)
+		{
+			return ZoneServer.Instance.Data.ItemDb.TryFind(itemClassName, out var itemClass)
+				&& this.HasItem(itemClass.Id, amount);
+		}
+
+		/// <summary>
 		/// Returns true if an item with the given id exist in the inventory.
 		/// </summary>
 		/// <param name="itemId"></param>
 		/// <returns></returns>
-		public bool HasItem(int itemId)
+		public bool HasItem(int itemId, int amount = 1)
 		{
 			lock (_syncLock)
-				return _items.SelectMany(a => a.Value).Any(a => a.Id == itemId);
+				return _items.SelectMany(a => a.Value).Any(a => a.Id == itemId && a.Amount == amount);
 		}
 
 		/// <summary>
@@ -250,11 +273,18 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// </summary>
 		/// <param name="worldId"></param>
 		/// <returns></returns>
-		public Item GetItem(long worldId)
+		public Item GetItem(long worldId, InventoryType inventoryType = InventoryType.Inventory)
 		{
 			Item item;
 			lock (_syncLock)
-				_itemsWorldIndex.TryGetValue(worldId, out item);
+			{
+				switch (inventoryType)
+				{
+					default:
+						_itemsWorldIndex.TryGetValue(worldId, out item);
+						break;
+				}
+			}
 
 			return item;
 		}
@@ -308,13 +338,13 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// Adds item to inventory without updating the character's client.
 		/// </summary>
 		/// <param name="item"></param>
-		public void AddSilent(Item item)
+		public void AddSilent(Item item, InventoryType inventoryType = InventoryType.Inventory)
 		{
-			var left = this.FillStacks(item, InventoryAddType.NotNew, true);
+			var left = this.FillStacks(item, InventoryAddType.NotNew, true, inventoryType);
 			if (left > 0)
 			{
 				item.Amount = left;
-				this.AddStack(item, InventoryAddType.NotNew, true);
+				this.AddStack(item, InventoryAddType.NotNew, true, inventoryType);
 			}
 		}
 
@@ -325,13 +355,16 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="addType"></param>
 		public bool Add(Item item, InventoryAddType addType = InventoryAddType.New, InventoryType inventoryType = InventoryType.Inventory, float notificationDelay = 0f)
 		{
+			if (_items.Count > 2000 && inventoryType == InventoryType.Warehouse)
+				return false;
+
 			var amountToAdd = item.Amount;
 
-			var left = this.FillStacks(item, addType, false);
+			var left = this.FillStacks(item, addType, false, inventoryType, notificationDelay);
 			if (left > 0)
 			{
 				item.Amount = left;
-				this.AddStack(item, addType, false);
+				this.AddStack(item, addType, false, inventoryType, notificationDelay);
 			}
 
 			Send.ZC_OBJECT_PROPERTY(this.Character, "NowWeight");
@@ -378,7 +411,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// </remarks>
 		/// <param name="item">Item to fill existing stacks with.</param>
 		/// <param name="silent">If true, client isn't updated.</param>
-		private int FillStacks(Item item, InventoryAddType addType, bool silent)
+		private int FillStacks(Item item, InventoryAddType addType, bool silent, InventoryType inventoryType = InventoryType.Inventory, float notificationDelay = 0f)
 		{
 			// If item isn't stackable, we've got nothing to do here.
 			if (!item.IsStackable)
@@ -387,14 +420,20 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			var itemId = item.Id;
 			var amount = item.Amount;
 			var cat = item.Data.Category;
-			var stacks = this.GetStacks(cat, itemId);
+			var stacks = this.GetStacks(cat, itemId, inventoryType);
 
 			// Fill stacks
 			foreach (var index in stacks)
 			{
 				lock (_syncLock)
 				{
-					var categoryItem = _items[cat][index];
+					var categoryItem = inventoryType switch
+					{
+						InventoryType.Warehouse => _warehouse.ElementAtOrDefault(index),
+						_ => _items[cat][index],
+					};
+					if (categoryItem == null)
+						return item.Amount;
 					var space = (categoryItem.Data.MaxStack - categoryItem.Amount);
 					var add = Math.Min(amount, space);
 
@@ -409,7 +448,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 						// or NotNew if only some was just added to a stack.
 						var adjustedAddType = (amount == 0 ? addType : InventoryAddType.NotNew);
 
-						Send.ZC_ITEM_ADD(this.Character, categoryItem, categoryIndex, add, adjustedAddType);
+						Send.ZC_ITEM_ADD(this.Character, categoryItem, categoryIndex, add, adjustedAddType, inventoryType, notificationDelay);
 					}
 				}
 
@@ -425,19 +464,28 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// </summary>
 		/// <param name="item">Item to add to inventory.</param>
 		/// <param name="silent">If true, client isn't updated.</param>
-		private void AddStack(Item item, InventoryAddType addType, bool silent)
+		private void AddStack(Item item, InventoryAddType addType, bool silent, InventoryType inventoryType = InventoryType.Inventory, float notificationDelay = 0f)
 		{
 			var cat = item.Data.Category;
 
 			lock (_syncLock)
 			{
-				_items[cat].Add(item);
-				_itemsWorldIndex[item.ObjectId] = item;
+				switch (inventoryType)
+				{
+					case InventoryType.Warehouse:
+						_warehouse.Add(item);
+						_itemsWorldIndex[item.ObjectId] = item;
+						break;
+					default:
+						_items[cat].Add(item);
+						_itemsWorldIndex[item.ObjectId] = item;
+						break;
+				}
 
 				if (!silent)
 				{
 					var categoryIndex = item.GetInventoryIndex(_items[cat].Count - 1);
-					Send.ZC_ITEM_ADD(this.Character, item, categoryIndex, item.Amount, addType);
+					Send.ZC_ITEM_ADD(this.Character, item, categoryIndex, item.Amount, addType, inventoryType, notificationDelay);
 				}
 			}
 		}
@@ -449,18 +497,27 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="cat"></param>
 		/// <param name="itemId"></param>
 		/// <returns></returns>
-		private List<int> GetStacks(InventoryCategory cat, int itemId)
+		private List<int> GetStacks(InventoryCategory cat, int itemId, InventoryType inventoryType = InventoryType.Inventory)
 		{
 			var result = new List<int>();
 
 			lock (_syncLock)
 			{
-				var categoryItems = _items[cat];
-				for (var i = 0; i < categoryItems.Count; ++i)
+				switch (inventoryType)
 				{
-					var item = categoryItems[i];
-					if (item.Id == itemId && item.Amount < item.Data.MaxStack)
-						result.Add(i);
+					case InventoryType.Warehouse:
+						var index = _warehouse.FindIndex(item => item.Id == itemId && item.Amount < item.Data.MaxStack);
+						result.Add(index);
+						break;
+					default:
+						var categoryItems = _items[cat];
+						for (var i = 0; i < categoryItems.Count; ++i)
+						{
+							var item = categoryItems[i];
+							if (item.Id == itemId && item.Amount < item.Data.MaxStack)
+								result.Add(i);
+						}
+						break;
 				}
 			}
 
@@ -573,16 +630,29 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		}
 
 		/// <summary>
+		/// Remove an item and a given amount
+		/// </summary>
+		/// <param name="itemClassName"></param>
+		/// <param name="amount"></param>
+		/// <returns>Amount of pieces removed.</returns>
+		public int RemoveItem(string itemClassName, int amount = 1)
+		{
+			if (ZoneServer.Instance.Data.ItemDb.TryFind(itemClassName, out var itemData))
+				return this.Remove(itemData.Id, amount, InventoryItemRemoveMsg.Given);
+			return 0;
+		}
+
+		/// <summary>
 		/// Removes item with given id from inventory.
 		/// </summary>
 		/// <param name="slot"></param>
 		public InventoryResult Remove(long worldId, int amount = 1, InventoryItemRemoveMsg msg = InventoryItemRemoveMsg.Destroyed, InventoryType type = InventoryType.Inventory)
 		{
-			var item = this.GetItem(worldId);
+			var item = this.GetItem(worldId, type);
 			if (item == null || item is DummyEquipItem)
 				return InventoryResult.ItemNotFound;
 
-			return this.Remove(item, amount, msg);
+			return this.Remove(item, amount, msg, type);
 		}
 
 		/// <summary>
@@ -593,8 +663,17 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		{
 			lock (_syncLock)
 			{
-				if (!_items[item.Data.Category].Remove(item))
-					return InventoryResult.ItemNotFound;
+				switch (type)
+				{
+					case InventoryType.Warehouse:
+						if (!_warehouse.Remove(item))
+							return InventoryResult.ItemNotFound;
+						break;
+					default:
+						if (!_items[item.Data.Category].Remove(item))
+							return InventoryResult.ItemNotFound;
+						break;
+				}
 
 				_itemsWorldIndex.Remove(item.Id);
 			}
@@ -623,14 +702,27 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// Reduces item's amount by the given value. Item is removed
 		/// if amount becomes 0.
 		/// </summary>
-		/// <param name="slot"></param>
-		public InventoryResult Remove(Item item, int amount, InventoryItemRemoveMsg msg, InventoryType type = InventoryType.Inventory)
+		/// <param name="item"></param>
+		/// <param name="amount"></param>
+		/// <param name="msg"></param>
+		/// <param name="inventoryType"></param>
+		/// <returns></returns>
+		public InventoryResult Remove(Item item, int amount, InventoryItemRemoveMsg msg, InventoryType inventoryType = InventoryType.Inventory)
 		{
 			// Check if item exists in inventory
 			lock (_syncLock)
 			{
-				if (!_items[item.Data.Category].Contains(item))
-					return InventoryResult.ItemNotFound;
+				switch (inventoryType)
+				{
+					case InventoryType.Warehouse:
+						if (!_warehouse.Contains(item))
+							return InventoryResult.ItemNotFound;
+						break;
+					default:
+						if (!_items[item.Data.Category].Contains(item))
+							return InventoryResult.ItemNotFound;
+						break;
+				}
 			}
 
 			int amountRemoved;
@@ -638,7 +730,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			// Remove or reduce
 			if (item.Amount <= amount)
 			{
-				this.Remove(item);
+				this.Remove(item, msg, inventoryType);
 				amountRemoved = item.Amount;
 			}
 			else
@@ -646,7 +738,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 				item.Amount -= amount;
 				amountRemoved = amount;
 
-				Send.ZC_ITEM_REMOVE(this.Character, item.ObjectId, amount, msg, InventoryType.Inventory);
+				Send.ZC_ITEM_REMOVE(this.Character, item.ObjectId, amount, msg, inventoryType);
 
 				this.Character.Properties.Invalidate(PropertyName.NowWeight);
 				Send.ZC_OBJECT_PROPERTY(this.Character, PropertyName.NowWeight);

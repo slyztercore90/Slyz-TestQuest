@@ -166,6 +166,7 @@ namespace Melia.Zone.Database
 			}
 
 			this.LoadCharacterItems(character);
+			this.LoadCharacterWarehouseItems(character);
 			this.LoadVars(character.Variables.Perm, "vars_characters", "characterId", character.DbId);
 			this.LoadSessionObjects(character);
 			this.LoadJobs(character);
@@ -590,6 +591,7 @@ namespace Melia.Zone.Database
 			}
 
 			this.SaveCharacterItems(character);
+			this.SaveCharacterWarehouseItems(character);
 			this.SaveVariables(character.Variables.Perm, "vars_characters", "characterId", character.DbId);
 			this.SaveSessionObjects(character);
 			this.SaveProperties("character_properties", "characterId", character.DbId, character.Properties);
@@ -737,7 +739,7 @@ namespace Melia.Zone.Database
 						}
 
 						var item = new Item(itemUniqueId, itemId, amount);
-						if (!this.LoadProperties("item_properties", "itemId", item.Id, item.Properties))
+						if (!this.LoadProperties("item_properties", "itemId", item.DbId, item.Properties))
 						{
 							item.Durability = (int)item.Properties.GetFloat(PropertyName.MaxDur);
 						}
@@ -746,6 +748,45 @@ namespace Melia.Zone.Database
 							character.Inventory.AddSilent(item);
 						else
 							character.Inventory.SetEquipSilent(equipSlot, item);
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Load character's warehouse items.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		private void LoadCharacterWarehouseItems(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var mc = new MySqlCommand("SELECT `i`.*, `inv`.`sort` FROM `warehouse` AS `inv` INNER JOIN `items` AS `i` ON `inv`.`itemId` = `i`.`itemUniqueId` WHERE `characterId` = @characterId ORDER BY `sort` ASC", conn))
+			{
+				mc.Parameters.AddWithValue("@characterId", character.DbId);
+
+				using (var reader = mc.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						var itemUniqueId = reader.GetInt64("itemUniqueId");
+						var itemId = reader.GetInt32("itemId");
+						var amount = reader.GetInt32("amount");
+
+						// Check item, in case its data was removed
+						if (!ZoneServer.Instance.Data.ItemDb.Contains(itemId))
+						{
+							Log.Warning("ZoneDb.LoadCharacterItems: Item '{0}' not found, removing it from inventory.", itemId);
+							continue;
+						}
+
+						var item = new Item(itemUniqueId, itemId, amount);
+						if (!this.LoadProperties("item_properties", "itemId", item.DbId, item.Properties))
+						{
+							item.Durability = (int)item.Properties.GetFloat(PropertyName.MaxDur);
+						}
+
+						character.Inventory.AddSilent(item, InventoryType.Warehouse);
 					}
 				}
 			}
@@ -827,6 +868,59 @@ namespace Melia.Zone.Database
 					}
 
 					this.SaveProperties("item_properties", "itemId", newId, item.Value.Properties, conn, trans);
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Returns warehouse items for given character.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		public void SaveCharacterWarehouseItems(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var mc = new MySqlCommand("DELETE FROM `warehouse` WHERE `characterId` = @characterId", conn, trans))
+				{
+					mc.Parameters.AddWithValue("@characterId", character.DbId);
+					mc.ExecuteNonQuery();
+				}
+
+				var i = 0;
+				foreach (var item in character.Inventory.GetWarehouseItems())
+				{
+					var newId = 0L;
+
+					// Save the actual items into the items table and the
+					// inventory-exclusive values into the inventory table,
+					// while linking to the items.
+					// TODO: Add generic item load and save methods, for
+					//   other item collections to use, such as warehouse.
+
+					using (var cmd = new InsertCommand("INSERT INTO `items` {0}", conn, trans))
+					{
+						cmd.Set("itemId", item.Id);
+						cmd.Set("amount", item.Amount);
+
+						cmd.Execute();
+
+						newId = cmd.LastId;
+					}
+
+					using (var cmd = new InsertCommand("INSERT INTO `warehouse` {0}", conn, trans))
+					{
+						cmd.Set("characterId", character.DbId);
+						cmd.Set("itemId", newId);
+						cmd.Set("sort", i++);
+
+						cmd.Execute();
+					}
+
+					this.SaveProperties("item_properties", "itemId", newId, item.Properties, conn, trans);
 				}
 
 				trans.Commit();
