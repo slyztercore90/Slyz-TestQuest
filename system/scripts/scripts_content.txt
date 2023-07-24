@@ -6,5 +6,6 @@
 divert "/user/scripts/scripts_content.txt"
 
 include "content/official/scripts.txt"
-include "content/r1/scripts.txt"
-//include "content/test/scripts.txt"
+require "content/r1/mobs/scripts.txt"
+require "content/r1/warps/scripts.txt"
+require "content/test/scripts.txt"

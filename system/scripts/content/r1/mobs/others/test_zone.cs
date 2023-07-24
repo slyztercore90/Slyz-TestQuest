@@ -15,13 +15,13 @@ public class TestZoneMobScript : GeneralScript
 	{
 		// Monster Spawners ---------------------------------
 
-		AddSpawner("test_zone.Id1", MonsterId.Boss_Golem, 1, 1, TimeSpan.FromMilliseconds(60000), TendencyType.Peaceful);
-		AddSpawner("test_zone.Id2", MonsterId.Boss_Mirtis, 1, 1, TimeSpan.FromMilliseconds(60000), TendencyType.Peaceful);
-		AddSpawner("test_zone.Id3", MonsterId.Barricade_Butterfly, 1, 1, TimeSpan.FromMilliseconds(60000), TendencyType.Peaceful);
-		AddSpawner("test_zone.Id4", MonsterId.Boss_Spector_F, 1, 1, TimeSpan.FromMilliseconds(60000), TendencyType.Peaceful);
-		AddSpawner("test_zone.Id5", MonsterId.Goblin_Spear, 2, 2, TimeSpan.FromMilliseconds(60000), TendencyType.Peaceful);
-		AddSpawner("test_zone.Id6", MonsterId.Bubbe_Mage_Normal, 2, 2, TimeSpan.FromMilliseconds(60000), TendencyType.Peaceful);
-		AddSpawner("test_zone.Id7", MonsterId.Goblin_Archer, 2, 2, TimeSpan.FromMilliseconds(60000), TendencyType.Peaceful);
+		AddSpawner("test_zone.Id1", MonsterId.Boss_Golem, amount: 1, respawn: TimeSpan.FromMilliseconds(60000));
+		AddSpawner("test_zone.Id2", MonsterId.Boss_Mirtis, amount: 1, respawn: TimeSpan.FromMilliseconds(60000));
+		AddSpawner("test_zone.Id3", MonsterId.Barricade_Butterfly, amount: 1, respawn: TimeSpan.FromMilliseconds(60000));
+		AddSpawner("test_zone.Id4", MonsterId.Boss_Spector_F, amount: 1, respawn: TimeSpan.FromMilliseconds(60000));
+		AddSpawner("test_zone.Id5", MonsterId.Goblin_Spear, amount: 2, respawn: TimeSpan.FromMilliseconds(60000));
+		AddSpawner("test_zone.Id6", MonsterId.Bubbe_Mage_Normal, amount: 2, respawn: TimeSpan.FromMilliseconds(60000));
+		AddSpawner("test_zone.Id7", MonsterId.Goblin_Archer, amount: 2, respawn: TimeSpan.FromMilliseconds(60000));
 
 		// Monster Spawn Points -----------------------------
 

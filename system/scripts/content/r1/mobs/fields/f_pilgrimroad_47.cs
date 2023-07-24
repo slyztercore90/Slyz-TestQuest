@@ -21,13 +21,13 @@ public class FPilgrimroad47MobScript : GeneralScript
 
 		// Monster Spawners ---------------------------------
 
-		AddSpawner("f_pilgrimroad_47.Id1", MonsterId.Triffid, 8, 10, TimeSpan.FromMilliseconds(0), TendencyType.Peaceful);
-		AddSpawner("f_pilgrimroad_47.Id2", MonsterId.Rondo_Red, 23, 30, TimeSpan.FromMilliseconds(0), TendencyType.Peaceful);
-		AddSpawner("f_pilgrimroad_47.Id3", MonsterId.Rubabos_Red, 3, 4, TimeSpan.FromMilliseconds(0), TendencyType.Peaceful);
-		AddSpawner("f_pilgrimroad_47.Id4", MonsterId.Rondo_Red, 8, 10, TimeSpan.FromMilliseconds(0), TendencyType.Peaceful);
-		AddSpawner("f_pilgrimroad_47.Id5", MonsterId.Rootcrystal_01, 4, 5, TimeSpan.FromMilliseconds(5000), TendencyType.Peaceful);
-		AddSpawner("f_pilgrimroad_47.Id6", MonsterId.Spell_Crystal_Red, 9, 11, TimeSpan.FromMilliseconds(0), TendencyType.Peaceful);
-		AddSpawner("f_pilgrimroad_47.Id7", MonsterId.Triffid, 60, 80, TimeSpan.FromMilliseconds(0), TendencyType.Peaceful);
+		AddSpawner("f_pilgrimroad_47.Id1", MonsterId.Triffid, min: 8, max: 10);
+		AddSpawner("f_pilgrimroad_47.Id2", MonsterId.Rondo_Red, min: 23, max: 30);
+		AddSpawner("f_pilgrimroad_47.Id3", MonsterId.Rubabos_Red, min: 3, max: 4);
+		AddSpawner("f_pilgrimroad_47.Id4", MonsterId.Rondo_Red, min: 8, max: 10);
+		AddSpawner("f_pilgrimroad_47.Id5", MonsterId.Rootcrystal_01, min: 4, max: 5, respawn: TimeSpan.FromMilliseconds(5000));
+		AddSpawner("f_pilgrimroad_47.Id6", MonsterId.Spell_Crystal_Red, min: 9, max: 11);
+		AddSpawner("f_pilgrimroad_47.Id7", MonsterId.Triffid, min: 60, max: 80);
 
 		// Monster Spawn Points -----------------------------
 
