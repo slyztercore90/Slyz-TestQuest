@@ -348,6 +348,14 @@ switch (type)
         float seconds;
         break;
 
+    // Sent skill effect ending?
+    // Seen with Lightning Tower (Engineer Skill)
+    case 0x3C:
+        int i1;
+        float f1;
+        int casterHandle;
+        break;
+
     // Used while recovering HP?
     case 0x3D:
         int handle;
@@ -1263,6 +1271,15 @@ switch (type)
                 position pos2;
                 break;
         }
+        break;
+
+    // Seen with Lightning Tower Skill for Engineer
+    case 0x125:
+        int monsterHandle;
+        int packetString; // 3397 (I_wizard_electrocute_rize#Dummy_effect_electrocute)
+        float f1; // 10
+        float f2; // 0.05
+        float f3; // 0
         break;
 
     // Seen with Coursing Skill
