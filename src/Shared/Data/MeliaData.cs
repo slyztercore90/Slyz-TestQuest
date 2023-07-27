@@ -15,8 +15,9 @@ namespace Melia.Shared.Data
 		public BarrackDb BarrackDb { get; set; } = new BarrackDb();
 		public BuffDb BuffDb { get; set; } = new BuffDb();
 		public ChatMacroDb ChatMacroDb { get; set; } = new ChatMacroDb();
-		public CustomCommandDb CustomCommandDb { get; set; } = new CustomCommandDb();
+		public CollectionDb CollectionDb { get; set; } = new CollectionDb();
 		public CooldownDb CooldownDb { get; set; } = new CooldownDb();
+		public CustomCommandDb CustomCommandDb { get; set; } = new CustomCommandDb();
 		public DialogDb DialogDb { get; set; } = new DialogDb();
 		public DialogTxDb DialogTxDb { get; set; } = new DialogTxDb();
 		public ExpDb ExpDb { get; set; } = new ExpDb();
@@ -24,6 +25,7 @@ namespace Melia.Shared.Data
 		public FeatureDb FeatureDb { get; set; } = new FeatureDb();
 		public FurnitureDb FurnitureDb { get; set; } = new FurnitureDb();
 		public GroundDb GroundDb { get; set; } = new GroundDb();
+		public HelpDb HelpDb { get; set; } = new HelpDb();
 		public InvBaseIdDb InvBaseIdDb { get; set; } = new InvBaseIdDb();
 		public ItemDb ItemDb { get; set; } = new ItemDb();
 		public ItemMonsterDb ItemMonsterDb { get; set; } = new ItemMonsterDb();
@@ -45,7 +47,7 @@ namespace Melia.Shared.Data
 		public StanceConditionDb StanceConditionDb { get; set; } = new StanceConditionDb();
 		public SystemMessageDb SystemMessageDb { get; set; } = new SystemMessageDb();
 		public TradeShopDb TradeShopDb { get; set; }
-		public HelpDb HelpDb { get; set; } = new HelpDb();
+		public WarpDb WarpDb { get; set; } = new WarpDb();
 
 		public MeliaData()
 		{

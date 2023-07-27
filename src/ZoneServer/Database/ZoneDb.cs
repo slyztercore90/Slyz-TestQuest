@@ -521,14 +521,14 @@ namespace Melia.Zone.Database
 			using (var conn = this.GetConnection())
 			using (var trans = conn.BeginTransaction())
 			{
+				using (var cmd = new MySqlCommand("DELETE FROM `session_objects_properties` WHERE `characterId` = @characterId", conn, trans))
+				{
+					cmd.Parameters.AddWithValue("@characterId", character.DbId);
+					cmd.ExecuteNonQuery();
+				}
+
 				foreach (var sessionObject in sessionObjects)
 				{
-					using (var cmd = new MySqlCommand("DELETE FROM `session_objects_properties` WHERE `characterId` = @characterId AND `sessionObjectId` = @sessionObjectId", conn, trans))
-					{
-						cmd.Parameters.AddWithValue("@characterId", character.DbId);
-						cmd.Parameters.AddWithValue("@sessionObjectId", sessionObject.Id);
-						cmd.ExecuteNonQuery();
-					}
 
 					var properties = sessionObject.Properties.GetAll();
 					foreach (var property in properties)
@@ -542,7 +542,7 @@ namespace Melia.Zone.Database
 							cmd.Set("sessionObjectId", sessionObject.Id);
 							cmd.Set("name", property.Ident);
 							cmd.Set("type", typeStr);
-							cmd.Set("value", property.Serialize());
+							cmd.Set("value", valueStr);
 
 							cmd.Execute();
 						}

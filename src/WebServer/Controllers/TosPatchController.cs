@@ -1,9 +1,15 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Xml;
 using EmbedIO;
 using EmbedIO.Routing;
 using Melia.Shared.Data.Database;
+using Melia.Shared.Network.Crypto;
+using Melia.Web.Util;
+using Yggdrasil.Logging;
 
 namespace Melia.Web.Controllers
 {
@@ -12,6 +18,8 @@ namespace Melia.Web.Controllers
 	/// </summary>
 	public class TosPatchController : BaseController
 	{
+		private TOSCrypto _crypto { get; } = new TOSCrypto();
+
 		/// <summary>
 		/// Serves a list of barrack servers.
 		/// </summary>
@@ -65,21 +73,70 @@ namespace Melia.Web.Controllers
 		[Route(HttpVerbs.Get, "/static__Config.txt")]
 		public void GetStaticConfig()
 		{
-			var options = new Dictionary<string, string>()
-			{
-				["ServiceNation"] = "GLOBAL",
-				["Dictionary"] = "YES",
-				["UseNexonSSO"] = "NO",
-				["UseNexonGLM"] = "NO",
-				["UseHackshield"] = "NO",
-				["UseSteamClient"] = "NO",
-				["UseXigncode"] = "NO",
-				["UseNISMS_TESTURL"] = "NO",
-				["UseNISMS_ONLY_OFFER"] = "YES",
-			};
+			var staticConfigFile = "system/web/toslive/patch/static__Config.txt";
+			if (File.Exists("user/web/toslive/patch/static__Config.txt"))
+				staticConfigFile = "user/web/toslive/patch/static__Config.txt";
+			SendText("text/plain", File.ReadAllText(staticConfigFile));
+		}
 
-			var staticConfig = string.Join("\r\n", options.Select(a => $"{a.Key}={a.Value}"));
-			this.SendText("text/plain", staticConfig);
+		[Route(HttpVerbs.Get, "/updater/patcher.version.txt")]
+		public byte[] GetPatcher()
+		{
+			var patcherVersion = new StringBuilder();
+			patcherVersion.AppendLine("0    ");
+			patcherVersion.AppendLine("");
+			var result = Encoding.UTF8.GetBytes(patcherVersion.ToString());
+			result = _crypto.EncryptFile(result);
+			return result;
+		}
+
+		[Route(HttpVerbs.Get, "/updater/patcher.version_2.txt")]
+		public void GetPatcherV2()
+		{
+			var patcherVersion = "0";
+			this.SendText("text/plain", patcherVersion);
+		}
+
+		[Route(HttpVerbs.Get, "/updater/updater.list.txt")]
+		public byte[] GetUpdaterList()
+		{
+			var filePath = $"system/web/toslive/patch/updater/updater.list.txt";
+			if (File.Exists($"user/web/toslive/patch/updater/updater.list.txt"))
+				filePath = $"user/web/toslive/patch/updater/updater.list.txt";
+			if (File.Exists(filePath))
+			{
+				return FileUtils.FileToByteArray(filePath);
+			}
+
+			var updaterList = new StringBuilder();
+			updaterList.AppendLine("tos.exe");
+			updaterList.AppendLine("patch.ini");
+			updaterList.AppendLine("");
+			var result = Encoding.UTF8.GetBytes(updaterList.ToString());
+			return result;
+		}
+
+		[Route(HttpVerbs.Get, "/{type}/{file}")]
+		public void GetPatcherFile(string type, string file)
+		{
+			try
+			{
+				var filePath = $"system/web/toslive/patch/{type}/{file}";
+				if (File.Exists($"user/web/toslive/patch/{type}/{file}"))
+					filePath = $"user/web/toslive/patch/{type}/{file}";
+				if (File.Exists(filePath))
+				{
+					var encryptedFile = File.ReadAllBytes(filePath);
+					encryptedFile = _crypto.EncryptFile(encryptedFile);
+					SendText("text/plain", Encoding.ASCII.GetString(encryptedFile));
+					return;
+				}
+			}
+			catch (Exception ex)
+			{
+				Log.Error(ex);
+				throw HttpException.NotFound();
+			}
 		}
 	}
 }

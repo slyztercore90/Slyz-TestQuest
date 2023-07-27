@@ -223,6 +223,7 @@ namespace Melia.Shared
 					this.LoadDb(this.Data.BarrackDb, "db/barracks.txt");
 					this.LoadDb(this.Data.BuffDb, "db/buffs.txt");
 					this.LoadDb(this.Data.ChatMacroDb, "db/chatmacros.txt");
+					this.LoadDb(this.Data.CollectionDb, "db/collections.txt");
 					this.LoadDb(this.Data.CooldownDb, "db/cooldowns.txt");
 					this.LoadDb(this.Data.CustomCommandDb, "db/customcommands.txt");
 					this.LoadDb(this.Data.DialogDb, "db/dialogues.txt");
@@ -244,6 +245,7 @@ namespace Melia.Shared
 					this.LoadDb(this.Data.QuestDb, "db/quests.txt");
 					this.LoadDb(this.Data.RecipeDb, "db/recipes.txt");
 					this.LoadDb(this.Data.ResurrectionPointDb, "db/resurrection_points.txt");
+					this.LoadDb(this.Data.SelectItemDb, "db/selectitems.txt");
 					this.LoadDb(this.Data.ServerDb, "db/servers.txt");
 					this.LoadDb(this.Data.SessionObjectDb, "db/sessionobjects.txt");
 					this.LoadDb(this.Data.ShopDb, "db/shops.txt");
@@ -251,7 +253,7 @@ namespace Melia.Shared
 					this.LoadDb(this.Data.SkillTreeDb, "db/skilltree.txt");
 					this.LoadDb(this.Data.StanceConditionDb, "db/stanceconditions.txt");
 					this.LoadDb(this.Data.SystemMessageDb, "db/system_messages.txt");
-					this.LoadDb(this.Data.SelectItemDb, "db/selectitems.txt");
+					this.LoadDb(this.Data.WarpDb, "db/warps.txt");
 
 					PropertyTable.Load(this.Data.PropertiesDb);
 				}

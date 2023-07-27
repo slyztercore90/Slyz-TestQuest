@@ -51,7 +51,7 @@ namespace Melia.Zone.World
 		/// occurring events.
 		/// </summary>
 		public Heartbeat Heartbeat { get; } = new Heartbeat(4);
-		
+
 		/// <summary>
 		/// Returns the world's day/night cycle manager.
 		/// </summary>
@@ -74,6 +74,11 @@ namespace Melia.Zone.World
 		/// all loaded maps.
 		/// </summary>
 		public MapManager Maps { get; } = new MapManager();
+
+		/// <summary>
+		/// Returns the world's NPCs indexed by their dialogue.
+		/// </summary>
+		public Dictionary<string, Npc> NPCs { get; } = new Dictionary<string, Npc>();
 
 		/// <summary>
 		/// Returns a new handle to be used for a character or monster.
@@ -398,7 +403,7 @@ namespace Melia.Zone.World
 			lock (_mapsLock)
 				return _mapsId.Values.SelectMany(a => a.GetCharacters(predicate)).ToArray();
 		}
-		
+
 		/// <summary>
 		/// Broadcasts packet on all maps.
 		/// </summary>

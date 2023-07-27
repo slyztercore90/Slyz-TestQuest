@@ -236,13 +236,14 @@ namespace Melia.Shared.Network.Crypto
 		/// </summary>
 		/// <param name="schedule"></param>
 		/// <param name="key"></param>
-		public Blowfish(uint[] schedule, byte[] key)
+		public Blowfish(uint[] schedule, byte[] key = null)
 		{
 			P = new uint[18];
 			S = new uint[4, 256];
 			Buffer.BlockCopy(schedule, 0, P, 0, 18 * 4);
 			Buffer.BlockCopy(schedule, 18 * 4, S, 0, 1024 * 4);
-			Init(key);
+			if (key != null)
+				this.Init(key);
 		}
 
 		public Blowfish(uint[] schedule, string key)
