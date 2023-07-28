@@ -1,16 +1,19 @@
-﻿using System.Linq;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using Melia.Shared.Network;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.Tos.Properties;
 using Melia.Shared.Util;
 using Melia.Zone.Network;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
+using Melia.Zone.World.Actors.Monsters;
 using Melia.Zone.World.Items;
 using Yggdrasil.Logging;
 using Yggdrasil.Util.Commands;
 using Yggdrasil.Extensions;
-using Melia.Zone.World.Actors.Monsters;
 
 namespace Melia.Zone.Commands
 {
@@ -29,7 +32,7 @@ namespace Melia.Zone.Commands
 			this.Add("requpdateequip", "", "", this.HandleReqUpdateEquip);
 			this.Add("buyabilpoint", "<amount>", "", this.HandleBuyAbilPoint);
 			this.Add("guildexpup", "", "", this.HandleGuildExpUp);
-			//this.Add("retquest", "<quest id>", "", this.HandleReturnToQuestGiver);
+			this.Add("retquest", "<quest id>", "", this.HandleReturnToQuestGiver);
 			this.Add("intewarp", "<warp id> 0", "", this.HandleInteWarp);
 			this.Add("partyname", "0 0 <account id> <party name>", "", this.HandlePartyName);
 			this.Add("partymake", "<partyName>", "", this.HandlePartyMake);
@@ -50,10 +53,41 @@ namespace Melia.Zone.Commands
 			//this.Add("sageSavePos", "", "", this.HandleSageSavePosition);
 			//this.Add("sageDelPos", "", "", this.HandleSageDeletePosition);
 			//this.Add("sageOpenPortal", "", "", this.HandleSageOpenPortal);
-			
+
 			// Custom (Client Scripting)
 			this.Add("buyshop", "", "", this.HandleBuyShop);
 			this.Add("updatemouse", "", "", this.HandleUpdateMouse);
+		}
+
+		private CommandResult HandleReturnToQuestGiver(Character character, string message, string commandName, Arguments args)
+		{
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+			if (args.Count != 1)
+			{
+				Log.Debug("HandleReturnToQuestGiver: Invalid call by user '{0}': {1}", character.Username, commandName);
+				return CommandResult.Okay;
+			}
+
+			if (int.TryParse(args.Get(0), out var questId) && ZoneServer.Instance.Data.QuestDb.TryFind(questId, out var quest))
+			{
+				if (!character.Quests.IsActive(questId) ||
+					string.IsNullOrEmpty(quest.StartNPC)
+					|| ZoneServer.Instance.World.NPCs.TryGetValue(quest.StartNPC, out var npc))
+				{
+					return CommandResult.Okay;
+				}
+
+				var mapId = npc.Map.Id;
+				var newPosition = npc.Position.GetRelative(npc.Direction, 50);
+				var newDirection = -npc.Direction;
+
+				character.SetDirection(newDirection);
+				character.Warp(mapId, newPosition);
+			}
+
+			return CommandResult.Okay;
 		}
 
 		/// <summary>
@@ -523,11 +557,12 @@ namespace Melia.Zone.Commands
 
 			if (character.Inventory.Remove(ItemId.Megaphone, 1) == InventoryResult.Success)
 			{
+				// TODO: Send shout packets to Chat (Social) Server?
 			}
 
 			return CommandResult.Okay;
 		}
-		
+
 		/// <summary>
 		/// Opens buy-in shop creation window or creates shop based on
 		/// arguments.
