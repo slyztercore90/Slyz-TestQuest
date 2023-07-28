@@ -8,11 +8,8 @@ namespace Melia.Social.World
 {
 	public class ChatManager
 	{
-		private readonly Dictionary<long, ChatRoom> _chatrooms = new Dictionary<long, ChatRoom>();
+		private readonly Dictionary<long, ChatRoom> _rooms = new Dictionary<long, ChatRoom>();
 
-		/// <summary>
-		/// Chat room id initial seed
-		/// </summary>
 		private static long ChatId = 0x1FB0F00000000;
 
 		/// <summary>
@@ -27,8 +24,8 @@ namespace Melia.Social.World
 		/// <param name="chatRoom"></param>
 		public void AddChatRoom(ChatRoom chatRoom)
 		{
-			lock (_chatrooms)
-				_chatrooms.Add(chatRoom.Id, chatRoom);
+			lock (_rooms)
+				_rooms.Add(chatRoom.Id, chatRoom);
 		}
 
 		/// <summary>
@@ -37,8 +34,8 @@ namespace Melia.Social.World
 		/// <param name="id"></param>
 		public void RemoveChatRoom(long id)
 		{
-			lock (_chatrooms)
-				_chatrooms.Remove(id);
+			lock (_rooms)
+				_rooms.Remove(id);
 		}
 
 		/// <summary>
@@ -49,8 +46,23 @@ namespace Melia.Social.World
 		/// <returns></returns>
 		public ChatRoom GetChatRoom(long accountId1, long accountId2)
 		{
-			lock (_chatrooms)
-				return _chatrooms.Values.FirstOrDefault(a => a.Type == ChatRoomType.OneToOne && (a.Owner.Id == accountId1 || a.Owner.Id == accountId2));
+			lock (_rooms)
+			{
+				foreach (var chatRoom in _rooms.Values)
+				{
+					if (chatRoom.Type != ChatRoomType.OneToOne)
+						continue;
+
+					var members = chatRoom.GetMembers();
+					if (members.Length != 2)
+						continue;
+
+					if (members.Any(a => a.AccountId == accountId1) && members.Any(a => a.AccountId == accountId2))
+						return chatRoom;
+				}
+			}
+
+			return null;
 		}
 
 		/// <summary>
@@ -61,27 +73,30 @@ namespace Melia.Social.World
 		/// <returns></returns>
 		public bool TryGetChatRoom(long chatId, out ChatRoom chatRoom)
 		{
-			lock (_chatrooms)
-				return _chatrooms.TryGetValue(chatId, out chatRoom);
+			lock (_rooms)
+				return _rooms.TryGetValue(chatId, out chatRoom);
 		}
 
 		/// <summary>
-		/// Create a chat room with a given owner.
+		/// Creates a new chat room for the given user.
 		/// </summary>
-		/// <param name="owner"></param>
+		/// <param name="creator"></param>
 		/// <returns></returns>
-		public ChatRoom CreateChatRoom(Account owner)
+		public ChatRoom CreateChatRoom(SocialUser creator)
 		{
-			var chatRoom = new ChatRoom("", ChatRoomType.Group, owner);
-			chatRoom.AddMember(owner);
+			var chatRoom = new ChatRoom("", ChatRoomType.Group);
+			chatRoom.AddMember(creator);
 			this.AddChatRoom(chatRoom);
 
-			var chatMessage = new ChatMessage(owner, "!@#$NewRoomHasBeenCreated#@!");
+			Send.SC_NORMAL.CreateRoom(creator.Connection, chatRoom);
+
+			// Not sending this will not display the message. Sending it
+			// will display the message twice. No idea why, but the same
+			// behavior can be observed in the game.
+			var chatMessage = new ChatMessage(creator, "!@#$NewRoomHasBeenCreated#@!");
 			chatRoom.AddMessage(chatMessage);
 
-			Send.SC_NORMAL.ChatRoomMessage(owner.Connection, chatRoom, chatMessage);
-			Send.SC_NORMAL.ChatLog(owner.Connection, chatRoom, chatMessage);
-			Send.SC_NORMAL.Chat(owner.Connection, chatRoom, chatMessage);
+			Send.SC_NORMAL.AddMessage(creator.Connection, chatRoom, chatMessage);
 
 			return chatRoom;
 		}

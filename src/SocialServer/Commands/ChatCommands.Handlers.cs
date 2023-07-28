@@ -25,8 +25,7 @@ namespace Melia.Social.Commands
 		/// <summary>
 		/// Request to send a whisper message to another user.
 		/// </summary>
-		/// <param name="sender"></param>
-		/// <param name="target"></param>
+		/// <param name="user"></param>
 		/// <param name="message"></param>
 		/// <param name="command"></param>
 		/// <param name="args"></param>
@@ -35,7 +34,7 @@ namespace Melia.Social.Commands
 		{
 			if (args.Count < 2)
 			{
-				Log.Debug("HandleWhisper: Invalid call by user '{0}' ('{1}').", user.Account.Name, message);
+				Log.Debug("HandleWhisper: Invalid call by user '{0}' ('{1}').", user.Name, message);
 				return CommandResult.Okay;
 			}
 
@@ -47,32 +46,33 @@ namespace Melia.Social.Commands
 				return CommandResult.Okay;
 			}
 
-			var whisperTarget = SocialServer.Instance.Database.GetAccountByTeamName(teamName);
-			if (whisperTarget == null)
+			var targetAccount = SocialServer.Instance.Database.GetAccountByTeamName(teamName);
+			if (targetAccount == null)
 			{
 				Log.Warning("HandleWhisper: Unable to find account by team name {0}.", teamName);
 				return CommandResult.Okay;
 			}
 
+			var targetUser = SocialServer.Instance.UserManager.GetOrCreateUser(targetAccount);
+
 			// TODO: Find previous chat room
-			var chatRoom = SocialServer.Instance.ChatManager.GetChatRoom(user.Account.Id, whisperTarget.Id);
+			var chatRoom = SocialServer.Instance.ChatManager.GetChatRoom(user.Id, targetAccount.Id);
 			if (chatRoom == null)
 			{
-				chatRoom = new ChatRoom(user.Account);
+				chatRoom = new ChatRoom("", ChatRoomType.OneToOne);
 				SocialServer.Instance.ChatManager.AddChatRoom(chatRoom);
-				// sender.ChatRooms.Add(chatRoom.Id, chatRoom);
+
+				chatRoom.AddMember(user);
+				chatRoom.AddMember(targetUser);
 			}
 
-			chatRoom.AddMember(user.Account);
-			chatRoom.AddMember(whisperTarget);
+			var text = Regex.Replace(message, @"^(?<command>.*?)\s+(?<target>[^\s]+)(\s+|$)", "");
 
-			var text = Regex.Replace(message, @"^.*?(?:\s+|$)", "");
-
-			var chatMessage = new ChatMessage(user.Account, whisperTarget, text);
+			var chatMessage = new ChatMessage(user, text);
 			chatRoom.AddMessage(chatMessage);
 
-			Send.SC_NORMAL.ChatLog(user.Connection, chatRoom, chatMessage);
-			Send.SC_NORMAL.Chat(user.Connection, chatRoom, chatMessage);
+			Send.SC_NORMAL.CreateRoom(user.Connection, chatRoom);
+			Send.SC_NORMAL.AddMessage(user.Connection, chatRoom, chatMessage);
 
 			return CommandResult.Okay;
 		}
@@ -80,8 +80,7 @@ namespace Melia.Social.Commands
 		/// <summary>
 		/// Request to send a message in a chat room.
 		/// </summary>
-		/// <param name="sender"></param>
-		/// <param name="target"></param>
+		/// <param name="user"></param>
 		/// <param name="message"></param>
 		/// <param name="command"></param>
 		/// <param name="args"></param>
@@ -90,7 +89,7 @@ namespace Melia.Social.Commands
 		{
 			if (args.Count < 2)
 			{
-				Log.Debug("HandleChatRoomChat: Invalid call by user '{0}' ('{1}').", user.Account.Name, message);
+				Log.Debug("HandleChatRoomChat: Invalid call by user '{0}' ('{1}').", user.Name, message);
 				return CommandResult.Okay;
 			}
 
@@ -106,13 +105,13 @@ namespace Melia.Social.Commands
 				return CommandResult.Okay;
 			}
 
-			var text = Regex.Replace(message, @"^.*?(?:\s+|$)", "");
+			var text = Regex.Replace(message, @"^(?<command>.*?)\s+(?<target>[^\s]+)(\s+|$)", "");
 
-			var chatMessage = new ChatMessage(user.Account, text);
+			var chatMessage = new ChatMessage(user, text);
 			chatRoom.AddMessage(chatMessage);
 
-			Send.SC_NORMAL.ChatLog(user.Connection, chatRoom, chatMessage);
-			Send.SC_NORMAL.Chat(user.Connection, chatRoom, chatMessage);
+			Send.SC_NORMAL.CreateRoom(user.Connection, chatRoom);
+			Send.SC_NORMAL.AddMessage(user.Connection, chatRoom, chatMessage);
 
 			return CommandResult.Okay;
 		}

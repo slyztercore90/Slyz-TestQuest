@@ -10,30 +10,33 @@ namespace Melia.Social.World
 	public class SocialUser
 	{
 		/// <summary>
-		/// Returns the user's connection.
+		/// Returns the id of the user's globally unique id.
 		/// </summary>
-		public ISocialConnection Connection { get; }
+		public long Id { get; set; }
 
 		/// <summary>
-		/// Returns the user's account.
+		/// Returns the id of the user's account id.
 		/// </summary>
-		public Account Account { get; }
+		/// <remarks>
+		/// This is current the same as the user's id, but this might
+		/// change in the future.
+		/// </remarks>
+		public long AccountId { get; set; }
 
 		/// <summary>
-		/// Returns the id of the user's account.
+		/// Get or sets the name of the user's account.
 		/// </summary>
-		public long Id => this.Account?.Id ?? 0;
+		public string Name { get; set; }
 
 		/// <summary>
-		/// Returns the name of the user's account.
+		/// Returns the user's team name.
 		/// </summary>
-		public string Name => this.Account?.Name ?? "";
+		public string TeamName { get; set; }
 
 		/// <summary>
-		/// Returns the id of the character the user is currently logged
-		/// in as.
+		/// Returns the last time the user logged in.
 		/// </summary>
-		public long CharacterId => this.Account?.CharacterId ?? 0;
+		public DateTime LastLogin { get; set; }
 
 		/// <summary>
 		/// Returns the user's friends list.
@@ -41,18 +44,35 @@ namespace Melia.Social.World
 		public FriendsList Friends { get; }
 
 		/// <summary>
+		/// Gets or sets the user's connection if a player is connected.
+		/// </summary>
+		public ISocialConnection Connection { get; set; }
+
+		/// <summary>
+		/// Returns the information about the character the user is logged
+		/// in as, if any.
+		/// </summary>
+		public Character Character { get; } = new Character();
+
+		/// <summary>
 		/// Creates new social user instance for the given connection
 		/// and account.
 		/// </summary>
-		/// <param name="connection"></param>
-		/// <param name="account"></param>
-		public SocialUser(ISocialConnection connection, Account account)
+		public SocialUser()
 		{
-			this.Connection = connection;
-			this.Account = account;
-			this.Account.Connection = connection;
-
 			this.Friends = new FriendsList(this);
+		}
+
+		/// <summary>
+		/// Returns the active connection of the user via out. Returns
+		/// false if no player is connected.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <returns></returns>
+		public bool TryGetConnection(out ISocialConnection conn)
+		{
+			conn = this.Connection;
+			return conn != null;
 		}
 	}
 }

@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using Melia.Social.Database;
+using Melia.Social.Network;
+using Yggdrasil.Geometry.Shapes;
+using Yggdrasil.Logging;
 
 namespace Melia.Social.World
 {
@@ -27,47 +30,60 @@ namespace Melia.Social.World
 		}
 
 		/// <summary>
-		/// Adds friend to account object.
+		/// Adds friend to user's friends list.
 		/// </summary>
 		/// <param name="friend"></param>
-		public void AddFriend(Friend friend)
+		public void Add(Friend friend)
 		{
 			lock (_friends)
 				_friends.Add(friend);
+
+			SocialServer.Instance.Database.CreateFriend(this.User.Id, friend);
 		}
 
 		/// <summary>
-		/// Adds friend to account object.
+		/// Removes friend from the list. 
 		/// </summary>
 		/// <param name="friend"></param>
-		public void RemoveFriend(Friend friend)
+		public void Remove(Friend friend)
 		{
 			lock (_friends)
 				_friends.Remove(friend);
 		}
 
 		/// <summary>
-		/// Gets a friend or null with a given account id.
+		/// Returns true if the user has a friend with the given account id.
 		/// </summary>
-		/// <param name="accountId"></param>
-		public Friend GetFriend(long accountId)
+		/// <param name="userId"></param>
+		/// <returns></returns>
+		public bool Has(long userId)
 		{
 			lock (_friends)
-				return _friends.FirstOrDefault(f => f.AccountId == accountId);
+				return _friends.Any(f => f.User.Id == userId);
+		}
+
+		/// <summary>
+		/// Gets a friend or null with a given account id.
+		/// </summary>
+		/// <param name="userId"></param>
+		public Friend Get(long userId)
+		{
+			lock (_friends)
+				return _friends.FirstOrDefault(f => f.User.Id == userId);
 		}
 
 		/// <summary>
 		/// Returns the friend with the given account id via out.
 		/// Returns false if the friend wasn't found.
 		/// </summary>
-		/// <param name="accountId"></param>
+		/// <param name="userId"></param>
 		/// <param name="friend"></param>
 		/// <returns></returns>
-		public bool TryGetFriend(long accountId, out Friend friend)
+		public bool TryGet(long userId, out Friend friend)
 		{
 			lock (_friends)
 			{
-				friend = _friends.FirstOrDefault(f => f.AccountId == accountId);
+				friend = _friends.FirstOrDefault(f => f.User.Id == userId);
 				return friend != null;
 			}
 		}
@@ -76,7 +92,7 @@ namespace Melia.Social.World
 		/// Returns list of all friends on account.
 		/// </summary>
 		/// <returns></returns>
-		public Friend[] GetFriends()
+		public Friend[] GetAll()
 		{
 			lock (_friends)
 				return _friends.ToArray();
@@ -86,32 +102,40 @@ namespace Melia.Social.World
 		/// Returns a list of all friends with the given state.
 		/// </summary>
 		/// <returns></returns>
-		public Friend[] GetFriends(FriendState state)
+		public Friend[] GetAll(FriendState state)
 		{
 			lock (_friends)
 				return _friends.Where(a => a.State == state).ToArray();
 		}
 
 		/// <summary>
-		/// Removes friend from the account and the database.
+		/// Updates the friend's state.
 		/// </summary>
 		/// <param name="friend"></param>
-		/// <returns></returns>
-		public bool DeleteFriend(Friend friend)
+		/// <param name="state"></param>
+		public void UpdateFriend(Friend friend, FriendState state)
 		{
-			lock (_friends)
+			friend.State = state;
+			SocialServer.Instance.Database.SaveFriend(friend);
+		}
+
+		/// <summary>
+		/// Blocks the given user.
+		/// </summary>
+		/// <param name="userToBlock"></param>
+		/// <param name="friend"></param>
+		public void BlockUser(SocialUser userToBlock, out Friend friend)
+		{
+			if (!this.TryGet(userToBlock.Id, out friend))
 			{
-				if (!_friends.Contains(friend))
-					return false;
+				this.Add(friend = new Friend(userToBlock, FriendState.Blocked));
+				SocialServer.Instance.Database.CreateFriend(this.User.Id, friend);
 			}
-
-			// If the deletion on the db fails, the character shouldn't
-			// have been shown to begin with and should be removed.
-			// If it doesn't fail, the removal is valid as well,
-			// do this regardless of the query result.
-			this.RemoveFriend(friend);
-
-			return SocialServer.Instance.Database.DeleteFriend(friend.Id);
+			else
+			{
+				this.UpdateFriend(friend, FriendState.Blocked);
+				SocialServer.Instance.Database.SaveFriend(friend);
+			}
 		}
 
 		/// <summary>
@@ -119,10 +143,20 @@ namespace Melia.Social.World
 		/// </summary>
 		public void LoadFromDb()
 		{
-			var friends = SocialServer.Instance.Database.GetFriends(this.User.Account.Id);
+			var friends = SocialServer.Instance.Database.GetFriends(this.User.Id);
 
 			foreach (var friend in friends)
-				this.AddFriend(friend);
+			{
+				if (!SocialServer.Instance.UserManager.TryGet(friend.UserId, out var friendUser))
+				{
+					Log.Error("FriendsList.LoadFromDb: User '{0}' not found for friend '{1}' of user '{2}'.", friend.UserId, friend.Id, this.User.Name);
+					continue;
+				}
+
+				friend.User = friendUser;
+
+				this.Add(friend);
+			}
 		}
 	}
 }

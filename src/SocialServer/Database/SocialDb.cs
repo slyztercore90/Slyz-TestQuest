@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Melia.Shared.Database;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
+using Melia.Social.World;
 using MySqlConnector;
 
 namespace Melia.Social.Database
@@ -72,51 +73,132 @@ namespace Melia.Social.Database
 		}
 
 		/// <summary>
+		/// Gets the user for the account from the database. If it doesn't
+		/// exist yet, it's created based on the account information.
+		/// </summary>
+		/// <param name="account"></param>
+		/// <returns></returns>
+		public SocialUser GetOrCreateUser(Account account)
+		{
+			using (var conn = this.GetConnection())
+			{
+				using (var cmd = new MySqlCommand("SELECT * FROM `social_users` WHERE `userId` = @userId", conn))
+				{
+					cmd.Parameters.AddWithValue("@userId", account.Id);
+
+					using (var reader = cmd.ExecuteReader())
+					{
+						if (reader.Read())
+						{
+							var user = new SocialUser();
+
+							user.Id = reader.GetInt64("userId");
+							user.AccountId = reader.GetInt64("accountId");
+							user.Name = reader.GetStringSafe("accountName");
+							user.TeamName = reader.GetStringSafe("teamName");
+
+							return user;
+						}
+					}
+				}
+
+				var newUser = new SocialUser();
+				newUser.Id = account.Id;
+				newUser.AccountId = account.Id;
+				newUser.Name = account.Name;
+				newUser.TeamName = account.TeamName;
+
+				using (var cmd = new InsertCommand("INSERT IGNORE INTO `social_users` {0}", conn))
+				{
+					cmd.Set("userId", newUser.Id);
+					cmd.Set("accountId", newUser.AccountId);
+					cmd.Set("accountName", newUser.Name);
+					cmd.Set("teamName", newUser.TeamName);
+
+					cmd.Execute();
+				}
+
+				return newUser;
+			}
+		}
+
+		/// <summary>
+		/// Returns a list with all users from the database.
+		/// </summary>
+		/// <returns></returns>
+		public List<SocialUser> GetAllUsers()
+		{
+			var users = new List<SocialUser>();
+
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT * FROM `social_users`", conn))
+			{
+				using (var reader = cmd.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						var user = new SocialUser();
+
+						user.Id = reader.GetInt64("userId");
+						user.AccountId = reader.GetInt64("accountId");
+						user.Name = reader.GetStringSafe("accountName");
+						user.TeamName = reader.GetStringSafe("teamName");
+						user.LastLogin = reader.GetDateTimeSafe("lastLogin");
+
+						users.Add(user);
+					}
+				}
+			}
+
+			foreach (var user in users)
+				user.Friends.LoadFromDb();
+
+			return users;
+		}
+
+		/// <summary>
+		/// Updates the last login time for the user.
+		/// </summary>
+		/// <param name="userId"></param>
+		public void UpdateLastSocialLogin(long userId)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `social_users` SET {0} WHERE `userId` = @userId", conn))
+			{
+				cmd.AddParameter("@userId", userId);
+				cmd.Set("lastLogin", DateTime.Now);
+
+				cmd.Execute();
+			}
+		}
+
+		/// <summary>
 		/// Returns friends with a given account id.
 		/// </summary>
-		/// <param name="accountId"></param>
+		/// <param name="userId"></param>
 		/// <returns></returns>
-		public List<Friend> GetFriends(long accountId)
+		public List<Friend> GetFriends(long userId)
 		{
 			var friends = new List<Friend>();
 
 			using (var conn = this.GetConnection())
 			{
 				var query = @"
-					SELECT f.`friendId`, f.`group`, f.`note`, f.`state`, a.`accountId`, a.`lastLogin`, a.`teamName`, a.`loginCharacter` AS `characterId`,
-					       IFNULL('', c.`name`) AS `name`, IFNULL(0, c.`job`) AS `job`, IFNULL(0, c.`gender`) AS `gender`, IFNULL(0, c.`hair`) AS `hair`, IFNULL(0, c.`level`) AS `level`
+					SELECT f.`friendId`, f.`group`, f.`note`, f.`state`, u.`userId`, u.`lastLogin`, u.`teamName`
 					FROM `friends` AS `f`
-					LEFT JOIN `accounts` AS a ON f.`friendAccountId` = a.`accountId`
-					LEFT JOIN `characters` AS c ON a.`loginCharacter` = c.`characterId`
-					WHERE f.`accountId` = @accountId
+					LEFT JOIN `social_users` AS u ON f.`friendUserId` = u.`userId`
+					WHERE f.`userId` = @userId
 				";
 
 				using (var mc = new MySqlCommand(query, conn))
 				{
-					mc.Parameters.AddWithValue("@accountId", accountId);
+					mc.Parameters.AddWithValue("@userId", userId);
 
 					using (var reader = mc.ExecuteReader())
 					{
 						while (reader.Read())
 						{
-							var friend = new Friend();
-
-							friend.Id = reader.GetInt64("friendId");
-							friend.AccountId = reader.GetInt64("accountId");
-							friend.TeamName = reader.GetStringSafe("teamName");
-							friend.State = (FriendState)reader.GetByte("state");
-							friend.Group = reader.GetStringSafe("group");
-							friend.Note = reader.GetStringSafe("note");
-							friend.LastLogin = reader.GetDateTimeSafe("lastLogin");
-
-							friend.Character.Id = reader.GetInt64("characterId");
-							friend.Character.Name = reader.GetStringSafe("name");
-							friend.Character.TeamName = reader.GetStringSafe("teamName");
-							friend.Character.JobId = (JobId)reader.GetInt32("job");
-							friend.Character.Gender = (Gender)reader.GetInt32("gender");
-							friend.Character.Hair = reader.GetInt32("hair");
-							friend.Character.Level = reader.GetInt32("level");
-
+							var friend = this.ReadFriend(reader);
 							friends.Add(friend);
 						}
 					}
@@ -127,20 +209,71 @@ namespace Melia.Social.Database
 		}
 
 		/// <summary>
+		/// Returns friend with a given account ids.
+		/// </summary>
+		/// <param name="userId"></param>
+		/// <param name="friendUserId"></param>
+		/// <returns></returns>
+		public Friend GetFriend(long userId, long friendUserId)
+		{
+			using (var conn = this.GetConnection())
+			{
+				var query = @"
+					SELECT f.`friendId`, f.`group`, f.`note`, f.`state`, u.`userId`
+					FROM `friends` AS `f`
+					LEFT JOIN `social_users` AS u ON f.`friendUserId` = u.`userId`
+					WHERE f.`userId` = @userId AND f.`friendUserId` = @friendUserId
+				";
+
+				using (var mc = new MySqlCommand(query, conn))
+				{
+					mc.Parameters.AddWithValue("@userId", userId);
+					mc.Parameters.AddWithValue("@friendUserId", friendUserId);
+
+					using (var reader = mc.ExecuteReader())
+					{
+						if (!reader.Read())
+							return null;
+
+						return this.ReadFriend(reader);
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Reads friend from reader and returns it.
+		/// </summary>
+		/// <param name="reader"></param>
+		/// <returns></returns>
+		private Friend ReadFriend(MySqlDataReader reader)
+		{
+			var friend = new Friend();
+
+			friend.Id = reader.GetInt64("friendId");
+			friend.UserId = reader.GetInt64("userId");
+			friend.State = (FriendState)reader.GetByte("state");
+			friend.Group = reader.GetStringSafe("group");
+			friend.Note = reader.GetStringSafe("note");
+
+			return friend;
+		}
+
+		/// <summary>
 		/// Inserts friend in database.
 		/// </summary>
-		/// <param name="accountId"></param>
+		/// <param name="userId"></param>
 		/// <param name="friend"></param>
 		/// <returns></returns>
-		public void CreateFriend(long accountId, Friend friend)
+		public void CreateFriend(long userId, Friend friend)
 		{
 			using (var conn = this.GetConnection())
 			using (var trans = conn.BeginTransaction())
 			{
 				using (var cmd = new InsertCommand("INSERT INTO `friends` {0}", conn, trans))
 				{
-					cmd.Set("accountId", accountId);
-					cmd.Set("friendAccountId", friend.AccountId);
+					cmd.Set("userId", userId);
+					cmd.Set("friendUserId", friend.UserId);
 					cmd.Set("state", (byte)friend.State);
 					cmd.Set("registerDate", DateTime.Now);
 
@@ -181,8 +314,8 @@ namespace Melia.Social.Database
 				cmd.AddParameter("@friendId", friend.Id);
 
 				cmd.Set("state", (byte)friend.State);
-				cmd.Set("group", friend.Group);
-				cmd.Set("note", friend.Note);
+				cmd.Set("group", friend.Group ?? "");
+				cmd.Set("note", friend.Note ?? "");
 
 				cmd.Execute();
 			}

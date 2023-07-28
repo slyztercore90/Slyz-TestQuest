@@ -1,6 +1,8 @@
-﻿using Melia.Shared.Network;
+﻿using System.Linq;
+using Melia.Shared.Network;
 using Melia.Social.Database;
 using Melia.Social.World;
+using Mysqlx.Crud;
 using Yggdrasil.Logging;
 using Yggdrasil.Security.Hashing;
 
@@ -34,21 +36,21 @@ namespace Melia.Social.Network
 				return;
 			}
 
-			var user = new SocialUser(conn, account);
-			user.Friends.LoadFromDb();
+			var user = SocialServer.Instance.UserManager.GetOrCreateUser(account);
+			user.Connection = conn;
 
 			conn.User = user;
 			conn.LoggedIn = true;
 
-			SocialServer.Instance.UserManager.Add(user);
+			SocialServer.Instance.Database.UpdateLastSocialLogin(user.Id);
 
-			Log.Info("User '{0}' logged in.", user.Account.Name);
+			Log.Info("User '{0}' logged in.", user.Name);
 
 			Send.SC_NORMAL.EnableChat(conn);
 			Send.SC_LOGIN_OK(conn);
 			Send.SC_NORMAL.Unknown_02(conn);
 
-			foreach (var friend in user.Friends.GetFriends())
+			foreach (var friend in user.Friends.GetAll())
 				Send.SC_NORMAL.FriendInfo(conn, friend);
 		}
 
@@ -73,37 +75,41 @@ namespace Melia.Social.Network
 		{
 			var teamName = packet.GetString();
 
-			var userManager = SocialServer.Instance.UserManager;
 			var user = conn.User;
-			var account = user.Account;
 
-			if (!userManager.TryGetAccount(teamName, out var otherAccount))
+			if (!SocialServer.Instance.UserManager.TryGet(teamName, out var otherUser))
 			{
 				Send.SC_NORMAL.SystemMessage(conn, "TargetUserNotExist", 1, 0);
 				return;
 			}
 
-			if (!user.Friends.TryGetFriend(otherAccount.Id, out var friend))
+			if (user.Friends.TryGet(otherUser.Id, out var friend))
 			{
-				friend = new Friend(otherAccount, FriendState.SentRequest);
-				var otherFriend = new Friend(account, FriendState.ReceivedRequest);
-
-				SocialServer.Instance.Database.CreateFriend(account.Id, friend);
-				SocialServer.Instance.Database.CreateFriend(otherAccount.Id, otherFriend);
-
-				user.Friends.AddFriend(friend);
-
-				if (userManager.TryGet(otherAccount.Id, out var otherUser))
-					otherUser.Friends.AddFriend(otherFriend);
+				if (friend.State == FriendState.SentRequest)
+					Send.SC_NORMAL.SystemMessage(conn, "AlreadyRequestFriend", 1, 0);
+				else
+					Send.SC_NORMAL.SystemMessage(conn, "AlreadyInFriendList", 1, 0);
+				return;
 			}
 
+			friend = new Friend(otherUser, FriendState.SentRequest);
+			user.Friends.Add(friend);
+			SocialServer.Instance.Database.CreateFriend(user.Id, friend);
+
 			Send.SC_NORMAL.SystemMessage(conn, "AckReqAddFriend", 1, 0);
-			Send.SC_NORMAL.FriendRequested(conn, friend.AccountId);
+			Send.SC_NORMAL.FriendRequested(conn, friend.User.Id);
 			Send.SC_NORMAL.FriendInfo(conn, friend);
+
+			var otherFriend = new Friend(user, FriendState.ReceivedRequest);
+			otherUser.Friends.Add(otherFriend);
+			SocialServer.Instance.Database.CreateFriend(otherUser.Id, otherFriend);
+
+			if (otherUser.TryGetConnection(out var otherConn))
+				Send.SC_NORMAL.FriendInfo(otherUser.Connection, otherFriend);
 		}
 
 		/// <summary>
-		/// Request to block another account.
+		/// Request to block someone's account.
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="packet"></param>
@@ -112,33 +118,22 @@ namespace Melia.Social.Network
 		{
 			var teamName = packet.GetString();
 
-			var userManager = SocialServer.Instance.UserManager;
 			var user = conn.User;
 
-			if (!userManager.TryGetAccount(teamName, out var otherAccount))
+			if (!SocialServer.Instance.UserManager.TryGet(teamName, out var otherUser))
 			{
 				Send.SC_NORMAL.SystemMessage(conn, "TargetUserNotExist", 1, 0);
 				return;
 			}
 
-			if (!conn.User.Friends.TryGetFriend(otherAccount.Id, out var friend))
-			{
-				friend = new Friend(otherAccount, FriendState.Blocked);
+			user.Friends.BlockUser(otherUser, out var friend);
 
-				user.Friends.AddFriend(friend);
-				SocialServer.Instance.Database.CreateFriend(user.Account.Id, friend);
-			}
-			else
-			{
-				friend.State = FriendState.Blocked;
-			}
-
-			Send.SC_NORMAL.FriendBlocked(conn, otherAccount.Id);
+			Send.SC_NORMAL.FriendBlocked(conn, otherUser.Id);
 			Send.SC_NORMAL.FriendInfo(conn, friend);
 		}
 
 		/// <summary>
-		/// Friend commands (Block/Unblock) friends.
+		/// Friend management commands (accept, decline, delete).
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="packet"></param>
@@ -147,44 +142,57 @@ namespace Melia.Social.Network
 		{
 			var i1 = packet.GetInt();
 			var s1 = packet.GetShort();
-			var accountId = packet.GetLong();
+			var friendAccountId = packet.GetLong();
 			var cmd = (FriendCmd)packet.GetInt();
 			var i2 = packet.GetInt();
 
-			if (!conn.User.Friends.TryGetFriend(accountId, out var friend))
+			var user = conn.User;
+
+			if (!user.Friends.TryGet(friendAccountId, out var friend))
 			{
-				Log.Warning("CS_FRIEND_CMD: User '{0}' tried to modify a friend without having them in their friends list.", conn.User.Name);
+				Log.Warning("CS_FRIEND_CMD: User '{0}' tried to modify a friend without having them in their friends list.", user.Name);
 				return;
 			}
 
-			switch (cmd)
+			if (cmd == FriendCmd.Delete)
 			{
-				case FriendCmd.Accept:
-				{
-					friend.State = FriendState.Accepted;
-					break;
-				}
-				case FriendCmd.Decline:
-				{
-					friend.State = FriendState.Declined;
-					break;
-				}
-				case FriendCmd.Delete:
-				{
-					if (!conn.User.Friends.DeleteFriend(friend))
-						Log.Warning("CS_FRIEND_CMD: Deleting friend '{0}' from account '{1}' failed.", friend.TeamName, conn.User.Name);
+				user.Friends.Remove(friend);
+				SocialServer.Instance.Database.DeleteFriend(friend.Id);
 
-					Send.SC_NORMAL.FriendResponse(conn, friend);
+				Send.SC_NORMAL.FriendResponse(conn, friend);
+			}
+			else if (cmd == FriendCmd.Accept)
+			{
+				if (friend.State != FriendState.ReceivedRequest)
+				{
+					Log.Warning("CS_FRIEND_CMD: User '{0}' tried to accept a friend request with the friend's state being '{1}'.", user.Name, friend.State);
 					return;
 				}
-			}
 
-			Send.SC_NORMAL.FriendResponse(conn, friend);
-			Send.SC_NORMAL.FriendInfo(conn, friend);
+				user.Friends.UpdateFriend(friend, FriendState.Accepted);
+
+				Send.SC_NORMAL.FriendResponse(conn, friend);
+				Send.SC_NORMAL.FriendInfo(conn, friend);
+
+				if (friend.User.Friends.TryGet(user.Id, out var otherFriend))
+				{
+					friend.User.Friends.UpdateFriend(friend, FriendState.Accepted);
+
+					if (friend.User.TryGetConnection(out var friendConn))
+						Send.SC_NORMAL.FriendInfo(friendConn, otherFriend);
+				}
+			}
+			else if (cmd == FriendCmd.Decline)
+			{
+				friend.User.Friends.UpdateFriend(friend, FriendState.Declined);
+
+				Send.SC_NORMAL.FriendResponse(conn, friend);
+				Send.SC_NORMAL.FriendInfo(conn, friend);
+			}
 		}
 
 		/// <summary>
-		/// Set friend "grouping" name
+		/// Assigns a friend to a group.
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="packet"></param>
@@ -194,15 +202,16 @@ namespace Melia.Social.Network
 			var i1 = packet.GetInt();
 			var s1 = packet.GetShort();
 			var accountId = packet.GetLong();
-			var groupName = packet.GetString(20); // Client side max, doesn't let you type any more characters
+			var groupName = packet.GetString(20);
 
-			if (!conn.User.Friends.TryGetFriend(accountId, out var friend))
+			if (!conn.User.Friends.TryGet(accountId, out var friend))
 			{
-				Log.Warning("CS_FRIEND_SET_ADDINFO: Failed to find account by id {0} for user {1}.", accountId, conn.User.Name);
+				Log.Warning("CS_FRIEND_SET_ADDINFO: User '{0}' tried to modify a friend without having them in their friends list.", conn.User.Name);
 				return;
 			}
 
 			friend.Group = groupName;
+			SocialServer.Instance.Database.SaveFriend(friend);
 
 			Send.SC_NORMAL.FriendInfo(conn, friend);
 		}
@@ -236,7 +245,7 @@ namespace Melia.Social.Network
 		}
 
 		/// <summary>
-		/// Request to refresh all chat rooms and their messages.
+		/// Request to refresh all chat rooms?
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="packet"></param>
@@ -245,11 +254,8 @@ namespace Melia.Social.Network
 		{
 			var user = conn.User;
 
-			foreach (var room in user.Account.GetChatRooms())
-			{
-				foreach (var message in room.GetMessages())
-					Send.SC_NORMAL.ChatLog(conn, room, message);
-			}
+			//foreach (var chatRoom in user.Account.GetChatRooms())
+			//	Send.SC_NORMAL.MessageList(conn, chatRoom, chatRoom.GetMessages());
 		}
 
 		/// <summary>
@@ -260,7 +266,7 @@ namespace Melia.Social.Network
 		[PacketHandler(Op.CS_CREATE_GROUP_CHAT)]
 		public void CS_CREATE_GROUP_CHAT(ISocialConnection conn, Packet packet)
 		{
-			SocialServer.Instance.ChatManager.CreateChatRoom(conn.User.Account);
+			SocialServer.Instance.ChatManager.CreateChatRoom(conn.User);
 		}
 
 		/// <summary>
@@ -279,8 +285,7 @@ namespace Melia.Social.Network
 				return;
 			}
 
-			foreach (var message in chatRoom.GetMessages())
-				Send.SC_NORMAL.ChatRoomMessage(conn, chatRoom, message);
+			Send.SC_NORMAL.MessageList(conn, chatRoom, chatRoom.GetMessages());
 		}
 
 		/// <summary>
@@ -299,14 +304,11 @@ namespace Melia.Social.Network
 				return;
 			}
 
-			conn.User.Account.RemoveChatRoom(chatId);
-			chatRoom.RemoveMember(conn.User.Account);
+			//conn.User.Account.RemoveChatRoom(chatId);
+			//chatRoom.RemoveMember(conn.User.Id);
 
-			if (chatRoom.MemberCount == 0)
-			{
-				chatRoom.Owner = null;
-				SocialServer.Instance.ChatManager.RemoveChatRoom(chatId);
-			}
+			//if (chatRoom.MemberCount == 0)
+			//	SocialServer.Instance.ChatManager.RemoveChatRoom(chatId);
 		}
 
 		/// <summary>

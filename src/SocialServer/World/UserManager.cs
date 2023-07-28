@@ -12,13 +12,27 @@ namespace Melia.Social.World
 		private readonly Dictionary<long, SocialUser> _users = new Dictionary<long, SocialUser>();
 
 		/// <summary>
+		/// Loads existing users from the database.
+		/// </summary>
+		public void LoadUsers()
+		{
+			var users = SocialServer.Instance.Database.GetAllUsers();
+
+			lock (_users)
+			{
+				foreach (var user in users)
+					_users[user.Id] = user;
+			}
+		}
+
+		/// <summary>
 		/// Adds a user.
 		/// </summary>
 		/// <param name="conn"></param>
 		public void Add(SocialUser user)
 		{
 			lock (_users)
-				_users[user.Account.Id] = user;
+				_users[user.Id] = user;
 		}
 
 		/// <summary>
@@ -37,21 +51,43 @@ namespace Melia.Social.World
 		/// </summary>
 		/// <param name="teamName"></param>
 		/// <returns></returns>
-		public SocialUser Get(string teamName)
+		public SocialUser GetOrCreateUser(Account account)
 		{
 			lock (_users)
-				return _users.Values.FirstOrDefault(u => u.Account.TeamName == teamName);
+			{
+				if (!_users.TryGetValue(account.Id, out var user))
+				{
+					user = SocialServer.Instance.Database.GetOrCreateUser(account);
+					user.Friends.LoadFromDb();
+
+					_users[user.Id] = user;
+				}
+
+				return user;
+			}
 		}
 
 		/// <summary>
-		/// Returns the user with the given account id via out.
-		/// Returns false if no matching user was found.
+		/// Returns the user with the given id via out. Returns false if
+		/// the user doesn't exist yet.
 		/// </summary>
+		/// <remarks>
+		/// Since users are created when an account first logs in, this
+		/// method should only ever return false if the user has never
+		/// logged in with a character before. If that's the case, they
+		/// should be considered non-existant.
+		/// </remarks>
 		/// <param name="accountId"></param>
 		/// <param name="user"></param>
 		/// <returns></returns>
 		public bool TryGet(long accountId, out SocialUser user)
 		{
+			// We could technically get the account and create the user
+			// if they don't exist yet, seemingly removing the need for
+			// the *Try*Get, but there's still the possibility that the
+			// account doesn't exist (anymore), in which case we'd still
+			// want to return false.
+
 			lock (_users)
 				return _users.TryGetValue(accountId, out user);
 		}
@@ -67,31 +103,30 @@ namespace Melia.Social.World
 		{
 			lock (_users)
 			{
-				user = _users.Values.FirstOrDefault(a => a.Account.TeamName == teamName);
+				user = _users.Values.FirstOrDefault(a => a.TeamName == teamName);
 				return user != null;
 			}
 		}
 
 		/// <summary>
-		/// Returns the account with the given id via out, either by getting
-		/// the accout from a logged in user or the database. Returns false
-		/// if the account doesn't exist.
+		/// Returns the friend with the given ids via out, either by getting
+		/// it from a logged in user or the database. Returns false if the
+		/// friend doesn't exist.
 		/// </summary>
-		/// <param name="teamName"></param>
-		/// <param name="account"></param>
+		/// <param name="accountId"></param>
+		/// <param name="friendAccountId"></param>
+		/// <param name="friend"></param>
 		/// <returns></returns>
-		public bool TryGetAccount(string teamName, out Account account)
+		public bool TryGetFriend(long accountId, long friendAccountId, out Friend friend)
 		{
-			if (this.TryGet(teamName, out var user))
+			if (this.TryGet(accountId, out var user))
 			{
-				account = user.Account;
-				return true;
+				if (user.Friends.TryGet(friendAccountId, out friend))
+					return true;
 			}
 
-			if (SocialServer.Instance.Database.TryGetAccount(teamName, out account))
-				return true;
-
-			return false;
+			friend = SocialServer.Instance.Database.GetFriend(accountId, friendAccountId);
+			return friend != null;
 		}
 	}
 }

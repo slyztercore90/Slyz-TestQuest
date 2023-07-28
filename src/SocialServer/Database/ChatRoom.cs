@@ -1,6 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Melia.Shared.Network;
+using Melia.Social.World;
 
 namespace Melia.Social.Database
 {
@@ -9,11 +9,11 @@ namespace Melia.Social.Database
 	/// </summary>
 	public class ChatRoom
 	{
-		public readonly List<Account> _members = new List<Account>();
+		public readonly List<ChatMember> _members = new List<ChatMember>();
 		public readonly List<ChatMessage> _messages = new List<ChatMessage>();
 
 		/// <summary>
-		/// Unique chat room id
+		/// Returns the chat room's globally unique id.
 		/// </summary>
 		public long Id { get; }
 
@@ -28,9 +28,9 @@ namespace Melia.Social.Database
 		public ChatRoomType Type { get; set; } = ChatRoomType.Group;
 
 		/// <summary>
-		/// Returns the account of the chat room's owner.
+		/// Returns the account id of the chat room's owner.
 		/// </summary>
-		public Account Owner { get; set; }
+		public long OwnerId { get; set; }
 
 		/// <summary>
 		/// Returns the number of members in the chat room.
@@ -47,32 +47,21 @@ namespace Melia.Social.Database
 		/// <summary>
 		/// Creates new chat room.
 		/// </summary>
-		/// <param name="owner"></param>
-		public ChatRoom(Account owner)
-			: this("", ChatRoomType.OneToOne, owner)
-		{
-		}
-
-		/// <summary>
-		/// Creates new chat room.
-		/// </summary>
 		/// <param name="name"></param>
 		/// <param name="type"></param>
-		/// <param name="owner"></param>
-		public ChatRoom(string name, ChatRoomType type, Account owner)
+		public ChatRoom(string name, ChatRoomType type)
 		{
 			this.Id = SocialServer.Instance.ChatManager.GetNewChatId();
 
 			this.Name = name;
 			this.Type = type;
-			this.Owner = owner;
 		}
 
 		/// <summary>
 		/// Returns list of all members in the chat room.
 		/// </summary>
 		/// <returns></returns>
-		public Account[] GetMembers()
+		public ChatMember[] GetMembers()
 		{
 			lock (_members)
 				return _members.ToArray();
@@ -91,21 +80,39 @@ namespace Melia.Social.Database
 		/// <summary>
 		/// Add a member to the chat room.
 		/// </summary>
-		/// <param name="account"></param>
-		public void AddMember(Account account)
+		/// <remarks>
+		/// The first member to be added to a chat room becomes its
+		/// creator if no creator was set yet.
+		/// </remarks>
+		/// <param name="member"></param>
+		public void AddMember(SocialUser user)
+			=> this.AddMember(new ChatMember(this.Id, user.Id, user.TeamName));
+
+		/// <summary>
+		/// Add a member to the chat room.
+		/// </summary>
+		/// <remarks>
+		/// The first member to be added to a chat room becomes its
+		/// creator if no creator was set yet.
+		/// </remarks>
+		/// <param name="member"></param>
+		public void AddMember(ChatMember member)
 		{
 			lock (_members)
-				_members.Add(account);
+				_members.Add(member);
+
+			if (this.OwnerId == 0)
+				this.OwnerId = member.AccountId;
 		}
 
 		/// <summary>
 		/// Removes a member from a chat room.
 		/// </summary>
-		/// <param name="account"></param>
-		public void RemoveMember(Account account)
+		/// <param name="accountId"></param>
+		public void RemoveMember(long accountId)
 		{
 			lock (_members)
-				_members.Remove(account);
+				_members.RemoveAll(m => m.AccountId == accountId);
 		}
 
 		/// <summary>
@@ -119,7 +126,7 @@ namespace Melia.Social.Database
 		}
 
 		/// <summary>
-		/// Broadcasts packet to all characters on map.
+		/// Broadcasts packet to all members of the room who are online.
 		/// </summary>
 		/// <param name="packet"></param>
 		public virtual void Broadcast(Packet packet)
@@ -127,57 +134,11 @@ namespace Melia.Social.Database
 			lock (_members)
 			{
 				foreach (var account in _members)
-					account.Connection?.Send(packet);
+				{
+					if (SocialServer.Instance.UserManager.TryGet(account.AccountId, out var user))
+						user.Connection.Send(packet);
+				}
 			}
-		}
-	}
-
-	/// <summary>
-	/// Represents a message in a chat room
-	/// </summary>
-	public class ChatMessage
-	{
-		/// <summary>
-		/// Returns the account of the chat message's sender.
-		/// </summary>
-		public Account Sender { get; }
-
-		/// <summary>
-		/// Returns the account of the chat message's recipient.
-		/// </summary>
-		public Account Recipient { get; }
-
-		/// <summary>
-		/// Returns the message that was sent.
-		/// </summary>
-		public string Message { get; }
-
-		/// <summary>
-		/// Returns the time the message was sent.
-		/// </summary>
-		public DateTime SentTime { get; } = DateTime.Now;
-
-		/// <summary>
-		/// Creates new chat message.
-		/// </summary>
-		/// <param name="sender"></param>
-		/// <param name="message"></param>
-		public ChatMessage(Account sender, string message)
-			: this(sender, null, message)
-		{
-		}
-
-		/// <summary>
-		/// Creates new chat message.
-		/// </summary>
-		/// <param name="sender"></param>
-		/// <param name="recipient"></param>
-		/// <param name="message"></param>
-		public ChatMessage(Account sender, Account recipient, string message)
-		{
-			this.Sender = sender;
-			this.Recipient = recipient;
-			this.Message = message;
 		}
 	}
 
