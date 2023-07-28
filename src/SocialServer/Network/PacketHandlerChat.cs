@@ -1,8 +1,5 @@
-﻿using System.Linq;
-using Melia.Shared.Network;
+﻿using Melia.Shared.Network;
 using Melia.Social.Database;
-using Melia.Social.World;
-using Mysqlx.Crud;
 using Yggdrasil.Logging;
 using Yggdrasil.Security.Hashing;
 
@@ -308,7 +305,7 @@ namespace Melia.Social.Network
 			//chatRoom.RemoveMember(conn.User.Id);
 
 			//if (chatRoom.MemberCount == 0)
-			//	SocialServer.Instance.ChatManager.RemoveChatRoom(chatId);
+			//SocialServer.Instance.ChatManager.RemoveChatRoom(chatId);
 		}
 
 		/// <summary>
