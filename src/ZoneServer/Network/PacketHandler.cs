@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Melia.Shared.Data.Database;
 using Melia.Shared.Database;
 using Melia.Shared.L10N;
@@ -41,7 +40,7 @@ namespace Melia.Zone.Network
 		public void CB_LOGIN(IZoneConnection conn, Packet packet)
 		{
 			// Close connection, which should then make the client try to
-			// connect to login instead.
+			// connect to the barracks server instead.
 			conn.Close();
 		}
 
@@ -1507,6 +1506,20 @@ namespace Melia.Zone.Network
 			}
 
 			skill.Vars.Set("Melia.ToolGroundPos", pos);
+		}
+
+		[PacketHandler(Op.CZ_REQUEST_GODDESS_ROULETT)]
+		public void CZ_REQUEST_GODDESS_ROULETT(IZoneConnection conn, Packet packet)
+		{
+			var rouletteType = packet.GetInt(); // 3
+			var character = conn.SelectedCharacter;
+
+			var itemGrade = "C";
+			var item = "misc_reinforce_percentUp_480_NoTrade";
+			var itemAmount = 3;
+
+			character.ModifyAccountProperty(PropertyName.GODDESS_RAINBOW_ROULETTE_USE_ROULETTE_COUNT, 1);
+			character.AddonMessage(AddonMessage.GODDESS_ROULETTE_START, string.Format("16/{0}/{1}/{2}", itemGrade, item, itemAmount));
 		}
 
 		/// <summary>
@@ -3112,6 +3125,28 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Client ping request, sent through (//ping).
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_PING)]
+		public void CZ_PING(IZoneConnection conn, Packet packet)
+		{
+			Send.ZC_PING(conn);
+		}
+
+		/// <summary>
+		/// Set a character label (title).
+		/// </summary>
+		[PacketHandler(Op.CZ_CHANGE_TITLE)]
+		public void CZ_CHANGE_TITLE(IZoneConnection conn, Packet packet)
+		{
+			var title = packet.GetString(64);
+
+			Send.ZC_NORMAL.ActorLabel(conn.SelectedCharacter, title);
+		}
+
+		/// <summary>
 		/// Request to pick up an item.
 		/// </summary>
 		/// <param name="conn"></param>
@@ -3182,6 +3217,12 @@ namespace Melia.Zone.Network
 			// ToDo load list of warehouse items and send them
 			// Currently sending an empty list
 			Send.ZC_SOLD_ITEM_DIVISION_LIST(character, type, items);
+		}
+
+		[PacketHandler(Op.CZ_REQ_ACC_WARE_VIS_LOG)]
+		public void CZ_REQ_ACC_WARE_VIS_LOG(IZoneConnection conn, Packet packet)
+		{
+			Send.ZC_NORMAL.StorageSilverTransactions(conn.SelectedCharacter);
 		}
 
 		/// <summary>

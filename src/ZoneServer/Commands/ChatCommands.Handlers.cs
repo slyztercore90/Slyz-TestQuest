@@ -11,6 +11,7 @@ using Melia.Shared.Network.Inter.Messages;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
 using Melia.Zone.Network;
+using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Actors.CombatEntities.Components;
@@ -103,7 +104,84 @@ namespace Melia.Zone.Commands
 		/// <returns></returns>
 		private CommandResult HandleTest(Character sender, Character target, string message, string command, Arguments args)
 		{
-			Log.Debug("test!!");
+			if (args.Count > 0)
+			{
+				Log.Debug("Testing {0}", args.Get(0));
+				switch (args.Get(0))
+				{
+					case "addbuff":
+					{
+						var buffId = (int)BuffId.SoPowerful;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out buffId);
+						sender.Buffs.Start((BuffId)buffId);
+						break;
+					}
+					case "removebuff":
+					{
+						var buffId = (int)BuffId.SoPowerful;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out buffId);
+						sender.Buffs.Remove((BuffId)buffId);
+						break;
+					}
+					case "exprop":
+						Send.ZC_SEND_PC_EXPROP(sender);
+						break;
+					case "1B":
+					{
+						byte b1 = 1;
+						if (args.Count > 1)
+							byte.TryParse(args.Get(1), out b1);
+						var i1 = 2268;
+						if (args.Count > 2)
+							int.TryParse(args.Get(2), out i1);
+						Send.ZC_NORMAL.Unknown_1B(sender, b1, i1);
+						break;
+					}
+					case "5F":
+					{
+						var i1 = 72110;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out i1);
+						float f1 = 0.99f;
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out f1);
+						Send.ZC_NORMAL.Skill_5F(sender, i1, f1);
+						break;
+					}
+					case "125":
+					{
+						var packetId = "I_emo_immobilize";
+						if (args.Count > 1)
+							packetId = args.Get(1);
+						Send.ZC_NORMAL.Skill_125(sender, packetId, 10, 0.05f, 0);
+						break;
+					}
+					case "emoticon":
+					{
+						var packetId = "I_emo_immobilize";
+						if (args.Count > 1)
+							packetId = args.Get(1);
+						var duration = 1f;
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out duration);
+						Send.ZC_EMOTICON(sender, packetId, TimeSpan.FromSeconds(duration));
+						break;
+					}
+					case "showemoticon":
+					{
+						var packetId = "I_emo_immobilize";
+						if (args.Count > 1)
+							packetId = args.Get(1);
+						var duration = 1f;
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out duration);
+						Send.ZC_SHOW_EMOTICON(sender, packetId, TimeSpan.FromSeconds(duration));
+						break;
+					}
+				}
+			}
 
 			return CommandResult.Okay;
 		}
@@ -564,6 +642,8 @@ namespace Melia.Zone.Commands
 					monster.Components.Add(new AiComponent(monster, "BasicMonster"));
 
 				target.Map.AddMonster(monster);
+				monster.StartBuff(BuffId.Born, TimeSpan.FromSeconds(4));
+				target.AddonMessage(AddonMessage.BOSS_BATTLE_START, monster.Handle.ToString(), monster.Id);
 			}
 
 			sender.ServerMessage(Localization.Get("Monsters were spawned."));

@@ -681,6 +681,23 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
+			/// Seen with 
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="b1"></param>
+			/// <param name="i1"></param>
+			public static void Unknown_1B(IActor actor, byte b1, int i1)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Unknown_1B);
+
+				packet.PutByte(b1);
+				packet.PutInt(i1);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
 			/// Appears to update information about a skill effect on the
 			/// clients in range of entity.
 			/// </summary>
@@ -2018,7 +2035,7 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Skill particle effect
+			/// Plays a text effect on actor.
 			/// </summary>
 			/// <param name="character"></param>
 			public static void PlayTextEffect(IActor actor, IActor caster, string packetString, float argNum, string argStr = null)
@@ -2432,6 +2449,43 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
+			/// Seen with Lightning Tower Skill
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="packetString"></param>
+			/// <param name="f1"></param>
+			/// <param name="f2"></param>
+			/// <param name="f3"></param>
+			public static void Skill_125(IActor actor, string packetString, float f1, float f2, float f3)
+			{
+				if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStr))
+					throw new ArgumentException($"Packet string '{packetString}' not found.");
+				Skill_125(actor, packetStr.Id, f1, f2, f3);
+			}
+
+			/// <summary>
+			/// Seen with Lightning Tower Skill
+			/// </summary>
+			/// <param name="actor"></param>
+			/// <param name="packetString"></param>
+			/// <param name="f1"></param>
+			/// <param name="f2"></param>
+			/// <param name="f3"></param>
+			public static void Skill_125(IActor actor, int packetString, float f1, float f2, float f3)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_125);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt(packetString);
+				packet.PutFloat(f1);
+				packet.PutFloat(f2);
+				packet.PutFloat(f3);
+
+				actor.Map.Broadcast(packet);
+			}
+
+			/// <summary>
 			/// Used with Pyromancer's Prominence Skill
 			/// </summary>
 			/// <param name="entity"></param>
@@ -2551,14 +2605,14 @@ namespace Melia.Zone.Network
 			/// <summary>
 			/// Used with Hunter's Coursing Skill
 			/// </summary>
-			/// <param name="entity"></param>
+			/// <param name="actor"></param>
 			/// <param name=""></param>
-			public static void Skill_127(Character entity, int targetHandle, int effectHandle, Position position)
+			public static void Skill_127(IActor actor, int targetHandle, int effectHandle, Position position)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
 				packet.PutInt(NormalOp.Zone.Skill_127);
 
-				packet.PutInt(entity.Handle);
+				packet.PutInt(actor.Handle);
 				packet.PutInt(targetHandle);
 				if (targetHandle != 0)
 				{
@@ -2568,7 +2622,7 @@ namespace Melia.Zone.Network
 					packet.PutFloat(position.Z);
 				}
 
-				entity.Map.Broadcast(packet);
+				actor.Map.Broadcast(packet);
 			}
 
 			/// <summary>
@@ -2606,14 +2660,14 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Set's a label on an NPC
+			/// Set's a label on an Actor.
 			/// </summary>
 			/// <param name="entity"></param>
 			/// <param name="label"></param>
-			public static void NPCLabel(Character entity, string label)
+			public static void ActorLabel(Character entity, string label)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-				packet.PutInt(NormalOp.Zone.NPCLabel);
+				packet.PutInt(NormalOp.Zone.SetActorLabel);
 
 				packet.PutInt(entity.Handle);
 				packet.PutLpString(label);
@@ -2845,21 +2899,43 @@ namespace Melia.Zone.Network
 				conn.Send(packet);
 			}
 
+			public static void StorageSilverTransactions(Character character)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.StorageSilverTransaction);
+
+				packet.Zlib(true, zpacket =>
+				{
+					var transactions = 1;
+					zpacket.PutByte(0);
+					zpacket.PutInt(transactions);
+					for (var i = 0; i < transactions; i++)
+					{
+						zpacket.PutByte(0); // Deposit
+						zpacket.PutLong(100); // Silver Transaction
+						zpacket.PutLong(1000); // Silver Total
+						zpacket.PutDate(DateTime.Now.AddDays(-1));
+					}
+				});
+
+				character.Connection.Send(packet);
+			}
+
 			/// <summary>
 			/// Market Item Minimum/Maximum Prices
 			/// </summary>
-			/// <param name="entity"></param>
+			/// <param name="character"></param>
 			/// <param name="b1"></param>
 			/// <param name="l1"></param>
 			/// <param name="minPrice"></param>
 			/// <param name="l2"></param>
 			/// <param name="maxPrice"></param>
 			/// <param name="unitPrice"></param>
-			public static void MarketMinMaxInfo(Character entity, bool b1, long l1, long minPrice, long l2, long maxPrice, long unitPrice)
+			public static void MarketMinMaxInfo(Character character, bool b1, long l1, long minPrice, long l2, long maxPrice, long unitPrice)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
-
 				packet.PutInt(NormalOp.Zone.MarketMinMaxInfo);
+
 				packet.PutByte(b1);
 				packet.PutLong(l1);
 				packet.PutLong(minPrice);
@@ -2867,7 +2943,7 @@ namespace Melia.Zone.Network
 				packet.PutLong(maxPrice);
 				packet.PutLong(unitPrice);
 
-				entity.Connection.Send(packet);
+				character.Connection.Send(packet);
 			}
 
 			/// <summary>
@@ -3242,6 +3318,19 @@ namespace Melia.Zone.Network
 				packet.PutByte((character.VisibleEquip & VisibleEquip.SubWeapon) != 0);
 
 				character.Map.Broadcast(packet, character);
+			}
+
+			public static void Skill_5F(Character character, int i1, float f1, float f2 = 0, byte b1 = 0)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.Skill_5F);
+
+				packet.PutInt(i1);
+				packet.PutFloat(f1);
+				packet.PutFloat(f2);
+				packet.PutByte(b1);
+
+				character.Map.Broadcast(packet);
 			}
 		}
 

@@ -94,6 +94,15 @@ namespace Melia.Zone.Scripting.AI
 		}
 
 		/// <summary>
+		/// Set the visible range of AI.
+		/// </summary>
+		/// <param name="visibleRange"></param>
+		public void SetVisibility(float visibleRange)
+		{
+			this._visibleRange = visibleRange;
+		}
+
+		/// <summary>
 		/// Executes the AI, furthering the current routine.
 		/// </summary>
 		/// <param name="elapsed"></param>

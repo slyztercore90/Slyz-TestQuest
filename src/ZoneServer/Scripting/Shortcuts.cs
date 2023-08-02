@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Melia.Shared.Configuration.Files;
@@ -80,7 +81,7 @@ namespace Melia.Zone.Scripting
 		public static string LNF(string key, string keyPlural, int n, params object[] args)
 			=> string.Format(Localization.GetPlural(key, keyPlural, n), args);
 
-		public static Npc AddNpc(int genType, int monsterId, string name, string map, double x, double y, double z, double direction)
+		public static Npc AddNpc(int genType, int monsterId, string name, string map, double x, double y, double z, double direction, string dialogFuncName = "", string enterFuncName = "", string leaveFuncName = "", double range = 100)
 		{
 			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
 				throw new ArgumentException($"Map '{map}' not found.");
@@ -107,7 +108,22 @@ namespace Melia.Zone.Scripting
 			var location = new Location(mapObj.Id, pos);
 			var dir = new Direction(direction);
 
-			var monster = new Npc(monsterId, name, location, dir);
+			ZoneServer.Instance.DialogFunctions.TryGet(dialogFuncName, out var dialog);
+			ZoneServer.Instance.DialogFunctions.TryGet(enterFuncName, out var enter);
+			ZoneServer.Instance.DialogFunctions.TryGet(leaveFuncName, out var leave);
+
+			var uniqueId = Interlocked.Increment(ref UniqueNpcNameId);
+			var uniqueName = $"__NPC{uniqueId}__";
+			var monster = new Npc(monsterId, name, location, dir, genType);
+			monster.UniqueName = uniqueName;
+			if (dialog != null)
+				monster.SetClickTrigger(dialogFuncName, dialog);
+			if (enter != null || leave != null)
+				monster.SetTriggerArea(Spot(monster.Position.X, monster.Position.Z, range));
+			if (enter != null)
+				monster.SetEnterTrigger(enterFuncName, enter);
+			if (leave != null)
+				monster.SetLeaveTrigger(leaveFuncName, leave);
 
 			mapObj.AddMonster(monster);
 

@@ -20,11 +20,6 @@ namespace Melia.Zone.Skills.Combat
 		public ICombatEntity Target { get; }
 
 		/// <summary>
-		/// Returns a reference to the skill used in the attack.
-		/// </summary>
-		public Skill Skill { get; }
-
-		/// <summary>
 		/// Returns the damage dealt.
 		/// </summary>
 		public float Damage { get; set; }
@@ -57,6 +52,11 @@ namespace Melia.Zone.Skills.Combat
 		public int HitCount { get; set; } = 1;
 
 		/// <summary>
+		/// Skill associated with the Attack.
+		/// </summary>
+		public SkillId SkillId { get; set; }
+
+		/// <summary>
 		/// Creates new hit.
 		/// </summary>
 		/// <param name="attacker"></param>
@@ -80,10 +80,32 @@ namespace Melia.Zone.Skills.Combat
 		{
 			this.Attacker = attacker;
 			this.Target = target;
-			this.Skill = skill;
+			this.SkillId = skill.Id;
 
 			this.Damage = damage;
 			this.ResultType = resultType;
+			this.Type = HitType.Normal;
+
+			this.Hp = target.Hp;
+			this.HpPriority = target.HpChangeCounter;
+		}
+
+		/// <summary>
+		/// Creates new hit.
+		/// </summary>
+		/// <param name="attacker"></param>
+		/// <param name="target"></param>
+		/// <param name="damage"></param>
+		/// <param name="resultType"></param>
+		public HitInfo(ICombatEntity attacker, ICombatEntity target, float damage, HitResultType resultType)
+		{
+			this.Attacker = attacker;
+			this.Target = target;
+			this.SkillId = SkillId.Normal_Attack;
+
+			this.Damage = damage;
+			this.ResultType = resultType;
+			this.Type = HitType.Normal;
 
 			this.Hp = target.Hp;
 			this.HpPriority = target.HpChangeCounter;

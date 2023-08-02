@@ -45,7 +45,7 @@ namespace Melia.Zone.Commands
 			if (command == null)
 			{
 				Log.Warning("Unknown client command '{0}'. Message: '{1}'.", commandName, message);
-				return true;
+				return false;
 			}
 
 			args.Remove(0);

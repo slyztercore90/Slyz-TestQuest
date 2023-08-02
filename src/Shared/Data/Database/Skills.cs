@@ -196,6 +196,19 @@ namespace Melia.Shared.Data.Database
 			=> this.Find(a => a.ClassName == className);
 
 		/// <summary>
+		/// Returns the skill data entry if found
+		/// otherwise if null returns false.
+		/// </summary>
+		/// <param name="className"></param>
+		/// <param name="skillData"></param>
+		/// <returns></returns>
+		public bool TryFind(string className, out SkillData skillData)
+		{
+			skillData = this.Find(className);
+			return skillData != null;
+		}
+
+		/// <summary>
 		/// Reads given entry and adds it to the database.
 		/// </summary>
 		/// <param name="entry"></param>

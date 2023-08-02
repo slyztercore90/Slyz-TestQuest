@@ -75,7 +75,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 				splashTarget.TakeDamage(skillHitResult.Damage, caster);
 				var hitInfo = new HitInfo(caster, splashTarget, skill, skillHitResult.Damage, skillHitResult.Result);
 				hitInfo.ForceId = effectHandle;
-				Send.ZC_HIT_INFO(caster, splashTarget, skill, hitInfo);
+				Send.ZC_HIT_INFO(caster, splashTarget, hitInfo);
 			}
 
 			Send.ZC_NORMAL.Skill_45(caster);

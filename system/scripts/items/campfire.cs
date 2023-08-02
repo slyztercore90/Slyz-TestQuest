@@ -72,7 +72,7 @@ public class CampfireActionScript : GeneralScript
 		var area = new Circle(pos, MinDistanceToFires);
 		var monsters = map.GetActorsIn<Mob>(area);
 
-		var anyCampfires = monsters.Any(a => a.Id == CampfireMonsterId);
+		var anyCampfires = monsters.Exists(a => a.Id == CampfireMonsterId);
 		return anyCampfires;
 	}
 

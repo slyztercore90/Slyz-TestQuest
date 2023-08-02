@@ -170,17 +170,36 @@ namespace Melia.Zone.Scripting.AI
 		{
 			this.Entity.TurnTowards(target);
 
+			// Check if the AI is still eligible to use the skill.
+			if (!this.CanUseSkill(skill, target))
+			{
+				yield break; // Skill usage is not allowed, exit the routine.
+			}
+
 			if (!ZoneServer.Instance.SkillHandlers.TryGetHandler<ITargetSkillHandler>(skill.Id, out var handler))
 			{
 				Log.Warning($"AiScript: No handler found for skill '{skill.Id}'.");
 				yield return this.Wait(2000);
 				yield break;
 			}
-
+			skill.IncreaseOverheat();
 			handler.Handle(skill, this.Entity, target);
 
+
 			var useTime = skill.Properties.ShootTime;
-			yield return this.Wait(useTime);
+			yield break;
+			//yield return this.Wait(useTime);
+		}
+
+		private bool CanUseSkill(Skill skill, ICombatEntity target)
+		{
+			if (this.Entity.IsDead || target.IsDead || skill.IsOnCooldown)
+				return false;
+
+			if (this.Entity.IsBuffActive(BuffId.Stun) || this.Entity.IsBuffActive(BuffId.Common_Silence))
+				return false;
+
+			return true;
 		}
 
 		/// <summary>

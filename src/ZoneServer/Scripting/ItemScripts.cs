@@ -36,10 +36,11 @@ namespace Melia.Zone.Scripting
 	/// <param name="character">The character who equipped the item.</param>
 	/// <param name="item">The item that is being equipped.</param>
 	/// <param name="strArg">String argument, as defined in the item data.</param>
+	/// <param name="strArg2">String argument, as defined in the item data.</param>
 	/// <param name="numArg1">First number argument, as defined in the item data.</param>
 	/// <param name="numArg2">Second number argument, as defined in the item data.</param>
 	/// <returns></returns>
-	public delegate ItemEquipResult ItemEquipScriptFunc(Character character, Item item, string strArg, float numArg1, float numArg2);
+	public delegate ItemEquipResult ItemEquipScriptFunc(Character character, Item item, string strArg, string strArg2, float numArg1, float numArg2);
 
 	public enum ItemEquipResult
 	{
@@ -63,7 +64,7 @@ namespace Melia.Zone.Scripting
 	/// <param name="numArg1">First number argument, as defined in the item data.</param>
 	/// <param name="numArg2">Second number argument, as defined in the item data.</param>
 	/// <returns></returns>
-	public delegate ItemUnequipResult ItemUnequipScriptFunc(Character character, Item item, string strArg, float numArg1, float numArg2);
+	public delegate ItemUnequipResult ItemUnequipScriptFunc(Character character, Item item, string strArg, string strArg2, float numArg1, float numArg2);
 
 	public enum ItemUnequipResult
 	{

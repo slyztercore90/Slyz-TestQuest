@@ -65,7 +65,7 @@ namespace Melia.Zone.Skills.Handlers.Doppelsoeldner
 
 			var hitInfo = new HitInfo(caster, target, skill, skillHitResult.Damage, skillHitResult.Result);
 			hitInfo.ForceId = forceId;
-			Send.ZC_HIT_INFO(caster, target, skill, hitInfo);
+			Send.ZC_HIT_INFO(caster, target, hitInfo);
 		}
 	}
 }

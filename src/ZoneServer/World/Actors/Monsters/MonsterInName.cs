@@ -74,7 +74,7 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// <summary>
 		/// Returns the monster's gen type.
 		/// </summary>
-		public int GenType { get; } = ZoneServer.Instance.World.CreateGenType();
+		public int GenType { get; }
 
 		/// <summary>
 		/// Returns a reference to the monster's properties.
@@ -129,9 +129,13 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// Initializes the monster's properties.
 		/// </summary>
 		/// <param name="monsterClassId"></param>
-		public MonsterInName(int monsterClassId)
+		public MonsterInName(int monsterClassId, int genType = 0)
 		{
 			this.Id = monsterClassId;
+			if (genType == 0)
+				this.GenType = ZoneServer.Instance.World.CreateGenType();
+			else
+				this.GenType = genType;
 		}
 	}
 }

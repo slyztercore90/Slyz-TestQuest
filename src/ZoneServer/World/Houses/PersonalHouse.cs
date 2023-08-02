@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
-using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Monsters;
 using Melia.Zone.World.Items;
 using Melia.Zone.World.Maps;
@@ -22,6 +19,7 @@ namespace Melia.Zone.World.Houses
 	public class PersonalHouse
 	{
 		private readonly object _syncLock = new object();
+		private readonly Dictionary<int, Prop> _usedCells = new Dictionary<int, Prop>();
 
 		/// <summary>
 		/// Gets or sets the house's globally unique id.
@@ -74,7 +72,6 @@ namespace Melia.Zone.World.Houses
 
 		public List<Prop> Props { get; set; } = new List<Prop>();
 		public Item ActiveFurnitureItem { get; private set; }
-		private readonly Dictionary<int, Prop> _usedCells = new Dictionary<int, Prop>();
 
 		/// <summary>
 		/// Creates new house for entity, saves and returns it.
@@ -150,7 +147,7 @@ namespace Melia.Zone.World.Houses
 		{
 			lock (_syncLock)
 			{
-				return this.Props.FirstOrDefault(f => f.Handle == furnitureHandle);
+				return this.Props.Find(f => f.Handle == furnitureHandle);
 			}
 		}
 
@@ -162,9 +159,8 @@ namespace Melia.Zone.World.Houses
 		private void OnPlayerEntered(Character character)
 		{
 			character.Connection.ActiveHouse = this;
-			var isOwner = this.IsOwner(character);
 
-			if (isOwner)
+			if (this.IsOwner(character))
 			{
 				if (this.LastEnterTime == DateTime.MinValue)
 					character.Variables.Temp.SetBool("Melia.HouseEnterFirstTime", true);

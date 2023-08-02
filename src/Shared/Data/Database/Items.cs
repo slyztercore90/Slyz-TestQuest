@@ -154,6 +154,8 @@ namespace Melia.Shared.Data.Database
 
 		public bool HasScript => this.Script != null;
 		public bool HasCooldown => !string.IsNullOrWhiteSpace(this.CooldownGroup);
+
+		public string EquipSkill { get; internal set; }
 	}
 
 	[Serializable]
@@ -161,6 +163,7 @@ namespace Melia.Shared.Data.Database
 	{
 		public string Function { get; set; }
 		public string StrArg { get; set; }
+		public string StrArg2 { get; set; }
 		public float NumArg1 { get; set; }
 		public float NumArg2 { get; set; }
 	}
@@ -397,6 +400,8 @@ namespace Melia.Shared.Data.Database
 			if (entry.ContainsKey("cooldown"))
 				data.Cooldown = entry.ReadInt("cooldown");
 
+			if (entry.ContainsKey("equipSkill"))
+				data.EquipSkill = entry.ReadString("equipSkill");
 
 			if (entry.TryGetObject("script", out var scriptEntry))
 			{

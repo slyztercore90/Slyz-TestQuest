@@ -256,9 +256,9 @@ switch (type)
         break;
 
     case 0x1B:
-        int i1; // handle
+        int handle; // handle
         byte b1; // 1
-        int i2; // 390060
+        int i1; // 390060
         break;
 
     case 0x1F:
@@ -536,6 +536,14 @@ switch (type)
         int skillHandle; // 2698?
         int64 l1; // 0
         break;
+        
+    // Seen before ZC_BUFF_REMOVE TELHARSHA_LIGHT_BUFF
+    case 0x5F:
+        int i1; // 72100
+        float f1; // 0.99
+        float f2; // 0
+        byte b1;
+        break;
 
     // Skill related (Hwarang PyeonJeon)
     case 0x64:
@@ -553,7 +561,7 @@ switch (type)
         break;
 
     // Seen after TELHARSHA_STOP_BUFF and before ZC_SKILL_RANGE_DBG
-    case 0x6B:
+    case 0x6D:
         int i1; // 185554
         byte b1; // 1
         break;
@@ -931,7 +939,6 @@ switch (type)
     
     // ?
     case 0xE4:
-    case 0xE5:
         typedef struct
         {
             lpString str;
@@ -941,6 +948,12 @@ switch (type)
 
         int count;
         entry entries[count] <optimize=false>;
+        break;
+        
+    // Used in Mini Games? (Tel Hersha)
+    case 0xE5:
+        lpString str; // MGAME_TOTAL_SCORE
+        int val; // 0
         break;
         
     // Job ranks?
@@ -1283,7 +1296,6 @@ switch (type)
         break;
 
     // Seen with Coursing Skill
-    
     case 0x127:
         int petHandle;
         int targetHandle;
@@ -1320,10 +1332,16 @@ switch (type)
             short s2;
         }
         break;
+    
+    case 0x130:
+        int i1;
+        int i2;
+        int i3;
+        break;
 
     // Show's 0/50 to 50/50 over an pot to fill
     // Used for fillables/collectable counts
-    case 0x130:
+    case 0x132:
         int handle;
         lpString message; // 0/50
         break;
@@ -1523,12 +1541,20 @@ switch (type)
 
     // Account Warehouse (Silver Trade)
     case 0x171:
-        byte bin[3]; // 00 00 00
-        int i2; // 1
-        WAREHOUSE_INTERACTION interaction; // Deposit (0) or Withdrawl (1)
-        int64 silverTransacted; // Silver Transacted
-        int64 silverTotal; // Silver Total
-        FILETIME transactionDate;
+        typedef struct
+        {
+            WAREHOUSE_INTERACTION interaction; // Deposit (0) or Withdrawl (1)
+            int64 silverTransacted; // Silver Transacted
+            int64 silverTotal; // Silver Total
+            FILETIME transactionDate;
+        } SilverTransaction <optimize=false>;
+        if (!checkCompression())
+        {
+            byte b1;
+            int transactionCount; // 1
+            if (transactionCount > 0)
+              SilverTransaction transactions[transactionCount];
+        }
         break;
 
     // Market Item Min/Max Prices?

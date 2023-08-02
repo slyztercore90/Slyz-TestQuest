@@ -73,7 +73,7 @@ namespace Melia.Zone.Skills.Handlers.Archer
 				bounceTarget.TakeDamage(skillHitResult.Damage, caster);
 
 				var hit = new HitInfo(caster, target, skill, skillHitResult);
-				Send.ZC_HIT_INFO(caster, bounceTarget, skill, hit);
+				Send.ZC_HIT_INFO(caster, bounceTarget, hit);
 			}
 		}
 

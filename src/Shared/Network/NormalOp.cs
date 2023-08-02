@@ -59,6 +59,7 @@
 			public const int SkillEffect_14 = 0x14;
 			public const int PlayEffect = 0x16;
 			public const int PlayForceEffect = 0x17;
+			public const int Unknown_1B = 0x1B;
 			public const int UpdateSkillEffect = 0x1F;
 			public const int SetEntityColor = 0x20;
 			public const int Skill_CallLuaFunc = 0x26;
@@ -95,6 +96,7 @@
 			/// </summary>
 			public const int SkillRunScript = 0x59;
 			public const int Skill_SetActorHeight = 0x5C;
+			public const int Skill_5F = 0x5F;
 			public const int Skill_EffectMovement = 0x64;
 			public const int Unknown_64 = 0x66;
 			public const int SetupCutscene = 0x6E;
@@ -158,10 +160,12 @@
 			public const int Unknown_110 = 0x113;
 			public const int Unknown_11A = 0x11C;
 			public const int Shop_Unknown11C = 0x11E;
+			public const int Skill_125 = 0x125;
 			public const int Skill_124 = 0x126;
 			public const int Skill_127 = 0x129;
 			public const int ChannelTraffic = 0x12D;
-			public const int NPCLabel = 0x132;
+			public const int Unknown_130 = 0x130;
+			public const int SetActorLabel = 0x132;
 			public const int Unknown_134 = 0x137;
 			public const int SetGreetingMessage = 0x138;
 			public const int ShowParty = 0x13C;
@@ -173,6 +177,7 @@
 			public const int ItemDrop = 0x152;
 			public const int FightState = 0x157;
 			public const int NGSCallback = 0x170;
+			public const int StorageSilverTransaction = 0x171;
 			public const int MarketMinMaxInfo = 0x172;
 			public const int MemberMapStatusUpdate = 0x17A;
 			public const int HeadgearVisibilityUpdate = 0x17C;

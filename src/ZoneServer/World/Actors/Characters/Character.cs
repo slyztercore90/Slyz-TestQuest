@@ -668,6 +668,7 @@ namespace Melia.Zone.World.Actors.Characters
 			var serverInfo = availableZones[channelId];
 
 			Send.ZC_MOVE_ZONE_OK(this, channelId, serverInfo.Ip, serverInfo.Port, this.MapId);
+			this.Connection.Close(100);
 		}
 
 		/// <summary>

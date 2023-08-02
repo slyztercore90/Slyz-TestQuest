@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Melia.Shared.Data.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Tos.Const;
 using Melia.Zone.Network;
@@ -582,7 +583,20 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			var script = item.Data.Script;
 
 			if (ScriptableFunctions.Equip.TryGet("SCP_ON_EQUIP_ITEM_" + item.Data.ClassName, out var scriptFunc))
-				scriptFunc(this.Character, item, script.StrArg, script.NumArg1, script.NumArg2);
+				scriptFunc(this.Character, item, script.StrArg, script.StrArg2, script.NumArg1, script.NumArg2);
+
+			if (!string.IsNullOrEmpty(item.Data.EquipSkill) && ScriptableFunctions.Equip.TryGet("SCP_ON_EQUIP_ITEM_SKILL", out scriptFunc))
+			{
+				if (script == null)
+				{
+					script = new ItemScriptData()
+					{
+						StrArg2 = item.Data.EquipSkill,
+					};
+					item.Data.Script = script;
+				}
+				scriptFunc(this.Character, item, script.StrArg, item.Data.EquipSkill, script.NumArg1, script.NumArg2);
+			}
 
 			return InventoryResult.Success;
 		}
@@ -615,7 +629,20 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			var script = item.Data.Script;
 
 			if (ScriptableFunctions.Unequip.TryGet("SCP_ON_UNEQUIP_ITEM_" + item.Data.ClassName, out var scriptFunc))
-				scriptFunc(this.Character, item, script.StrArg, script.NumArg1, script.NumArg2);
+				scriptFunc(this.Character, item, script.StrArg, script.StrArg2, script.NumArg1, script.NumArg2);
+
+			if (!string.IsNullOrEmpty(item.Data.EquipSkill) && ScriptableFunctions.Unequip.TryGet("SCP_ON_UNEQUIP_ITEM_SKILL", out scriptFunc))
+			{
+				if (script == null)
+				{
+					script = new ItemScriptData()
+					{
+						StrArg2 = item.Data.EquipSkill,
+					};
+					item.Data.Script = script;
+				}
+				scriptFunc(this.Character, item, script.StrArg, item.Data.EquipSkill, script.NumArg1, script.NumArg2);
+			}
 
 			return InventoryResult.Success;
 		}

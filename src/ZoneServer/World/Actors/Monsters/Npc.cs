@@ -64,8 +64,8 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// <param name="name"></param>
 		/// <param name="location"></param>
 		/// <param name="direction"></param>
-		public Npc(int monsterClassId, string name, Location location, Direction direction)
-			: base(monsterClassId)
+		public Npc(int monsterClassId, string name, Location location, Direction direction, int genType = 0)
+			: base(monsterClassId, genType)
 		{
 			this.Name = name;
 			this.Position = location.Position;

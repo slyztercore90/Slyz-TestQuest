@@ -71,7 +71,7 @@ namespace Melia.Zone.Skills.Handlers.Hoplite
 				var hitInfo = new HitInfo(caster, currentTarget, skill, skillHitResult.Damage, skillHitResult.Result);
 				hitInfo.ForceId = forceId;
 
-				Send.ZC_HIT_INFO(caster, currentTarget, skill, hitInfo);
+				Send.ZC_HIT_INFO(caster, currentTarget, hitInfo);
 			}
 		}
 	}

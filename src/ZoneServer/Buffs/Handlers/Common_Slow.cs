@@ -24,7 +24,7 @@ namespace Melia.Zone.Buffs.Handlers
 			var caster = buff.Caster;
 
 			Send.ZC_SHOW_EMOTICON(target, "I_emo_slowdown", buff.Duration);
-			Send.ZC_NORMAL.PlayTextEffect(target, caster, "SHOW_BUFF_TEXT", (float)BuffId.Common_Slow, null);
+			Send.ZC_NORMAL.PlayTextEffect(target, caster, AnimationName.ShowBuffText, (float)BuffId.Common_Slow, null);
 
 			var reduceMspd = target.Properties.GetFloat(PropertyName.MSPD) * MspdDebuffRate;
 			buff.Vars.SetFloat("Melia.ReduceMspd", reduceMspd);

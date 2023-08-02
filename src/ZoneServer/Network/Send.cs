@@ -2388,13 +2388,13 @@ namespace Melia.Zone.Network
 		/// <param name="target"></param>
 		/// <param name="skill"></param>
 		/// <param name="hitInfo"></param>
-		public static void ZC_HIT_INFO(ICombatEntity attacker, ICombatEntity target, Skill skill, HitInfo hitInfo)
+		public static void ZC_HIT_INFO(ICombatEntity attacker, ICombatEntity target, HitInfo hitInfo)
 		{
 			var packet = new Packet(Op.ZC_HIT_INFO);
 
 			packet.PutInt(target.Handle);
 			packet.PutInt(attacker.Handle);
-			packet.PutInt((int)skill.Id);
+			packet.PutInt((int)hitInfo.SkillId);
 
 			packet.AddHitInfo(hitInfo);
 
@@ -2558,8 +2558,9 @@ namespace Melia.Zone.Network
 		/// <param name="b2"></param>
 		public static void ZC_PLAY_SOUND(IActor actor, string animationName, byte b1 = 0, float f1 = -1, byte b2 = 0)
 		{
-			if (ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var animation))
-				ZC_PLAY_SOUND(actor, animation.Id, b1, f1, b2);
+			if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var packetStringData))
+				throw new ArgumentException($"Packet string '{packetStringData}' not found.");
+			ZC_PLAY_SOUND(actor, packetStringData.Id, b1, f1, b2);
 		}
 
 		/// <summary>
@@ -2590,8 +2591,9 @@ namespace Melia.Zone.Network
 		/// <param name="animationName"></param>
 		public static void ZC_STOP_SOUND(Character character, string animationName)
 		{
-			if (ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var animation))
-				ZC_STOP_SOUND(character, animation.Id);
+			if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var packetStringData))
+				throw new ArgumentException($"Packet string '{packetStringData}' not found.");
+			ZC_STOP_SOUND(character, packetStringData.Id);
 		}
 
 		/// <summary>
@@ -2602,6 +2604,67 @@ namespace Melia.Zone.Network
 		public static void ZC_STOP_SOUND(Character character, int packetStringId)
 		{
 			var packet = new Packet(Op.ZC_STOP_SOUND);
+
+			packet.PutInt(character.Handle);
+			packet.PutInt(packetStringId);
+
+			character.Connection.Send(packet);
+		}
+
+		/// <summary>
+		/// Plays a sound effect.
+		/// </summary>
+		/// <param name="actor"></param>
+		/// <param name="packetString"></param>
+		/// <param name="b1"></param>
+		/// <param name="f1"></param>
+		/// <param name="b2"></param>
+		public static void ZC_PLAY_MUSICQUEUE(IActor actor, string packetString, short s1 = 0, byte b1 = 0)
+		{
+			if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStringData))
+				throw new ArgumentException($"Packet string '{packetStringData}' not found.");
+			ZC_PLAY_MUSICQUEUE(actor, packetStringData.Id, s1, b1);
+		}
+
+		/// <summary>
+		/// Plays a sound effect.
+		/// </summary>
+		/// <param name="actor"></param>
+		/// <param name="packetStringId"></param>
+		/// <param name="s1"></param>
+		/// <param name="b1"></param>
+		public static void ZC_PLAY_MUSICQUEUE(IActor actor, int packetStringId, short s1 = 0, byte b1 = 0)
+		{
+			var packet = new Packet(Op.ZC_PLAY_MUSICQUEUE);
+
+			packet.PutInt(actor.Handle);
+			packet.PutInt(packetStringId);
+			packet.PutShort(s1);
+			packet.PutByte(b1);
+
+			actor.Map.Broadcast(packet, actor);
+		}
+
+		/// <summary>
+		/// Stop playing a sound effect
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="animationName"></param>
+		public static void ZC_STOP_MUSICQUEUE(Character character, string animationName)
+		{
+			if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(animationName, out var packetStringData))
+				throw new ArgumentException($"Packet string '{packetStringData}' not found.");
+			ZC_STOP_MUSICQUEUE(character, packetStringData.Id);
+		}
+
+		/// <summary>
+		/// Stop playing a sound effect
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="packetStringId"></param>
+		public static void ZC_STOP_MUSICQUEUE(Character character, int packetStringId)
+		{
+			var packet = new Packet(Op.ZC_STOP_MUSICQUEUE);
 
 			packet.PutInt(character.Handle);
 			packet.PutInt(packetStringId);
@@ -2627,6 +2690,30 @@ namespace Melia.Zone.Network
 			packet.PutByte(value); // ?
 
 			character.Connection.Send(packet);
+		}
+
+		/// <summary>
+		/// Shows emoticon for actor on nearby clients.
+		/// </summary>
+		/// <remarks>
+		/// For some available emoticons, search the packet string data for
+		/// entries with "_emo_" in their names, such as "I_emo_fear".
+		/// </remarks>
+		/// <param name="actor"></param>
+		/// <param name="packetString"></param>
+		/// <param name="duration">Time to show to the emoticon for.</param>
+		public static void ZC_EMOTICON(IActor actor, string packetString, TimeSpan duration)
+		{
+			if (!ZoneServer.Instance.Data.PacketStringDb.TryFind(packetString, out var packetStringData))
+				throw new ArgumentException($"Packet string '{packetString}' not found.");
+
+			var packet = new Packet(Op.ZC_EMOTICON);
+
+			packet.PutInt(actor.Handle);
+			packet.PutInt(packetStringData.Id);
+			packet.PutInt((int)duration.TotalMilliseconds);
+
+			actor.Map.Broadcast(packet, actor);
 		}
 
 		/// <summary>
@@ -5531,6 +5618,21 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Set "ex"-property
+		/// </summary>
+		/// <param name="character"></param>
+		public static void ZC_SEND_PC_EXPROP(Character character)
+		{
+			var packet = new Packet(Op.ZC_SEND_PC_EXPROP);
+
+			packet.PutInt(1);
+			packet.PutLpString("sraidC_Total_Level_boss");
+			packet.PutFloat(7);
+
+			character.Connection.Send(packet);
+		}
+
+		/// <summary>
 		/// Displays area of affect for skill.
 		/// </summary>
 		/// <param name="caster"></param>
@@ -5692,6 +5794,19 @@ namespace Melia.Zone.Network
 			packet.PutString(text);
 
 			ZoneServer.Instance.World.Broadcast(packet);
+		}
+
+		/// <summary>
+		/// CZ_PING response (Pong)
+		/// </summary>
+		/// <param name="conn"></param>
+		public static void ZC_PING(IZoneConnection conn)
+		{
+			var packet = new Packet(Op.ZC_PING);
+
+			packet.PutEmptyBin(12);
+
+			conn.Send(packet);
 		}
 	}
 }

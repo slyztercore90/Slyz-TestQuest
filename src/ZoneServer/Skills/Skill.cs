@@ -162,10 +162,6 @@ namespace Melia.Zone.Skills
 		/// <returns
 		public bool IncreaseOverheat(int overheatMaxCount)
 		{
-			// No cooldowns for monsters
-			if (!(this.Owner is Character character))
-				return false;
-
 			// Increase counter regardless of whether the skill can
 			// overheat. In both cases we will eventually get over
 			// the overheat counter, in which case we reset the
@@ -185,7 +181,9 @@ namespace Melia.Zone.Skills
 
 			// Update the overheat after the max was checked so we reset it
 			// to 0 if we went into cooldown
-			Send.ZC_OVERHEAT_CHANGED(character, this);
+			// No cooldowns for monsters
+			if (this.Owner is Character character)
+				Send.ZC_OVERHEAT_CHANGED(character, this);
 
 			return overheated;
 		}
