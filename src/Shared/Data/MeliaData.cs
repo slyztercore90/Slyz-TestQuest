@@ -25,6 +25,7 @@ namespace Melia.Shared.Data
 		public FeatureDb FeatureDb { get; set; } = new FeatureDb();
 		public FurnitureDb FurnitureDb { get; set; } = new FurnitureDb();
 		public GroundDb GroundDb { get; set; } = new GroundDb();
+		public HairTypeDb HairTypeDb { get; set; } = new HairTypeDb();
 		public HelpDb HelpDb { get; set; } = new HelpDb();
 		public InvBaseIdDb InvBaseIdDb { get; set; } = new InvBaseIdDb();
 		public ItemDb ItemDb { get; set; } = new ItemDb();

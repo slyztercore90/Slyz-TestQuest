@@ -1,60 +1,70 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Net.Mail;
-using System.Text;
-using System.Threading.Tasks;
 using Melia.Shared.Tos.Const;
 
 namespace Melia.Barracks.Database
 {
 	/// <summary>
-	/// Mailbox
+	/// Represents a mailbox that allows accounts
+	/// to receive items via mail messages.
 	/// </summary>
 	public class Mailbox
 	{
-		private readonly object _syncLock = new object();
+		private readonly List<MailMessage> _mail = new List<MailMessage>();
+
+		public static int MailPerPage { get; } = 20;
 
 		/// <summary>
 		/// Returns the mail messages
 		/// </summary>
-		public List<MailMessage> Mail { get; set; } = new List<MailMessage>();
+		public List<MailMessage> GetMail()
+		{
+			lock (_mail)
+				return _mail.ToList();
+		}
+
+		/// <summary>
+		/// Returns a subset mail messages
+		/// </summary>
+		public List<MailMessage> GetPagedMail(int skip = 0)
+		{
+			lock (_mail)
+				return _mail.Skip(skip).Take(MailPerPage).ToList();
+		}
 
 		/// <summary>
 		/// Returns if the mail box has messages
 		/// </summary>
-		public bool HasMessages { get { lock (_syncLock) { return this.Mail.Count > 0; } } }
+		public bool HasMessages => this.MessageCount > 0;
 
 		/// <summary>
 		/// Returns the number of unread messages
 		/// </summary>
-		public int UnreadMesages
+		public int UnreadMessageCount
 		{
 			get
 			{
-				lock (_syncLock)
-				{
-					return this.Mail.Count(a => a.State == PostBoxMessageState.None);
-				}
+				lock (_mail)
+					return this._mail.Count(a => a.State == MailboxMessageState.Unread);
 			}
 		}
 
 		/// <summary>
 		/// Returns the number of read messages
 		/// </summary>
-		public int ReadMessages
+		public int ReadMessageCount
 		{
 			get
 			{
-				lock (_syncLock)
-					return this.Mail.Count(a => a.State == PostBoxMessageState.Read);
+				lock (_mail)
+					return this._mail.Count(a => a.State == MailboxMessageState.Read);
 			}
 		}
 
 		/// <summary>
 		/// Returns the numbers of messages
 		/// </summary>
-		public int MessageCount { get { lock (_syncLock) { return this.Mail.Count; } } }
+		public int MessageCount { get { lock (_mail) return this._mail.Count; } }
 
 		/// <summary>
 		/// Add a mail message
@@ -62,20 +72,21 @@ namespace Melia.Barracks.Database
 		/// <param name="mail"></param>
 		public void AddMail(MailMessage mail)
 		{
-			lock (_syncLock)
-				this.Mail.Add(mail);
+			lock (_mail)
+				this._mail.Add(mail);
 		}
 
 		/// <summary>
 		/// Try to get mail
 		/// </summary>
 		/// <param name="messageId"></param>
-		/// <param name="mail"></param>
+		/// <param name="message"></param>
 		/// <returns></returns>
-		public MailMessage Get(long messageId)
+		public bool TryGetMail(long messageId, out MailMessage message)
 		{
-			lock (_syncLock)
-				return this.Mail.FirstOrDefault(m => m.Id == messageId);
+			lock (_mail)
+				message = this._mail.Find(m => m.Id == messageId);
+			return message != null;
 		}
 	}
 }

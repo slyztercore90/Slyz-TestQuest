@@ -11,6 +11,7 @@ using Yggrasil.Ai.BehaviorTree.Leafs;
 public class BasicMonsterAiScript : AiScript
 {
 	private const int MaxChaseDistance = 300;
+	private const int MaxMasterDistance = 200;
 	private const int MaxRoamDistance = 300;
 
 	ICombatEntity target;
@@ -19,6 +20,7 @@ public class BasicMonsterAiScript : AiScript
 	{
 		During("Idle", CheckEnemies);
 		During("Attack", CheckTarget);
+		During("Attack", CheckMaster);
 		During("ReturnHome", CheckLocation);
 	}
 
@@ -110,6 +112,23 @@ public class BasicMonsterAiScript : AiScript
 		}
 	}
 
+	private void CheckMaster()
+	{
+		if (target == null)
+			return;
+
+		if (!TryGetMaster(out var master))
+			return;
+
+		// Reset aggro if the master left
+		if (EntityGone(master) || !InRangeOf(master, MaxMasterDistance))
+		{
+			target = null;
+			RemoveAllHate();
+			StartRoutine("StopAndIdle", StopAndIdle());
+		}
+	}
+	
 	private void CheckLocation()
 	{
 		if (this.Entity is IMonster monster && monster.SpawnLocation.Position.Get2DDistance(monster.Position) > MaxRoamDistance)

@@ -45,6 +45,9 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 		/// <param name="buff"></param>
 		private void Add(Buff buff)
 		{
+			if (this.Entity.IsDead)
+				return;
+
 			lock (_buffs)
 				_buffs[buff.Id] = buff;
 
@@ -62,6 +65,9 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 		/// <param name="buff"></param>
 		private void Overbuff(Buff buff)
 		{
+			if (this.Entity.IsDead)
+				return;
+
 			var overbuff = buff.OverbuffCounter;
 			buff.IncreaseOverbuff();
 
@@ -156,10 +162,9 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 		public void RemoveAll(Func<Buff, bool> predicate)
 		{
 			var buffs = this.GetList();
-			foreach (var buff in buffs)
+			foreach (var buff in buffs.Where(buff => predicate(buff)))
 			{
-				if (predicate(buff))
-					this.Remove(buff);
+				this.Remove(buff);
 			}
 		}
 
@@ -308,9 +313,7 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 				this.Add(buff);
 			}
 			else
-			{
 				this.Overbuff(buff);
-			}
 
 			return buff;
 		}
@@ -340,16 +343,17 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 				{
 					if (buff.HasUpdateTime)
 					{
-						if (toUpdate == null)
-							toUpdate = new List<Buff>();
-
+						toUpdate ??= new List<Buff>();
 						toUpdate.Add(buff);
 					}
 					if (buff.HasDuration && now >= buff.RemovalTime)
 					{
-						if (toRemove == null)
-							toRemove = new List<Buff>();
-
+						toRemove ??= new List<Buff>();
+						toRemove.Add(buff);
+					}
+					if (buff.Target.IsDead && buff.Data.RemoveOnDeath)
+					{
+						toRemove ??= new List<Buff>();
 						toRemove.Add(buff);
 					}
 				}

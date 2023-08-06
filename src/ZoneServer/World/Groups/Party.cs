@@ -171,7 +171,6 @@ namespace Melia.Zone.World
 			//this.Properties.Create(new FloatProperty(PropertyName.CreateTime, ))
 		}
 
-
 		/// <summary>
 		/// Add Member and Send to Party Packets Client
 		/// ZC_PARTY_INFO, ZC_PARTY_LIST, ZC_PARTY_ENTER, 
@@ -406,6 +405,8 @@ namespace Melia.Zone.World
 
 		public void Expel(Character sender, string teamName)
 		{
+			if (sender.ObjectId != this.LeaderObjectId && sender.TeamName != teamName)
+				return;
 			lock (_members)
 			{
 				var member = _members.Values.FirstOrDefault(m => m.TeamName == teamName);

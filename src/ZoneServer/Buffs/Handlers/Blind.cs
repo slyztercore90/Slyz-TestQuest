@@ -25,7 +25,7 @@ namespace Melia.Zone.Buffs.Handlers
 			{
 				if (!monster.Components.TryGet<AiComponent>(out var component))
 					return;
-				component.Script.SetVisibility(30);
+				component.Script.SetViewRange(30);
 				//component.Script.QueueEventAlert(new StatusAlert(target));
 			}
 		}
@@ -38,7 +38,7 @@ namespace Melia.Zone.Buffs.Handlers
 			{
 				if (!monster.Components.TryGet<AiComponent>(out var component))
 					return;
-				component.Script.SetVisibility(300);
+				component.Script.SetViewRange(300);
 			}
 		}
 	}

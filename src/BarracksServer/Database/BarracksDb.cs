@@ -504,54 +504,48 @@ namespace Melia.Barracks.Database
 		/// <summary>
 		/// Loads mail for the account.
 		/// </summary>
-		/// <param name="accountId"></param>
-		public Mailbox GetMailbox(long accountId)
+		/// <param name="account"></param>
+		public void LoadMailbox(Account account)
 		{
-			var mailbox = new Mailbox();
 			using (var conn = this.GetConnection())
 			using (var mc = new MySqlCommand("SELECT * FROM `mail` WHERE `accountId` = @accountId", conn))
 			{
-				mc.Parameters.AddWithValue("@accountId", accountId);
+				mc.Parameters.AddWithValue("@accountId", account.DbId);
 
 				using (var reader = mc.ExecuteReader())
 				{
-					if (reader.HasRows)
+					while (reader.Read())
 					{
-						while (reader.Read())
+						var state = (MailboxMessageState)reader.GetByte("status");
+						if (state == MailboxMessageState.Delete)
+							continue;
+
+						var expiration = reader.GetDateTimeSafe("expirationDate");
+						if (expiration < DateTime.Now)
+							continue;
+
+						var mail = new MailMessage
 						{
-							var mail = new MailMessage
-							{
-								Id = reader.GetInt64("mailId"),
-								State = (PostBoxMessageState)reader.GetByte("status"),
-								Sender = reader.GetString("sender"),
-								Subject = reader.GetString("subject"),
-								Message = reader.GetString("message"),
-							};
-							var startDate = reader.GetDateTimeSafe("startDate");
-							var expirationDate = reader.GetDateTimeSafe("expirationDate");
-							var createdDate = reader.GetDateTimeSafe("createdDate");
-							if (startDate != DateTime.MinValue)
-								mail.StartDate = startDate;
-							if (expirationDate != DateTime.MinValue)
-								mail.ExpirationDate = expirationDate;
-							if (createdDate != DateTime.MinValue)
-								mail.CreatedDate = createdDate;
-							/**
-							var item = new MailItem();
-							item.Id = 2;
-							item.ItemId = 11200129;
-							item.Amount = 1;
-							mail.Items.Add(item);
-							**/
-							mailbox.AddMail(mail);
-						}
+							Id = reader.GetInt64("mailId"),
+							State = state,
+							Sender = reader.GetStringSafe("sender"),
+							Subject = reader.GetStringSafe("subject"),
+							Message = reader.GetStringSafe("message"),
+							StartDate = reader.GetDateTimeSafe("startDate"),
+							ExpirationDate = expiration,
+							CreatedDate = reader.GetDateTimeSafe("createdDate"),
+						};
+
+						account.Mailbox.AddMail(mail);
 					}
 				}
 			}
-			foreach (var mail in mailbox.Mail)
-				mail.Items = this.LoadMailItems(mail.Id);
 
-			return mailbox;
+			foreach (var mail in account.Mailbox.GetMail())
+			{
+				foreach (var item in this.LoadMailItems(mail.Id))
+					mail.AddItem(item);
+			}
 		}
 
 		/// <summary>
@@ -564,25 +558,23 @@ namespace Melia.Barracks.Database
 			var items = new List<MailItem>();
 			using (var conn = this.GetConnection())
 			{
-				using (var mc = new MySqlCommand("SELECT * FROM `mail_items` WHERE `mailId` = @mailId ORDER BY mailItemUniqueId", conn))
+				using (var mc = new MySqlCommand("SELECT * FROM `mail_items` WHERE `mailId` = @mailId", conn))
 				{
 					mc.Parameters.AddWithValue("@mailId", mailId);
 
 					using (var reader = mc.ExecuteReader())
 					{
-						if (reader.HasRows)
+						while (reader.Read())
 						{
-							while (reader.Read())
+							var mailItem = new MailItem
 							{
-								var mailItem = new MailItem
-								{
-									Id = (int)reader.GetInt64("mailItemUniqueId"),
-									ItemId = reader.GetInt32("itemId"),
-									Amount = reader.GetInt32("amount"),
-									IsReceived = (PostBoxMessageState)reader.GetByte("status") == PostBoxMessageState.Read,
-								};
-								items.Add(mailItem);
-							}
+								DbId = (int)reader.GetInt64("mailItemId"),
+								ItemDbId = reader.GetInt64("itemId"),
+								Id = reader.GetInt32("id"),
+								Amount = reader.GetInt32("amount"),
+								IsReceived = reader.GetByte("status") == 1,
+							};
+							items.Add(mailItem);
 						}
 					}
 				}
@@ -596,23 +588,14 @@ namespace Melia.Barracks.Database
 		/// <param name="account"></param>
 		public void SaveMail(Account account)
 		{
-			if (account.Mailbox == null)
-				return;
 			using (var conn = this.GetConnection())
 			using (var trans = conn.BeginTransaction())
 			{
-				using (var mc = new MySqlCommand("DELETE FROM `mail` WHERE `accountId` = @accountId", conn, trans))
+				foreach (var mail in account.Mailbox.GetMail())
 				{
-					mc.Parameters.AddWithValue("@accountId", account.DbId);
-					mc.ExecuteNonQuery();
-				}
-
-				foreach (var mail in account.Mailbox.Mail)
-				{
-					if (mail.State == PostBoxMessageState.Delete)
-						continue;
-					using (var cmd = new InsertCommand("INSERT INTO `mail` {0}", conn, trans))
+					using (var cmd = new UpdateCommand("UPDATE `mail` SET {0} WHERE `mailId` = @mailId", conn, trans))
 					{
+						cmd.AddParameter("@mailId", mail.Id);
 						cmd.Set("accountId", account.DbId);
 						cmd.Set("sender", mail.Sender);
 						cmd.Set("subject", mail.Subject);
@@ -623,20 +606,19 @@ namespace Melia.Barracks.Database
 						cmd.Set("createdDate", mail.CreatedDate);
 
 						cmd.Execute();
-						mail.Id = cmd.LastId;
 					}
 
-					using (var cmd = new InsertCommand("INSERT INTO `mail_items` {0}", conn, trans))
+					foreach (var item in mail.GetItems())
 					{
-						foreach (var item in mail.Items)
+						using (var cmd = new UpdateCommand("UPDATE `mail_items` SET {0} WHERE `mailItemId` = @mailItemId", conn, trans))
 						{
+							cmd.AddParameter("@mailItemId", item.DbId);
 							cmd.Set("mailId", mail.Id);
-							cmd.Set("itemId", item.ItemId);
+							cmd.Set("itemId", item.ItemDbId);
+							cmd.Set("id", item.Id);
 							cmd.Set("amount", item.Amount);
-							cmd.Set("status", item.IsReceived ? 1 : 0);
-
+							cmd.Set("status", item.IsReceived);
 							cmd.Execute();
-							item.Id = (int)cmd.LastId;
 						}
 					}
 				}
@@ -645,36 +627,25 @@ namespace Melia.Barracks.Database
 			}
 		}
 
+
 		/// <summary>
-		/// Persists an item to a specific character in the database.
+		/// Adds an item to the character's inventory.
 		/// </summary>
-		/// <param name="account"></param>
-		public void SaveItem(long characterId, int itemId, int amount)
+		/// <param name="characterId"></param>
+		/// <param name="itemId"></param>
+		public void SaveItem(long characterId, long itemId)
 		{
 			using (var conn = this.GetConnection())
 			using (var trans = conn.BeginTransaction())
 			{
-				var itemDbId = 0L;
-				using (var cmd = new InsertCommand("INSERT INTO `items` {0}", conn, trans))
+				using (var cmd = new InsertCommand("INSERT INTO `inventory` {0}", conn))
 				{
+					cmd.Set("characterId", characterId);
 					cmd.Set("itemId", itemId);
-					cmd.Set("amount", amount);
+					cmd.Set("sort", 0);
+					cmd.Set("equipSlot", 0x7F);
 
 					cmd.Execute();
-					itemDbId = cmd.LastId;
-				}
-
-				if (itemDbId != 0)
-				{
-					using (var cmd = new InsertCommand("INSERT INTO `inventory` {0}", conn))
-					{
-						cmd.Set("characterId", characterId);
-						cmd.Set("itemId", itemDbId);
-						cmd.Set("sort", 0);
-						cmd.Set("equipSlot", 0x7F);
-
-						cmd.Execute();
-					}
 				}
 
 				trans.Commit();

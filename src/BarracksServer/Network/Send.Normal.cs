@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Melia.Barracks.Database;
 using Melia.Barracks.Network.Helpers;
@@ -226,7 +227,7 @@ namespace Melia.Barracks.Network
 
 				conn.Send(packet);
 			}
-			
+
 			/// <summary>
 			/// Updates server list on all logged in clients.
 			/// </summary>
@@ -257,45 +258,54 @@ namespace Melia.Barracks.Network
 			}
 
 			/// <summary>
-			/// Mailbox
+			/// Retrieves mail messages from the mailbox for an account and sends them to the client via the provided connection.
 			/// </summary>
-			/// <param name="conn"></param>
-			public static void Mailbox(IBarracksConnection conn)
+			/// <param name="conn">The connection used to send the mailbox data to the client.</param>
+			/// <param name="page"></param>
+			/// <param name="mailList"></param>
+			public static void Mailbox(IBarracksConnection conn, byte page, IEnumerable<MailMessage> mailList)
 			{
+				var totalMessages = conn.Account.Mailbox.MessageCount;
+				var messageCount = mailList.Count();
+
 				var packet = new Packet(Op.BC_NORMAL);
 				packet.PutInt(NormalOp.Barrack.Mailbox);
 
 				packet.Zlib(true, zpacket =>
 				{
-					var mailBox = conn.Account.Mailbox;
-					zpacket.PutByte(mailBox.HasMessages);
-					zpacket.PutInt(mailBox.ReadMessages);
-					zpacket.PutInt(mailBox.UnreadMesages);
-					zpacket.PutInt(mailBox.MessageCount); //Message Count?
+					zpacket.PutByte(page);
+					zpacket.PutByte(messageCount == 0);
+					zpacket.PutEmptyBin(3); // Alignment?
+					zpacket.PutInt(messageCount);
+					zpacket.PutInt(totalMessages);
 
-					foreach (var message in mailBox.Mail)
+					foreach (var message in mailList)
 					{
+						var items = message.GetItems();
+
 						zpacket.PutLpString(message.Sender);
 						zpacket.PutLpString(message.Subject);
 						zpacket.PutLpString(message.Message);
-						zpacket.PutDate(message.StartDate); // Date Sent?
-						zpacket.PutDate(message.ExpirationDate); // Expiration
+						zpacket.PutDate(message.StartDate);
+						zpacket.PutDate(message.ExpirationDate);
 						zpacket.PutDate(message.CreatedDate);
-						zpacket.PutLong(message.Id); // Message Id
+						zpacket.PutLong(message.Id);
 						zpacket.PutByte(message.IsRead);
-						zpacket.PutShort(message.Items.Count);
-						zpacket.PutByte(0); // Changes Visibility?
+						zpacket.PutByte(message.CanReceive);
+						zpacket.PutByte(0); // Alignment Byte?
+						zpacket.PutByte((byte)message.State);
 						zpacket.PutByte(0);
-						zpacket.PutByte(1);
+						zpacket.PutByte(message.ReceivableItemsCount);
 						zpacket.PutShort(0);
-						zpacket.PutInt(message.Items.Count); // Message Item Count
+						zpacket.PutInt(items.Count);
 
-						foreach (var item in message.Items)
+						foreach (var item in items)
 						{
+							zpacket.PutInt(item.DbId);
 							zpacket.PutInt(item.Id);
-							zpacket.PutInt(item.ItemId);
 							zpacket.PutInt(item.Amount);
-							zpacket.PutInt(item.IsReceived ? 1 : 0);
+							zpacket.PutByte(item.IsReceived);
+							zpacket.PutEmptyBin(3); // Alignment
 						}
 					}
 				});
@@ -304,12 +314,12 @@ namespace Melia.Barracks.Network
 			}
 
 			/// <summary>
-			/// Updates the state of a postbox message.
+			/// Updates the state of a mailbox message.
 			/// </summary>
 			/// <param name="conn"></param>
 			/// <param name="messageId"></param>
 			/// <param name="state"></param>
-			public static void UpdatePostBoxState(IBarracksConnection conn, long messageId, PostBoxMessageState state)
+			public static void UpdateMailboxState(IBarracksConnection conn, long messageId, MailboxMessageState state)
 			{
 				var packet = new Packet(Op.BC_NORMAL);
 				packet.PutInt(NormalOp.Barrack.MailboxState);
@@ -325,18 +335,21 @@ namespace Melia.Barracks.Network
 			/// <param name="conn"></param>
 			public static void MailUpdate(IBarracksConnection conn, MailMessage message)
 			{
+				var items = message.GetItems();
+				var receivedItemCount = items.Count(item => item.IsReceived);
+
 				var packet = new Packet(Op.BC_NORMAL);
 				packet.PutInt(NormalOp.Barrack.MailUpdate);
 
 				packet.PutLong(message.Id);
 				packet.PutByte((byte)message.State);
-				packet.PutInt(7);
-				packet.PutInt(message.Items.Count); // Message Item Count
+				packet.PutInt(receivedItemCount); // This is a guess, could be a different value.
+				packet.PutInt(items.Count);
 
-				foreach (var item in message.Items)
+				foreach (var item in items)
 				{
+					packet.PutInt(item.DbId);
 					packet.PutInt(item.Id);
-					packet.PutInt(item.ItemId);
 					packet.PutInt(item.Amount);
 					packet.PutInt(item.IsReceived ? 1 : 0);
 				}

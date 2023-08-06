@@ -24,7 +24,7 @@ namespace Melia.Zone.Buffs.Handlers
 
 		public override void OnEnd(Buff buff)
 		{
-			Send.ZC_SHOW_EMOTICON(buff.Target, "I_emo_startuscharge", TimeSpan.Zero);
+			Send.ZC_SHOW_EMOTICON(buff.Target, "", TimeSpan.Zero);
 			buff.Target.Properties.Modify(PropertyName.RSta_BM, -StaminaRecoveryBonus);
 		}
 

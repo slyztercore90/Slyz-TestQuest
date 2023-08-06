@@ -9,9 +9,9 @@ namespace Melia.Shared.Tos.Const
 		TeamChangeFailed = 1,
 	}
 
-	public enum PostBoxMessageState : byte
+	public enum MailboxMessageState : byte
 	{
-		None = 0,
+		Unread = 0,
 		Read = 1,
 		Store = 2,
 		Delete = 3,

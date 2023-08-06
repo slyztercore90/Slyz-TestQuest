@@ -128,40 +128,22 @@ namespace Melia.Zone.Network
 		{
 			base.OnClosed(type);
 
-			this.Account?.Save();
-
+			var account = this.Account;
 			var character = this.SelectedCharacter;
-			if (character != null)
+			var justSaved = character?.SavedForWarp ?? false;
+
+			if (!justSaved)
 			{
-				character.Map.RemoveCharacter(character);
-				if (character.HasCompanions)
-				{
-					foreach (var companion in character.GetCompanions())
-					{
-						if (companion.IsActivated)
-							character.Map.RemoveMonster(companion);
-					}
-				}
+				if (account != null)
+					ZoneServer.Instance.Database.SaveAccount(account);
 
-				// Remove all buffs that are not supposed to be saved
-				character.Buffs.RemoveAll(a => !a.Data.Save);
+				if (character != null)
+					ZoneServer.Instance.Database.SaveCharacter(character);
 
-				if (this.Party != null)
-				{
-					var member = this.Party.GetMember(character.ObjectId);
-					member.IsOnline = false;
-					this.Party.UpdateMember(character);
-				}
-				if (this.Guild != null)
-				{
-					var member = this.Guild.GetMember(character.ObjectId);
-					member.IsOnline = false;
-					this.Guild.UpdateMember(character);
-				}
-
-				ZoneServer.Instance.Database.SaveCharacter(character);
 				ZoneServer.Instance.Database.UpdateLoginState(this.Account.Id, 0, LoginState.LoggedOut);
 			}
+
+			character?.Map.RemoveCharacter(character);
 		}
 
 		/// <summary>

@@ -239,7 +239,8 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// Sent as response to ZC_MOVE_ZONE with a 0 byte.
+		/// Response to ZC_MOVE_ZONE that notifies us that the client is
+		/// ready to move to the next zone.
 		/// </summary>
 		/// <param name="conn"></param>
 		/// <param name="packet"></param>
@@ -282,10 +283,6 @@ namespace Melia.Zone.Network
 
 			// Try to execute message as a chat command, don't send if it
 			// was handled as one
-
-			if (ZoneServer.Instance.ClientChatCommands.TryExecute(character, msg))
-				return;
-
 			if (ZoneServer.Instance.ChatCommands.TryExecute(character, msg))
 				return;
 
@@ -870,7 +867,10 @@ namespace Melia.Zone.Network
 
 				// Remove consumeable items on success
 				if (item.Data.Type == ItemType.Consume)
-					character.Inventory.Remove(item, 1, InventoryItemRemoveMsg.Used);
+				{
+					if (result != ItemUseResult.OkayNotConsumed)
+						character.Inventory.Remove(item, 1, InventoryItemRemoveMsg.Used);
+				}
 
 				if (item.Data.HasCooldown && item.CooldownData != null)
 					character.Components.Get<CooldownComponent>().Start(item.CooldownData.Id, item.CooldownData.OverheatResetTime);

@@ -8824,6 +8824,7 @@ public static class ItemId
 	public const int EVENT_The_Conqueror_Title = 10003598;
 	public const int EVENT_5th_Best_Painter_Title = 10003613;
 	public const int EVENT_Belle_Of_The_Ball_Title = 10003626;
+	public const int EVENT_2308_TITLE = 10003646;
 	public const int Event_Enchantchip_Limit_2 = 10004006;
 	public const int Moru_Ruby_Limit_2 = 10004012;
 	public const int Moru_Gold_Limit_2 = 10004013;
@@ -12884,6 +12885,7 @@ public static class ItemId
 	public const int Card_Xpupkit10_Achieve_1 = 10003547;
 	public const int Event_Roulette_Coin_3 = 10003571;
 	public const int Event_Roulette_Coin_4 = 10003581;
+	public const int Event_Roulette_Coin_5 = 10003647;
 	public const int Event_2011_Fish = 10007001;
 	public const int Event_2011_Fish2 = 10007002;
 	public const int Event_2107_Fish = 10007005;
@@ -16071,6 +16073,10 @@ public static class ItemId
 	public const int GLOBAL_2302_2_Package_Entrance_B = 2500372;
 	public const int GLOBAL_2302_2_Package_Reinforce = 2500373;
 	public const int GLOBAL_2302_2_Package_AIO = 2500374;
+	public const int Summer_Breeze_Entry_A_Package = 2500379;
+	public const int Summer_Breeze_Entry_B_Package = 2500380;
+	public const int Summer_Breeze_Enhance_Package = 2500381;
+	public const int Summer_Breeze_All_In_One_Package = 2500382;
 	public const int Costume_Com_199_Teamtrade = 6360008;
 	public const int Costume_Com_200_Teamtrade = 6360009;
 	public const int Chat_Balloon_Event_Arbor_Day_30d = 10000012;
@@ -17911,6 +17917,8 @@ public static class ItemId
 	public const int Ticket_BridgeWailing_Party_Enter_NoTrade = 11200275;
 	public const int Ticket_BridgeWailing_Party_Enter_LimitTime = 11200276;
 	public const int Lv480_Aether_Lvup_Scroll_Lv100 = 11200277;
+	public const int Goddess_Fragments_Vakarine_AIO = 11200328;
+	public const int Selectbox_Goddess_Fragments_Vakarine = 11200329;
 	public const int Multiple_Token_TurbulentCore_Party = 11201009;
 	public const int Multiple_Token_TurbulentCore_Party_NoTrade = 11201010;
 	public const int Certificate_RidePet_Scooter = 11205001;
@@ -17967,6 +17975,9 @@ public static class ItemId
 	public const int Special_Gift_Box_Leticia_2307 = 11205054;
 	public const int Selectbox_7th_BritishRoyal = 11205060;
 	public const int Certificate_RidePet_Unicorn = 11205061;
+	public const int Engineer_Honor_Package_PAPAYA = 11205063;
+	public const int Engineer_Special_Package_PAPAYA = 11205064;
+	public const int Special_Gift_Box_Leticia_2308 = 11205065;
 
 	// Quest
 	//-----------------------------------------------------------------------
@@ -21588,6 +21599,7 @@ public static class ItemId
 	public const int Misc_Archenium_NoTrade = 11030238;
 	public const int Misc_Luferium_NoTrade = 11030239;
 	public const int Misc_Ectonite_Care = 11030451;
+	public const int Relic_Exp_Token_Refine_Event = 11200327;
 
 	// SubExpOrb
 	//-----------------------------------------------------------------------

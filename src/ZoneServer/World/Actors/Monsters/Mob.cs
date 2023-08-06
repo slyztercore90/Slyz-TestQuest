@@ -301,15 +301,11 @@ namespace Melia.Zone.World.Actors.Monsters
 
 			// Kill monster if it reached 0 HP.
 			if (this.Hp == 0)
-			{
 				this.Kill(attacker);
-				return true;
-			}
 
-			if (this.Components.TryGet<AiComponent>(out var ai))
-				ai.Script.QueueEventAlert(new HitEventAlert(this, attacker, damage));
+			this.Map.AlertAis(this, new HitEventAlert(this, attacker, damage));
 
-			return false;
+			return this.IsDead;
 		}
 
 		/// <summary>
@@ -321,8 +317,21 @@ namespace Melia.Zone.World.Actors.Monsters
 			this.Properties.SetFloat(PropertyName.HP, 0);
 			this.Components.Get<MovementComponent>()?.Stop();
 
-			var expRate = ZoneServer.Instance.Conf.World.ExpRate / 100.0;
-			var classExpRate = ZoneServer.Instance.Conf.World.ClassExpRate / 100.0;
+			var worldConf = ZoneServer.Instance.Conf.World;
+
+			var expRate = worldConf.ExpRate / 100.0;
+			var classExpRate = worldConf.ClassExpRate / 100.0;
+
+			if (this.IsBuffActive(BuffId.SuperExp))
+			{
+				expRate *= worldConf.BlueJackpotExpRate / 100.0;
+				classExpRate *= worldConf.BlueJackpotExpRate / 100.0;
+			}
+			if (this.IsBuffActive(BuffId.EliteMonsterBuff))
+			{
+				expRate *= worldConf.EliteExpRate / 100.0;
+				classExpRate *= worldConf.EliteExpRate / 100.0;
+			}
 
 			var exp = 0L;
 			var classExp = 0L;
@@ -334,7 +343,7 @@ namespace Melia.Zone.World.Actors.Monsters
 
 			this.DisappearTime = DateTime.Now.AddSeconds(2);
 
-			if (killer is Character characterKiller)
+			if (this.MonsterType == MonsterType.Mob && killer is Character characterKiller)
 			{
 				var SCR_Get_MON_ExpPenalty = ScriptableFunctions.MonsterCharacter.Get("SCR_Get_MON_ExpPenalty");
 				var SCR_Get_MON_ClassExpPenalty = ScriptableFunctions.MonsterCharacter.Get("SCR_Get_MON_ClassExpPenalty");
@@ -345,6 +354,15 @@ namespace Melia.Zone.World.Actors.Monsters
 				this.DropItems(characterKiller);
 				this.DistributeExp(characterKiller, (long)(exp * expPenalty), (long)(classExp * classExpPenalty));
 				characterKiller?.GiveExp(exp, classExp, this);
+			}
+			// Kills from followers also grant exp and drops to the master
+			else if (this.MonsterType == MonsterType.Mob && killer is Mob mobKiller)
+			{
+				if (mobKiller.Components.Get<AiComponent>()?.Script.GetMaster() is Character killersMaster)
+				{
+					this.DropItems(killersMaster);
+					killersMaster?.GiveExp(exp, classExp, this);
+				}
 			}
 
 			this.Died?.Invoke(this, killer);
@@ -471,10 +489,96 @@ namespace Melia.Zone.World.Actors.Monsters
 			if (this.Data.Drops == null)
 				return;
 
-			foreach (var dropItemData in Data.Drops)
+			var worldConf = ZoneServer.Instance.Conf.World;
+
+			// Number of times the monster goes through its drop table,
+			// potentially affected by various buffs.
+			var rolls = 1;
+
+			// Monsters shouldn't be able to get multiple jackpot or elite
+			// buffs at the same time, but since gold gives the most rolls
+			// we'll check it last, just in case.
+			if (this.IsBuffActive(BuffId.EliteMonsterBuff))
+				rolls = worldConf.EliteRolls;
+			if (this.IsBuffActive(BuffId.SuperDrop))
+				rolls = worldConf.SilverJackpotRolls;
+			if (this.IsBuffActive(BuffId.TwinkleBuff))
+				rolls = worldConf.GoldJackpotRolls;
+
+			for (var i = 0; i < rolls; i++)
 			{
-				var dropChance = GetAdjustedDropRate(dropItemData);
-				this.DropItem(killer, dropItemData.ItemId, dropChance, dropItemData.MinAmount, dropItemData.MaxAmount);
+				foreach (var dropItemData in this.Data.Drops)
+				{
+					var dropChance = GetAdjustedDropRate(dropItemData);
+					this.DropItem(killer, dropItemData.ItemId, dropChance, dropItemData.MinAmount, dropItemData.MaxAmount);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Randomly assigns rare monster buffs based on given rates.
+		/// </summary>
+		/// <param name="jackpotRate">
+		/// Rate modifier for chance to receive a jackpot buff. The default,
+		/// 100%, represents the default chance as per the configuration.
+		/// </param>
+		/// <param name="eliteRate">
+		/// Rate modifier for chance to receive an elite buff. The default,
+		/// 100%, represents the default chance as per the configuration.
+		/// </param>
+		/// <returns></returns>
+		public void PossiblyBecomeRare(float jackpotRate = 100, float eliteRate = 100)
+		{
+			var rnd = RandomProvider.Get();
+
+			var worldConf = ZoneServer.Instance.Conf.World;
+
+			var goldChance = worldConf.GoldJackpotSpawnChance * jackpotRate / 100f;
+			if (rnd.NextDouble() * 100 < goldChance)
+			{
+				this.StartBuff(BuffId.TwinkleBuff, 1, 0, TimeSpan.Zero, this);
+				return;
+			}
+
+			var blueChance = worldConf.BlueJackpotSpawnChance * jackpotRate / 100f;
+			if (rnd.NextDouble() * 100 < blueChance)
+			{
+				this.StartBuff(BuffId.SuperExp, 1, 0, TimeSpan.Zero, this);
+				return;
+			}
+
+			var silverChance = worldConf.SilverJackpotSpawnChance * jackpotRate / 100f;
+			if (rnd.NextDouble() * 100 < silverChance)
+			{
+				this.StartBuff(BuffId.SuperDrop, 1, 0, TimeSpan.Zero, this);
+				return;
+			}
+
+			var canBecomeElite = (this.Map.Data.Level < worldConf.EliteMinLevel);
+			if (canBecomeElite)
+				return;
+
+			var eliteChance = worldConf.EliteSpawnChance * eliteRate / 100f;
+			if (rnd.NextDouble() * 100 < eliteChance)
+			{
+				this.StartBuff(BuffId.EliteMonsterBuff, 1, 0, TimeSpan.Zero, this);
+
+				var propertyOverrides = new PropertyOverrides();
+				propertyOverrides.Add(PropertyName.MHP, this.Properties.GetFloat(PropertyName.MHP) * worldConf.EliteHPSPRate / 100f);
+				propertyOverrides.Add(PropertyName.MSP, this.Properties.GetFloat(PropertyName.MSP) * worldConf.EliteHPSPRate / 100f);
+				propertyOverrides.Add(PropertyName.MINPATK, this.Properties.GetFloat(PropertyName.MINPATK) * worldConf.EliteStatRate / 100f);
+				propertyOverrides.Add(PropertyName.MAXPATK, this.Properties.GetFloat(PropertyName.MAXPATK) * worldConf.EliteStatRate / 100f);
+				propertyOverrides.Add(PropertyName.MINMATK, this.Properties.GetFloat(PropertyName.MINMATK) * worldConf.EliteStatRate / 100f);
+				propertyOverrides.Add(PropertyName.MAXMATK, this.Properties.GetFloat(PropertyName.MAXMATK) * worldConf.EliteStatRate / 100f);
+				propertyOverrides.Add(PropertyName.DEF, this.Properties.GetFloat(PropertyName.DEF) * worldConf.EliteStatRate / 100f);
+				propertyOverrides.Add(PropertyName.MDEF, this.Properties.GetFloat(PropertyName.MDEF) * worldConf.EliteStatRate / 100f);
+
+				this.ApplyOverrides(propertyOverrides);
+
+				if (worldConf.EliteAlwaysAggressive)
+					this.Tendency = TendencyType.Aggressive;
+
+				// TODO: Add summoning and special attacks.
 			}
 		}
 
