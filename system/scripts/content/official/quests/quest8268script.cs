@@ -1,0 +1,48 @@
+//--- Melia Script -----------------------------------------------------------
+// Defeat Red Fisherman
+//--- Description -----------------------------------------------------------
+// Quest to Found a herd of small Gribas.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(8268)]
+public class Quest8268Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(8268);
+		SetName("Defeat Red Fisherman");
+		SetDescription("Found a herd of small Gribas");
+		SetTrack("SProgress", "ESuccess", "KATYN14_SUB_02_TRACK", 4000);
+
+		AddPrerequisite(new LevelPrerequisite(114));
+
+		AddObjective("kill0", "Kill 9 Red Fisherman(s)", new KillObjective(400344, 9));
+
+		AddReward(new ExpReward(361872, 361872));
+		AddReward(new ItemReward("expCard7", 4));
+		AddReward(new ItemReward("Vis", 2736));
+
+		AddDialogHook("KATYN14_SUB_02_MUSH", "BeforeStart", BeforeStart);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		if (!character.Quests.Has(this.QuestId))
+			character.Tracks.Start(this.TrackId);
+
+		return HookResult.Continue;
+	}
+}
+

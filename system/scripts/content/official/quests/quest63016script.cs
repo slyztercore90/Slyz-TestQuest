@@ -1,0 +1,43 @@
+//--- Melia Script -----------------------------------------------------------
+// Defeat the Orc Spearman
+//--- Description -----------------------------------------------------------
+// Quest to Defeat the Orc Spearman.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(63016)]
+public class Quest63016Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(63016);
+		SetName("Defeat the Orc Spearman");
+		SetDescription("Defeat the Orc Spearman");
+
+		AddPrerequisite(new LevelPrerequisite(441));
+
+		AddObjective("kill0", "Kill 55 Orc Spearman(s)", new KillObjective(59326, 55));
+
+		AddReward(new ItemReward("Ability_Point_Stone_500_14d", 1));
+		AddReward(new ItemReward("expCard17", 2));
+
+		AddDialogHook("MISSIONSHOP_EP12_5", "BeforeStart", BeforeStart);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		return HookResult.Continue;
+	}
+}
+

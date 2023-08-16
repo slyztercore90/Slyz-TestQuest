@@ -1,0 +1,60 @@
+//--- Melia Script -----------------------------------------------------------
+// Into the Grip (1)
+//--- Description -----------------------------------------------------------
+// Quest to Talk with Priest Pranas.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(60126)]
+public class Quest60126Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(60126);
+		SetName("Into the Grip (1)");
+		SetDescription("Talk with Priest Pranas");
+
+		AddPrerequisite(new CompletedPrerequisite("PRISON621_MQ_04"));
+		AddPrerequisite(new LevelPrerequisite(9999));
+
+		AddDialogHook("PRISON621_PRANAS", "BeforeStart", BeforeStart);
+		AddDialogHook("PRISON622_PRANAS", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("PRISON622_MQ_01_01", "PRISON622_MQ_01", "I will follow soon", "I still have other things to do"))
+			{
+				case 1:
+					await dialog.Msg("FadeOutIN/2500");
+					dialog.HideNPC("PRISON621_PRANAS");
+					dialog.UnHideNPC("PRISON622_PRANAS");
+					character.Quests.Start(this.QuestId);
+					break;
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		return HookResult.Continue;
+	}
+}
+

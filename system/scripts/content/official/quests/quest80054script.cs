@@ -1,0 +1,51 @@
+//--- Melia Script -----------------------------------------------------------
+// The Incident That Happened Here (1)
+//--- Description -----------------------------------------------------------
+// Quest to Search the soldiers' post.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(80054)]
+public class Quest80054Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(80054);
+		SetName("The Incident That Happened Here (1)");
+		SetDescription("Search the soldiers' post");
+
+		AddPrerequisite(new CompletedPrerequisite("TABLELAND_11_1_SQ_02"));
+		AddPrerequisite(new LevelPrerequisite(208));
+
+		AddDialogHook("TABLELAND_11_1_SQ_03_TRACE", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (character.Quests.IsCompletable(this.QuestId))
+		{
+			character.Quests.Complete(this.QuestId);
+			await dialog.Msg("BalloonText/TABLELAND_11_1_SQ_03_END/5");
+			await dialog.Msg("EffectLocalNPC/TABLELAND_11_1_SQ_03_TRACE/I_smoke_red2/2/BOT");
+			await Task.Delay(1000);
+			dialog.HideNPC("TABLELAND_11_1_SQ_03_TRACE");
+			await Task.Delay(3000);
+			// Func/TABLELAND_11_1_SQ_04_SOUND;
+			await dialog.Msg("BalloonText/TABLELAND_11_1_SQ_04_START/3");
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

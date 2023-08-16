@@ -1,0 +1,54 @@
+//--- Melia Script -----------------------------------------------------------
+// Mop Up the Forger (4)
+//--- Description -----------------------------------------------------------
+// Quest to Talk to Vincent.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(20187)]
+public class Quest20187Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(20187);
+		SetName("Mop Up the Forger (4)");
+		SetDescription("Talk to Vincent");
+		SetTrack("SProgress", "ESuccess", "ROKAS25_SQ_BRIDGE2_TRACK", "m_boss_b");
+
+		AddPrerequisite(new CompletedPrerequisite("ROKAS25_SQ_04"));
+		AddPrerequisite(new LevelPrerequisite(61));
+
+		AddObjective("kill0", "Kill 1 Yonazolem", new KillObjective(57100, 1));
+
+		AddReward(new ExpReward(75978, 75978));
+		AddReward(new ItemReward("expCard3", 5));
+		AddReward(new ItemReward("misc_yonazolem_Q1", 1));
+		AddReward(new ItemReward("Vis", 1159));
+
+		AddDialogHook("ROKAS25_BINSENT", "BeforeStart", BeforeStart);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("ROKAS25_SQ_BRIDGE2_ST", "ROKAS25_SQ_BRIDGE2"))
+			{
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

@@ -1,0 +1,57 @@
+//--- Melia Script -----------------------------------------------------------
+// Suspicious Treasure Chest
+//--- Description -----------------------------------------------------------
+// Quest to Suspicious Treasure Chest.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(8081)]
+public class Quest8081Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(8081);
+		SetName("Suspicious Treasure Chest");
+		SetDescription("Suspicious Treasure Chest");
+		SetTrack("SProgress", "ESuccess", "SIAU_OUT_BOSS_TRACK", "m_boss_d");
+
+		AddPrerequisite(new LevelPrerequisite(11));
+
+		AddObjective("kill0", "Kill 1 Red Vubbe Fighter", new KillObjective(400203, 1));
+
+		AddReward(new ExpReward(1000, 1000));
+		AddReward(new ItemReward("expCard1", 2));
+		AddReward(new ItemReward("Drug_SP1_Q", 30));
+		AddReward(new ItemReward("Vis", 143));
+
+		AddDialogHook("TREASUREBOX_BUBE", "BeforeStart", BeforeStart);
+		AddDialogHook("SIAULIAIOUT_ALCHE", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		if (!character.Quests.Has(this.QuestId))
+			character.Tracks.Start(this.TrackId);
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		return HookResult.Continue;
+	}
+}
+

@@ -1,0 +1,62 @@
+//--- Melia Script -----------------------------------------------------------
+// Shard Collection(3)
+//--- Description -----------------------------------------------------------
+// Quest to Check the Secret Device in the Supply Room.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(30180)]
+public class Quest30180Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(30180);
+		SetName("Shard Collection(3)");
+		SetDescription("Check the Secret Device in the Supply Room");
+
+		AddPrerequisite(new CompletedPrerequisite("PRISON_81_MQ_6"));
+		AddPrerequisite(new LevelPrerequisite(269));
+
+		AddReward(new ExpReward(11281842, 11281842));
+		AddReward(new ItemReward("PRISON_81_MQ_7_ITEM", 1));
+		AddReward(new ItemReward("misc_Growth_Reinforce_Tier2", 18));
+		AddReward(new ItemReward("Vis", 11029));
+
+		AddDialogHook("PRISON_81_OBJ_5", "BeforeStart", BeforeStart);
+		AddDialogHook("PRISON_81_OBJ_5", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (character.Quests.IsCompletable(this.QuestId))
+		{
+			character.Quests.Complete(this.QuestId);
+			await dialog.Msg("NPCAin/PRISON_81_OBJ_5/OPEN/1");
+			dialog.HideNPC("PRISON_81_NPC_2");
+			dialog.UnHideNPC("PRISON_81_NPC_3");
+			await dialog.Msg("EffectLocalNPC/PRISON_81_NPC_3/F_lineup020_blue_mint/0.6/BOT");
+			// Func/SCR_PRISON_81_MQ_7_SUCC;
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

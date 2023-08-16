@@ -90,6 +90,16 @@ namespace Melia.Zone.World.Actors.Characters
 		public RaceType Race => RaceType.None;
 
 		/// <summary>
+		/// Returns the character's element/attribute.
+		/// </summary>
+		public AttributeType Attribute => (AttributeType)(int)this.Properties.GetFloat(PropertyName.Attribute, (int)AttributeType.None);
+
+		/// <summary>
+		/// Returns the character's armor material.
+		/// </summary>
+		public ArmorMaterialType ArmorMaterial => (ArmorMaterialType)(int)this.Properties.GetFloat(PropertyName.ArmorMaterial, (int)ArmorMaterialType.None);
+
+		/// <summary>
 		/// Returns the character's mode of movement.
 		/// </summary>
 		public MoveType MoveType => MoveType.Normal;
@@ -1243,7 +1253,8 @@ namespace Melia.Zone.World.Actors.Characters
 			this.Components.Get<CombatComponent>().SetAttackState(true);
 			this.ModifyHpSafe(-damage, out _, out _);
 
-			// Kill monster if it reached 0 HP.
+			this.Components.Get<CombatComponent>()?.RegisterHit(attacker, damage);
+
 			if (this.Hp == 0)
 				this.Kill(attacker);
 

@@ -1,0 +1,47 @@
+//--- Melia Script -----------------------------------------------------------
+// Tormented Demon Lord
+//--- Description -----------------------------------------------------------
+// Quest to Head to Ashaq Underground Prison Containment Area.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(91064)]
+public class Quest91064Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(91064);
+		SetName("Tormented Demon Lord");
+		SetDescription("Head to Ashaq Underground Prison Containment Area");
+		SetTrack("SPossible", "ESuccess", "EP13_2_DPRISON3_MQ_1_TRACK_1", "None");
+
+		AddPrerequisite(new CompletedPrerequisite("EP13_2_DPRISON2_MQ_8"));
+		AddPrerequisite(new LevelPrerequisite(460));
+
+		AddReward(new ExpReward(-2147483648, -2147483648));
+		AddReward(new ItemReward("misc_Growth_Reinforce_Tier3", 25));
+		AddReward(new ItemReward("Vis", 28980));
+
+		AddDialogHook("EP13_2_DPRISON2_MQ_NPC_7", "BeforeStart", BeforeStart);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		if (!character.Quests.Has(this.QuestId))
+			character.Tracks.Start(this.TrackId);
+
+		return HookResult.Continue;
+	}
+}
+

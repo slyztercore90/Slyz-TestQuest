@@ -1,0 +1,75 @@
+//--- Melia Script -----------------------------------------------------------
+// Secrets Hidden Underground (3)
+//--- Description -----------------------------------------------------------
+// Quest to Talk to Pajauta.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(91058)]
+public class Quest91058Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(91058);
+		SetName("Secrets Hidden Underground (3)");
+		SetDescription("Talk to Pajauta");
+
+		AddPrerequisite(new CompletedPrerequisite("EP13_2_DPRISON2_MQ_2"));
+		AddPrerequisite(new LevelPrerequisite(460));
+
+		AddObjective("collect0", "Collect 10 Mokslas' Research Data(s)", new CollectItemObjective("EP13_2_DPRISON2_MQ_ITEM_1", 10));
+		AddDrop("EP13_2_DPRISON2_MQ_ITEM_1", 7f, 59659, 59660, 59661);
+
+		AddReward(new ExpReward(-2147483648, -2147483648));
+		AddReward(new ItemReward("misc_Growth_Reinforce_Tier3", 25));
+		AddReward(new ItemReward("Vis", 28980));
+
+		AddDialogHook("EP13_2_DPRISON2_MQ_NPC_FOLLOW_1", "BeforeStart", BeforeStart);
+		AddDialogHook("EP13_2_DPRISON2_MQ_NPC_FOLLOW_1", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("EP13_2_DPRISON2_MQ_3_DLG1", "EP13_2_DPRISON2_MQ_3", "We should hurry", "Let's rest for a while"))
+			{
+				case 1:
+					character.Quests.Start(this.QuestId);
+					break;
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (character.Quests.IsCompletable(this.QuestId))
+		{
+			if (character.Inventory.HasItem("EP13_2_DPRISON2_MQ_ITEM_1", 10))
+			{
+				character.Inventory.RemoveItem("EP13_2_DPRISON2_MQ_ITEM_1", 10);
+				character.Quests.Complete(this.QuestId);
+				await dialog.Msg("EP13_2_DPRISON2_MQ_3_DLG3");
+				dialog.UnHideNPC("EP13_2_DPRISON2_MQ_NPC_4");
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

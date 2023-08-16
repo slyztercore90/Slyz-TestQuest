@@ -1,0 +1,67 @@
+//--- Melia Script -----------------------------------------------------------
+// Worship for the Blessing (3)
+//--- Description -----------------------------------------------------------
+// Quest to Talk to the Priest Master.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(19740)]
+public class Quest19740Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(19740);
+		SetName("Worship for the Blessing (3)");
+		SetDescription("Talk to the Priest Master");
+
+		AddPrerequisite(new CompletedPrerequisite("PILGRIM51_SQ_2_1"));
+		AddPrerequisite(new LevelPrerequisite(129));
+
+		AddDialogHook("MASTER_PRIEST", "BeforeStart", BeforeStart);
+		AddDialogHook("PILGRIM51_SR02", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("PILGRIM51_SQ_2_2_ST", "PILGRIM51_SQ_2_2", "I will purify the sanctum", "Give up on the purification since it looks dangerous"))
+			{
+				case 1:
+					character.Quests.Start(this.QuestId);
+					break;
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (character.Quests.IsCompletable(this.QuestId))
+		{
+			character.Quests.Complete(this.QuestId);
+			await dialog.Msg("EffectLocalNPC/PILGRIM51_SR02/I_cleric_devinestigma_force_dark/1/BOT");
+			await Task.Delay(1000);
+			await dialog.Msg("EffectLocalNPC/PILGRIM51_SR02/F_burstup001_blue/0.7/BOT");
+			await Task.Delay(500);
+			dialog.AddonMessage("NOTICE_Dm_Clear", "Purified the Sanctum!");
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

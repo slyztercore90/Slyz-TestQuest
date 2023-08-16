@@ -1,0 +1,68 @@
+//--- Melia Script -----------------------------------------------------------
+// Wrong Faith (1)
+//--- Description -----------------------------------------------------------
+// Quest to Talk with Villager Nella.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(80080)]
+public class Quest80080Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(80080);
+		SetName("Wrong Faith (1)");
+		SetDescription("Talk with Villager Nella");
+
+		AddPrerequisite(new CompletedPrerequisite("ABBEY_35_3_SQ_2"));
+		AddPrerequisite(new LevelPrerequisite(229));
+
+		AddReward(new ExpReward(11281842, 11281842));
+		AddReward(new ItemReward("misc_Growth_Reinforce_Tier2", 63));
+		AddReward(new ItemReward("Vis", 8244));
+
+		AddDialogHook("ABBEY_35_3_VILLAGE_A_2", "BeforeStart", BeforeStart);
+		AddDialogHook("ABBEY_35_3_VILLAGE_A_2", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("ABBEY_35_3_SQ_3_start", "ABBEY_35_3_SQ_3", "I will collect them", "I can't believe it"))
+			{
+				case 1:
+					character.Quests.Start(this.QuestId);
+					break;
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (character.Quests.IsCompletable(this.QuestId))
+		{
+			character.Quests.Complete(this.QuestId);
+			await dialog.Msg("ABBEY_35_3_SQ_3_succ");
+			// Func/ABBEY_35_3_SQ_3_COMP;
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

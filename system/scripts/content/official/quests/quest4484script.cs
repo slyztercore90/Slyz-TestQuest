@@ -1,0 +1,42 @@
+//--- Melia Script -----------------------------------------------------------
+// Circulation Purifier Issues (2)
+//--- Description -----------------------------------------------------------
+// Quest to Inspect the Purifier Pipe in District 2.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(4484)]
+public class Quest4484Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(4484);
+		SetName("Circulation Purifier Issues (2)");
+		SetDescription("Inspect the Purifier Pipe in District 2");
+		SetTrack("SProgress", "ESuccess", "MINE_2_CRYSTAL_3_TRACK", "m_boss_a");
+
+		AddPrerequisite(new CompletedPrerequisite("MINE_2_CRYSTAL_2"));
+		AddPrerequisite(new LevelPrerequisite(19));
+
+		AddObjective("kill0", "Kill 1 Carapace", new KillObjective(41246, 1));
+
+		AddReward(new ExpReward(16116, 16116));
+		AddReward(new ItemReward("misc_Growth_Reinforce_Tier1", 7));
+		AddReward(new ItemReward("Vis", 247));
+	}
+
+	public void OnComplete(Character character, Quest quest)
+	{
+		character.Quests.Start("MINE_2_CRYSTAL_4");
+	}
+}
+

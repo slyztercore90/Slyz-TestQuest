@@ -1,0 +1,47 @@
+//--- Melia Script -----------------------------------------------------------
+// Path of the Healer [Cleric Advancement](3)
+//--- Description -----------------------------------------------------------
+// Quest to Collect medicinal herbs.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(17330)]
+public class Quest17330Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(17330);
+		SetName("Path of the Healer [Cleric Advancement](3)");
+		SetDescription("Collect medicinal herbs");
+
+		AddPrerequisite(new CompletedPrerequisite("JOB_CLERIC4_2"));
+		AddPrerequisite(new LevelPrerequisite(9999));
+
+		AddDialogHook("MASTER_CLERIC", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (character.Quests.IsCompletable(this.QuestId))
+		{
+			character.Quests.Complete(this.QuestId);
+			await dialog.Msg("JOB_CLERIC4_3_ST");
+			await Task.Delay(10000);
+			dialog.HideNPC("JOB_CLERIC_GRASS");
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

@@ -1,0 +1,60 @@
+//--- Melia Script -----------------------------------------------------------
+// Corrupted Mausoleum (2)
+//--- Description -----------------------------------------------------------
+// Quest to Talk to the Beholder.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(8382)]
+public class Quest8382Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(8382);
+		SetName("Corrupted Mausoleum (2)");
+		SetDescription("Talk to the Beholder");
+		SetTrack("SProgress", "ESuccess", "ZACHA3F_MQ_04_TRACK", "m_boss_a");
+
+		AddPrerequisite(new CompletedPrerequisite("ZACHA3F_MQ_01"));
+		AddPrerequisite(new LevelPrerequisite(89));
+
+		AddObjective("kill0", "Kill 1 Denoptic", new KillObjective(57067, 1));
+
+		AddReward(new ExpReward(640130, 640130));
+		AddReward(new ItemReward("misc_Growth_Reinforce_Tier1", 77));
+		AddReward(new ItemReward("Vis", 1780));
+
+		AddDialogHook("ZACHA3F_MQ_01_BLACKMAN_04", "BeforeStart", BeforeStart);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("ZACHA3F_MQ_04_01", "ZACHA3F_MQ_04", "Defeat Denoptic", "I'll wait a little bit"))
+			{
+				case 1:
+					await dialog.Msg("ZACHA3F_MQ_04_AFST");
+					await dialog.Msg("FadeOutIN/2000");
+					dialog.HideNPC("ZACHA3F_MQ_01_BLACKMAN_04");
+					character.Quests.Start(this.QuestId);
+					character.Tracks.Start(this.TrackId);
+					break;
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

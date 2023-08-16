@@ -1,0 +1,54 @@
+//--- Melia Script -----------------------------------------------------------
+// The Second Epitaph (5)
+//--- Description -----------------------------------------------------------
+// Quest to Read the epitaph.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(40621)]
+public class Quest40621Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(40621);
+		SetName("The Second Epitaph (5)");
+		SetDescription("Read the epitaph");
+
+		AddPrerequisite(new CompletedPrerequisite("REMAINS37_2_SQ_040"));
+		AddPrerequisite(new LevelPrerequisite(172));
+
+		AddDialogHook("REMAINS37_2_MT02", "BeforeStart", BeforeStart);
+		AddDialogHook("REMAINS37_2_MT02", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (character.Quests.IsCompletable(this.QuestId))
+		{
+			character.Quests.Complete(this.QuestId);
+			await Task.Delay(300);
+			await dialog.Msg("AITVARAS_RECORD_2");
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

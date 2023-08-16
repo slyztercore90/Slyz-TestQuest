@@ -1,0 +1,69 @@
+//--- Melia Script -----------------------------------------------------------
+// Sculptor Hilda's Data (2)
+//--- Description -----------------------------------------------------------
+// Quest to Talk to Sculptor Hilda.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(20162)]
+public class Quest20162Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(20162);
+		SetName("Sculptor Hilda's Data (2)");
+		SetDescription("Talk to Sculptor Hilda");
+		SetTrack("SProgress", "ESuccess", "ROKAS25_SQ_07_TRACK", 4000);
+
+		AddPrerequisite(new CompletedPrerequisite("ROKAS25_SQ_06"));
+		AddPrerequisite(new LevelPrerequisite(9999));
+
+		AddDialogHook("ROKAS25_HILDA2", "BeforeStart", BeforeStart);
+		AddDialogHook("ROKAS25_HILDA2", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("ROKAS25_SQ_07_select_01", "ROKAS25_SQ_07", "I can protect you", "I'm busy"))
+			{
+				case 1:
+					character.Quests.Start(this.QuestId);
+					character.Tracks.Start(this.TrackId);
+					break;
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (character.Quests.IsCompletable(this.QuestId))
+		{
+			character.Quests.Complete(this.QuestId);
+			await dialog.Msg("ROKAS25_SQ_07_success_01");
+			await dialog.Msg("EffectLocalNPC/ROKAS25_HILDA2/F_pc_warp_circle/1/BOT");
+			await dialog.Msg("FadeOutIN/1000");
+			dialog.HideNPC("ROKAS25_HILDA2");
+			dialog.UnHideNPC("ROKAS25_HILDA3");
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+}
+

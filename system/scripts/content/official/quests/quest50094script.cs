@@ -1,0 +1,63 @@
+//--- Melia Script -----------------------------------------------------------
+// Vendor's Lost Baggage
+//--- Description -----------------------------------------------------------
+// Quest to Talk to Traveling Merchant Andres.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(50094)]
+public class Quest50094Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(50094);
+		SetName("Vendor's Lost Baggage");
+		SetDescription("Talk to Traveling Merchant Andres");
+
+		AddPrerequisite(new CompletedPrerequisite("BRACKEN_63_1_MQ010"));
+		AddPrerequisite(new LevelPrerequisite(9999));
+
+		AddReward(new ExpReward(5372, 5372));
+		AddReward(new ItemReward("expCard2", 2));
+		AddReward(new ItemReward("Vis", 406));
+		AddReward(new ItemReward("Drug_SP1_Q", 15));
+
+		AddDialogHook("BRACKEN631_TRADESMAN02", "BeforeStart", BeforeStart);
+		AddDialogHook("BRACKEN631_TRADESMAN02", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("BRACKEN_63_1_SQ010_startnpc01", "BRACKEN_63_1_SQ010", "I will find it for you", "I feel very sorry for what happened"))
+			{
+				case 1:
+					await dialog.Msg("BRACKEN_63_1_SQ010_AG");
+					character.Quests.Start(this.QuestId);
+					break;
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		return HookResult.Continue;
+	}
+}
+

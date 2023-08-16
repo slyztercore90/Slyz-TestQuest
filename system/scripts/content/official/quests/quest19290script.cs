@@ -1,0 +1,49 @@
+//--- Melia Script -----------------------------------------------------------
+// Release the seal{nl}on the left of Collapsed Sanctum
+//--- Description -----------------------------------------------------------
+// Quest to Release the seal{nl}on the left of Collapsed Sanctum.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(19290)]
+public class Quest19290Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(19290);
+		SetName("Release the seal{nl}on the left of Collapsed Sanctum");
+		SetDescription("Release the seal{nl}on the left of Collapsed Sanctum");
+		SetTrack("SProgress", "ESuccess", "ROKAS25_REXIPHER6_TRACK", "m_boss_b");
+
+		AddPrerequisite(new LevelPrerequisite(61));
+
+		AddObjective("kill0", "Kill 1 Biteregina", new KillObjective(41213, 1));
+
+		AddReward(new ExpReward(50652, 50652));
+		AddReward(new ItemReward("expCard3", 4));
+		AddReward(new ItemReward("misc_gemExpStone01", 1));
+		AddReward(new ItemReward("Vis", 16226));
+
+		AddDialogHook("ROKAS25_SWITCH5", "BeforeStart", BeforeStart);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		if (!character.Quests.Has(this.QuestId))
+			character.Tracks.Start(this.TrackId);
+
+		return HookResult.Continue;
+	}
+}
+

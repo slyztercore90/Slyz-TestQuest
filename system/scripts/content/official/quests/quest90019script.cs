@@ -1,0 +1,54 @@
+//--- Melia Script -----------------------------------------------------------
+// The Corrupted Lake (2)
+//--- Description -----------------------------------------------------------
+// Quest to Talk to Elder Aloizard.
+//---------------------------------------------------------------------------
+
+using System.Threading.Tasks;
+using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Objectives;
+using Melia.Zone.World.Quests.Prerequisites;
+using Melia.Zone.World.Quests.Rewards;
+using Melia.Shared.Tos.Const;
+
+[QuestScript(90019)]
+public class Quest90019Script : QuestScript
+{
+	protected override void Load()
+	{
+		SetId(90019);
+		SetName("The Corrupted Lake (2)");
+		SetDescription("Talk to Elder Aloizard");
+
+		AddPrerequisite(new CompletedPrerequisite("F_3CMLAKE_83_MQ_01"));
+		AddPrerequisite(new LevelPrerequisite(9999));
+
+		AddDialogHook("3CMLAKE_83_OLDMAN2", "BeforeStart", BeforeStart);
+		AddDialogHook("3CMLAKE_83_OLDMAN2", "BeforeEnd", BeforeEnd);
+	}
+
+	private async Task<HookResult> BeforeStart(Dialog dialog)
+	{
+		var character = dialog.Player;
+		if (!character.Quests.Has(this.QuestId))
+		{
+			switch (await dialog.Select("3CMLAKE_83_MQ_06_DLG_01", "F_3CMLAKE_83_MQ_06"))
+			{
+			}
+			return HookResult.Break;
+		}
+
+		return HookResult.Continue;
+	}
+
+	private async Task<HookResult> BeforeEnd(Dialog dialog)
+	{
+		var character = dialog.Player;
+
+		return HookResult.Continue;
+	}
+}
+
