@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using Yggdrasil.Data.Binary;
 
 namespace Melia.Shared.Data.Database
@@ -10,6 +11,14 @@ namespace Melia.Shared.Data.Database
 		public VertexData[] Vertices { get; set; }
 		public VertexListData[] Triangles { get; set; }
 		public VertexListData[] Cells { get; set; }
+
+		public int Left => (int)this.Vertices.Min(a => a.X);
+		public int Right => (int)this.Vertices.Max(a => a.X);
+		public int Bottom => (int)this.Vertices.Min(a => a.Y);
+		public int Top => (int)this.Vertices.Max(a => a.Y);
+
+		public int Height => this.Top - this.Bottom;
+		public int Width => this.Right - this.Left;
 	}
 
 	public class VertexData

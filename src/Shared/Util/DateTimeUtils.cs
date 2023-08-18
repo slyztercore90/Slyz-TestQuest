@@ -44,6 +44,13 @@ namespace Melia.Shared.Util
 		public static string ToSPropertyDate(this DateTime dateTime) => dateTime.ToString("yyyyMMdd");
 
 		/// <summary>
+		/// Convert DateTime to a format for yyyyMMdd for property usage.
+		/// </summary>
+		/// <param name="dateTime"></param>
+		/// <returns></returns>
+		public static float ToSPropertyDateToFloat(this DateTime dateTime) => float.Parse(ToSPropertyDate(dateTime));
+
+		/// <summary>
 		/// Converts DateTime to an int in the format of yyyyMMdd.
 		/// </summary>
 		/// <param name="dateTime"></param>

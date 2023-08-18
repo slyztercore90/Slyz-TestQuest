@@ -134,6 +134,11 @@
 			public const int Skill_MoveJump = 0xC2;
 			public const int Skill_Unknown_C6 = 0xC8;
 			public const int Skill_Unknown_C7 = 0xC9;
+			public const int PlayGatherCorpseParts = 0xCC;
+			public const int PlayCorpsePartsRing = 0xD8;
+			public const int RemoveEffect = 0xDA;
+			public const int DropCorpseParts = 0xDB;
+			public const int PlayThrowCorpseParts = 0xDC;
 			public const int ItemCollectionList = 0xDD;
 			public const int UnlockCollection = 0xDF;
 			public const int UpdateCollection = 0xE0;

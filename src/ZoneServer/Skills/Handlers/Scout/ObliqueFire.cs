@@ -40,14 +40,14 @@ namespace Melia.Zone.Skills.Handlers.Scout
 
 			if (target == null)
 			{
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 
 			if (!caster.InSkillUseRange(skill, target))
 			{
 				caster.ServerMessage(Localization.Get("Too far away."));
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 

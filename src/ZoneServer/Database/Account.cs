@@ -31,7 +31,7 @@ namespace Melia.Zone.Database
 		/// <summary>
 		/// A reference to the account's assister cabinet.
 		/// </summary>
-		public AssisterCabinet AssisterCabinet { get; set; }
+		public AssisterCabinetComponent AssisterCabinet { get; set; }
 
 		/// <summary>
 		/// Track Popo Points (PCBANG_Points)

@@ -3228,6 +3228,7 @@ namespace Melia.Shared.Tos.Const
 		RIDE_PET_RIDEPET_18 = 14128,
 		RIDE_PET_RIDEPET_19 = 14129,
 		RIDE_PET_RIDEPET_20 = 14130,
+		RIDE_PET_RIDEPET_21 = 14131,
 		DRT_FadeInOut_Buff_2 = 14435,
 		DRT_FadeInOut_Buff_1 = 14436,
 		Stun_Quest_re = 14437,

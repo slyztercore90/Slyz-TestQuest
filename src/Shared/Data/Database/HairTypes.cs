@@ -18,7 +18,7 @@ namespace Melia.Shared.Data.Database
 	/// <summary>
 	/// Hair type database.
 	/// </summary>
-	public class HairTypeDb : DatabaseJson<HairTypeData>
+	public class HairTypeDb : DatabaseJsonIndexed<int, HairTypeData>
 	{
 		/// <summary>
 		/// Reads given entry and adds it to the database.
@@ -36,7 +36,7 @@ namespace Melia.Shared.Data.Database
 			data.ClassName = entry.ReadString("className");
 			data.Color = entry.ReadString("color");
 
-			this.Add(data);
+			this.Add(data.Index, data);
 		}
 	}
 }

@@ -1066,7 +1066,7 @@ namespace Melia.Zone.Network
 				var npcIds = new int[] { 4, 28, 2019, 2031, 2032 };
 
 				packet.PutInt(npcIds.Length);
-				// TODO: Isn't this packet missing a short here?
+				packet.PutShort(0);
 
 				packet.Zlib(true, zpacket =>
 				{
@@ -1084,10 +1084,22 @@ namespace Melia.Zone.Network
 				packet.PutShort(0);
 			}
 
-			// loop
-			//   int mapId;
-			//   int i1;
-			//   int i2;
+			character.Connection.Send(packet);
+		}
+
+		/// <summary>
+		/// Updates an NPC's state on a specific client.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="npc"></param>
+		public static void ZC_SET_NPC_STATE(Character character, Npc npc)
+		{
+			var packet = new Packet(Op.ZC_SET_NPC_STATE);
+
+			packet.PutInt(npc.Map.Id);
+			packet.PutInt(npc.GenType);
+			packet.PutShort((short)npc.State);
+			packet.PutEmptyBin(2);
 
 			character.Connection.Send(packet);
 		}
@@ -3112,6 +3124,21 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Updates an actor's Max Hp
+		/// </summary>
+		/// <param name="actor"></param>
+		/// <param name="maxHp"></param>
+		public static void ZC_UPDATE_MHP(IActor actor, int maxHp)
+		{
+			var packet = new Packet(Op.ZC_UPDATE_MHP);
+
+			packet.PutInt(actor.Handle);
+			packet.PutInt(maxHp);
+
+			actor.Map.Broadcast(packet, actor);
+		}
+
+		/// <summary>
 		/// Updates a characters HP for damage and healing.
 		/// </summary>
 		/// <param name="character"></param>
@@ -3723,6 +3750,23 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Sends ZC_HARDCODED_SKILL to the character.
+		/// </summary>
+		/// <param name="summon"></param>
+		public static void ZC_HARDCODED_SKILL(Summon summon, int i3)
+		{
+			var packet = new Packet(Op.ZC_HARDCODED_SKILL);
+
+			packet.PutInt(1);
+			packet.PutInt(summon.OwnerHandle);
+			packet.PutInt(summon.Handle);
+			packet.PutInt(summon.Id);
+			packet.PutInt(i3);
+
+			summon.Map.Broadcast(packet, summon);
+		}
+
+		/// <summary>
 		/// Sends ZC_SET_DAYLIGHT_INFO to character (dummy).
 		/// </summary>
 		/// <param name="character"></param>
@@ -3935,17 +3979,16 @@ namespace Melia.Zone.Network
 		/// <summary>
 		/// Sent on spawning a summoned monster
 		/// </summary>
-		/// <param name="actor"></param>
-		/// <param name="monster"></param>
-		/// <param name="b1"></param>
-		public static void ZC_IS_SUMMON_SORCERER_MONSTER(IActor actor, ISubActor monster)
+		/// <param name="character"></param>
+		/// <param name="summon"></param>
+		public static void ZC_IS_SUMMON_SORCERER_MONSTER(Character character, Summon summon)
 		{
 			var packet = new Packet(Op.ZC_IS_SUMMON_SORCERER_MONSTER);
 
-			packet.PutInt(monster.Handle);
-			packet.PutByte(actor.Handle == monster.OwnerHandle); // I think this 0 if it's not your monster
+			packet.PutInt(summon.Handle);
+			packet.PutByte(character.Handle == summon.OwnerHandle); // I think this 0 if it's not your monster
 
-			monster.Map.Broadcast(packet);
+			character.Connection.Send(packet);
 		}
 
 		/// <summary>
@@ -4747,7 +4790,7 @@ namespace Melia.Zone.Network
 
 				if (assisterCabinet != null)
 				{
-					zpacket.PutInt(assisterCabinet.Count());
+					zpacket.PutInt(assisterCabinet.Count);
 					foreach (var card in assisterCabinet.GetAssisters())
 					{
 						zpacket.PutLpString(card.Name);

@@ -8,6 +8,7 @@ using Melia.Shared.ObjectProperties;
 using Melia.Shared.Scripting;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.Tos.Properties;
+using Melia.Shared.Util;
 using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting.AI;
@@ -323,12 +324,17 @@ namespace Melia.Zone.World.Actors.Characters
 		/// <summary>
 		/// Character's achievement manager.
 		/// </summary>
-		public Achievements Achievements { get; }
+		public AchievementComponent Achievements { get; }
 
 		/// <summary>
 		/// Returns the character's movement component.
 		/// </summary>
 		public MovementComponent Movement { get; }
+
+		/// <summary>
+		/// Returns the character's summoned monsters.
+		/// </summary>
+		public SummonComponent Summons { get; }
 
 		/// <summary>
 		/// Character's properties.
@@ -395,7 +401,7 @@ namespace Melia.Zone.World.Actors.Characters
 		/// <summary>
 		/// Character's current trade
 		/// </summary>
-		public Trade Trade { get; set; }
+		public TradeComponent Trade { get; set; }
 
 		/// <summary>
 		/// Check if character is trading
@@ -441,7 +447,8 @@ namespace Melia.Zone.World.Actors.Characters
 			this.Components.Add(this.TimedEvents = new TimedEventComponent(this));
 			this.Components.Add(this.Tracks = new TrackComponent(this));
 			this.Components.Add(this.Triggers = new Triggers(this));
-			this.Components.Add(this.Achievements = new Achievements(this));
+			this.Components.Add(this.Achievements = new AchievementComponent(this));
+			this.Components.Add(this.Summons = new SummonComponent(this));
 			this.Properties = new CharacterProperties(this);
 
 			this.AddSessionObjects();
@@ -716,6 +723,28 @@ namespace Melia.Zone.World.Actors.Characters
 			this.PlayEffect("F_pc_level_up", 3);
 		}
 
+		public void ClassUp(int amount = 1)
+		{
+			if (amount < 1)
+				throw new ArgumentException("Amount can't be lower than 1.");
+
+			var job = this.Job;
+			var classLevel = job.Level;
+			var classExp = ZoneServer.Instance.Data.ExpDb.GetNextTotalClassExp(this.Jobs.GetCurrentRank(), job.Level + amount - 1);
+
+			// Limit EXP to the total max, otherwise the client will
+			// display level 1 with 0%.
+			job.TotalExp = Math.Min(job.TotalMaxExp, job.TotalExp + classExp);
+
+			var newClassLevel = this.ClassLevel;
+			var classLevelsGained = (newClassLevel - classLevel);
+
+			Send.ZC_JOB_EXP_UP(this, classExp);
+
+			if (classLevelsGained > 0)
+				this.ClassLevelUp(classLevelsGained);
+		}
+
 		/// <summary>
 		/// Gives skill points to the current job and updates client.
 		/// </summary>
@@ -757,7 +786,11 @@ namespace Melia.Zone.World.Actors.Characters
 				return;
 
 			this.ModifyHpSafe(hpAmount, out var hp, out var priority);
+			if (hpAmount > 0)
+				Send.ZC_HEAL_INFO(this, hpAmount, this.Properties.GetFloat(PropertyName.MHP), HealType.Hp);
 			this.Properties.Modify(PropertyName.SP, spAmount);
+			if (spAmount > 0)
+				Send.ZC_HEAL_INFO(this, spAmount, this.Properties.GetFloat(PropertyName.MSP), HealType.Sp);
 
 			Send.ZC_UPDATE_ALL_STATUS(this, priority);
 		}
@@ -946,6 +979,11 @@ namespace Melia.Zone.World.Actors.Characters
 
 					if (monster.OwnerHandle != 0)
 						Send.ZC_OWNER(this, monster);
+
+					if (monster is Summon summon)
+					{
+						Send.ZC_IS_SUMMON_SORCERER_MONSTER(this, summon);
+					}
 
 					if (monster is Companion companion)
 					{
@@ -1226,15 +1264,15 @@ namespace Melia.Zone.World.Actors.Characters
 		/// </summary>
 		public void SendPCEtcProperties()
 		{
-			var pcEtcProps = new Properties("PCEtc");
-			pcEtcProps.SetString("SkintoneName", "skintone2");
-			pcEtcProps.SetString("StartHairName", "UnbalancedShortcut");
-			pcEtcProps.SetFloat("LobbyMapID", this.MapId);
-			pcEtcProps.SetString("RepresentationClassID", this.JobId.ToString());
-			pcEtcProps.SetFloat("LastPlayDate", 20210728);
-			pcEtcProps.SetFloat("CTRLTYPE_RESET_EXCEPT", 1);
+			this.EtcProperties.SetString("SkintoneName", "skintone2");
+			if (ZoneServer.Instance.Data.HairTypeDb.TryFind(this.Hair, out var hair))
+				this.EtcProperties.SetString("StartHairName", hair.ClassName);
+			this.EtcProperties.SetFloat("LobbyMapID", this.MapId);
+			this.EtcProperties.SetString("RepresentationClassID", this.JobId.ToString());
+			this.EtcProperties.SetFloat("LastPlayDate", DateTimeUtils.ToSPropertyDateToFloat(DateTime.Now));
+			//pcEtcProps.SetFloat("CTRLTYPE_RESET_EXCEPT", 1);
 
-			Send.ZC_OBJECT_PROPERTY(this.Connection, this, pcEtcProps);
+			Send.ZC_OBJECT_PROPERTY(this.Connection, this.SocialUserId, this.EtcProperties.GetAll());
 		}
 
 		/// <summary>
@@ -1644,6 +1682,28 @@ namespace Melia.Zone.World.Actors.Characters
 		{
 			this.Hair = hairTypeIndex;
 			Send.ZC_UPDATED_PCAPPEARANCE(this);
+		}
+
+		/// <summary>
+		/// Set ETC property and updates client.
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="amount"></param>
+		public void SetEtcProperty(string propertyName, int amount)
+		{
+			this.EtcProperties.SetFloat(propertyName, amount);
+			Send.ZC_OBJECT_PROPERTY(this, this.SocialUserId, this.EtcProperties.GetSelect(propertyName));
+		}
+
+		/// <summary>
+		/// Modify ETC property and updates client.
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="amount"></param>
+		public void ModifyEtcProperty(string propertyName, int amount)
+		{
+			this.EtcProperties.Modify(propertyName, amount);
+			Send.ZC_OBJECT_PROPERTY(this, this.SocialUserId, this.EtcProperties.GetSelect(propertyName));
 		}
 	}
 }

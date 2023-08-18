@@ -5,10 +5,12 @@
 //---------------------------------------------------------------------------
 
 using System;
+using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
 using Melia.Zone.Scripting;
 using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Monsters;
+using static Melia.Shared.Network.NormalOp;
 
 public class MonsterCalculationsFunctionsScript : GeneralScript
 {
@@ -23,7 +25,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 		if (monster.Properties.Overrides.TryGetFloat(PropertyName.MHP, out var fixValue))
 			return fixValue;
 
-		var baseValue = monster.Data.Hp;
+		var baseValue = monster.Properties.GetFloat(PropertyName.FixedLife, monster.Data.Hp);
 		var byBuff = monster.Properties.GetFloat(PropertyName.MHP_BM);
 
 		return baseValue + byBuff;
@@ -59,7 +61,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 
 		var properties = monster.Properties;
 
-		var baseValue = (float)monster.Data.PhysicalAttackMin;
+		var baseValue = properties.GetFloat(PropertyName.FixedAttack, (float)monster.Data.PhysicalAttackMin);
 		var value = baseValue;
 
 		var byBuffs = 0f;
@@ -89,7 +91,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 
 		var properties = monster.Properties;
 
-		var baseValue = (float)monster.Data.PhysicalAttackMax;
+		var baseValue = properties.GetFloat(PropertyName.FixedAttack, (float)monster.Data.PhysicalAttackMax);
 		var value = baseValue;
 
 		var byBuffs = 0f;
@@ -119,7 +121,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 
 		var properties = monster.Properties;
 
-		var baseValue = (float)monster.Data.MagicalAttackMin;
+		var baseValue = properties.GetFloat(PropertyName.FixedAttack, (float)monster.Data.MagicalAttackMin);
 		var value = baseValue;
 
 		var byBuffs = 0f;
@@ -149,7 +151,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 
 		var properties = monster.Properties;
 
-		var baseValue = (float)monster.Data.MagicalAttackMax;
+		var baseValue = properties.GetFloat(PropertyName.FixedAttack, monster.Data.MagicalAttackMax);
 		var value = baseValue;
 
 		var byBuffs = 0f;
@@ -179,7 +181,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 
 		var properties = monster.Properties;
 
-		var baseValue = (float)monster.Data.PhysicalDefense;
+		var baseValue = properties.GetFloat(PropertyName.FixedDefence, monster.Data.PhysicalDefense);
 		var value = baseValue;
 
 		var byBuffs = properties.GetFloat(PropertyName.DEF_BM);
@@ -206,7 +208,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 
 		var properties = monster.Properties;
 
-		var baseValue = (float)monster.Data.MagicalDefense;
+		var baseValue = properties.GetFloat(PropertyName.FixedDefence, (float)monster.Data.MagicalDefense);
 		var value = baseValue;
 
 		var byBuffs = properties.GetFloat(PropertyName.MDEF_BM);
@@ -304,7 +306,7 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 			default: baseValue = 50; break;
 		}
 
-		var byBuffs = monster.Properties.GetFloat(PropertyName.SDR_BM);
+		var byBuffs = monster.Properties.GetFloat(PropertyName.SR_BM);
 
 		var value = baseValue + byBuffs;
 
@@ -333,5 +335,79 @@ public class MonsterCalculationsFunctionsScript : GeneralScript
 		var value = baseValue + byBuffs;
 
 		return (int)Math.Max(1, value);
+	}
+
+	/// <summary>
+	/// Returns the monster's Critical Hit Rate.
+	/// </summary>
+	/// <param name="monster"></param>
+	/// <returns></returns>
+	[ScriptableFunction]
+	public float SCR_Get_MON_CRTHR(Mob monster)
+	{
+		if (monster.Properties.Overrides.TryGetFloat(PropertyName.CRTHR, out var fixValue))
+			return fixValue;
+
+		var value = (float)monster.Data.CritHitRate;
+
+		var byBuffs = 0f;
+		byBuffs += monster.Properties.GetFloat(PropertyName.CRTHR_BM, 0);
+
+		var byRateBuffs = 0f;
+		byRateBuffs += monster.Properties.GetFloat(PropertyName.CRTHR_RATE_BM);
+		byRateBuffs = value * byRateBuffs;
+
+		value = value + byBuffs + byRateBuffs;
+
+		return (int)Math.Max(0, value);
+	}
+
+	/// <summary>
+	/// Returns the monster's Critical Hit Rate.
+	/// </summary>
+	/// <param name="monster"></param>
+	/// <returns></returns>
+	[ScriptableFunction]
+	public float SCR_Get_MON_CRTDR(Mob monster)
+	{
+		if (monster.Properties.Overrides.TryGetFloat(PropertyName.CRTDR, out var fixValue))
+			return fixValue;
+
+		var value = (float)monster.Data.CritHitRate;
+
+		var byBuffs = 0f;
+		byBuffs += monster.Properties.GetFloat(PropertyName.CRTDR_BM, 0);
+
+		var byRateBuffs = 0f;
+		byRateBuffs += monster.Properties.GetFloat(PropertyName.CRTDR_RATE_BM);
+		byRateBuffs = value * byRateBuffs;
+
+		value = value + byBuffs + byRateBuffs;
+
+		var decRatio = monster.Properties.GetFloat(PropertyName.CRTDR_RATE_MUL_BM, 1);
+
+		if (monster.Buffs.Has(BuffId.Tenacity_Buff) || monster.Data.Rank == MonsterRank.Boss)
+			decRatio = 1 - ((1 - decRatio) * 0.5f);
+
+		if (decRatio < 0.5f)
+			decRatio = 0.5f;
+
+		value *= decRatio;
+
+		return (int)Math.Max(0, value);
+	}
+
+	/// <summary>
+	/// Returns the monster's Critical Attack.
+	/// </summary>
+	/// <param name="monster"></param>
+	/// <returns></returns>
+	[ScriptableFunction]
+	public float SCR_Get_MON_CRTATK(Mob monster)
+	{
+		if (monster.Properties.Overrides.TryGetFloat(PropertyName.CRTATK, out var fixValue))
+			return fixValue;
+
+		return monster.Data.CritAttack;
 	}
 }

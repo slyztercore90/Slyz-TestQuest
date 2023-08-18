@@ -72,7 +72,7 @@ namespace Melia.Zone.Skills.Handlers.Hunter
 							target.Components.Get<BuffComponent>()?.AddOrUpdate(coursingDamageDebuff, decreaseHealDebuff);
 							Send.ZC_SYNC_END(caster, skillHandle, 0);
 							Send.ZC_SYNC_EXEC_BY_SKILL_TIME(caster, skillHandle, TimeSpan.FromMilliseconds(200));
-						});
+						}).Start();
 				}
 			}
 		}

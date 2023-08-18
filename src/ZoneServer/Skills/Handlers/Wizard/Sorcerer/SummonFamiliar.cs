@@ -49,41 +49,26 @@ namespace Melia.Zone.Skills.Handlers.Sorcerer
 
 			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
 
-			var monsterId = 57432;
-			for (var i = 0; i < 5; i++)
+			if (caster is Character character)
 			{
-				var summonedMonster = new Mob(monsterId, MonsterType.Friendly);
-				summonedMonster.Map = caster.Map;
-				summonedMonster.Position = farPos;
-				summonedMonster.Direction = caster.Direction;
-				summonedMonster.Faction = FactionType.Law;
-				summonedMonster.Properties.SetFloat(PropertyName.FIXMSPD_BM, 80f);
-				summonedMonster.Components.Add(new MovementComponent(summonedMonster));
-
-				var ai = new AiComponent(summonedMonster, "BasicMonster", caster);
-				summonedMonster.Components.Add(ai);
-				caster.Map.AddMonster(summonedMonster);
-				// Should this be handled by the character visibility update or map update?
-				// Might be redundant to send this again if handled there.
-				if (caster is Character summoner)
+				for (var i = 0; i < 5; i++)
 				{
-					Send.ZC_OWNER(summoner, summonedMonster);
-					Send.ZC_ENTER_MONSTER(summonedMonster);
-					Send.ZC_FACTION(summoner.Connection, summonedMonster, FactionType.Law);
-					Send.ZC_NORMAL.SummonPlayAnimation(summonedMonster, "SORCERER_SUMMONSALOON", 1);
-					Send.ZC_BUFF_LIST(summonedMonster);
-				}
+					var summon = new Summon(character, MonsterId.Familiar, MonsterType.Friendly);
+					summon.Map = caster.Map;
+					summon.Direction = caster.Direction;
+					summon.Faction = FactionType.Law;
+					summon.Properties.SetFloat(PropertyName.FIXMSPD_BM, 80f);
+					summon.SetState(true);
 
-				skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
-				Send.ZC_SYNC_START(caster, skillHandle, 1);
-				if (caster is Character character)
-					Send.ZC_MSPD(character, summonedMonster, 0, summonedMonster.Properties.GetFloat(PropertyName.MSPD));
-				summonedMonster.Components.Get<BuffComponent>()?.AddOrUpdate(new Buff(BuffId.Ability_buff_PC_Summon, 0, 0, TimeSpan.Zero, summonedMonster, summonedMonster));
-				Send.ZC_IS_SUMMON_SORCERER_MONSTER(caster, summonedMonster);
-				Send.ZC_SYNC_END(caster, skillHandle, 0);
-				Send.ZC_SYNC_EXEC_BY_SKILL_TIME(caster, skillHandle, skill.Data.DefaultHitDelay);
+					skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
+					Send.ZC_SYNC_START(caster, skillHandle, 1);
+					Send.ZC_MSPD(character, summon, 0, summon.Properties.GetFloat(PropertyName.MSPD));
+					summon.Components.Get<BuffComponent>()?.AddOrUpdate(new Buff(BuffId.Ability_buff_PC_Summon, 0, 0, TimeSpan.Zero, summon, summon));
+					Send.ZC_SYNC_END(caster, skillHandle, 0);
+					Send.ZC_SYNC_EXEC_BY_SKILL_TIME(caster, skillHandle, skill.Data.DefaultHitDelay);
+				}
+				caster.Components.Get<BuffComponent>()?.AddOrUpdate(new Buff(BuffId.sorcerer_bat, 0, 0, TimeSpan.FromSeconds(60), caster, caster));
 			}
-			caster.Components.Get<BuffComponent>()?.AddOrUpdate(new Buff(BuffId.sorcerer_bat, 0, 0, TimeSpan.FromSeconds(60), caster, caster));
 		}
 	}
 }

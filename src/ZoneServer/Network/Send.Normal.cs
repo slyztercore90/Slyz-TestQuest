@@ -1043,15 +1043,15 @@ namespace Melia.Zone.Network
 			/// <summary>
 			/// Attack broadcast?
 			/// </summary>
-			/// <param name="character"></param>
-			public static void AttackCancel(Character character)
+			/// <param name="actor"></param>
+			public static void AttackCancel(IActor actor)
 			{
 				var packet = new Packet(Op.ZC_NORMAL);
 				packet.PutInt(NormalOp.Zone.AttackCancel);
 
-				packet.PutInt(character.Handle);
+				packet.PutInt(actor.Handle);
 
-				character.Map.Broadcast(packet);
+				actor.Map.Broadcast(packet);
 			}
 
 			/// <summary>
@@ -1977,7 +1977,7 @@ namespace Melia.Zone.Network
 			}
 
 			/// <summary>
-			/// Sent during login for unknown purpose
+			/// List of item collection an account has.
 			/// </summary>
 			/// <param name="character"></param>
 			public static void ItemCollectionList(Character character)
@@ -1997,9 +1997,9 @@ namespace Melia.Zone.Network
 						zpacket.PutInt(collection.Items.Count);
 						foreach (var collectionItem in collection.Items)
 						{
-							packet.PutInt(collectionItem.Id);
-							packet.PutLong(collectionItem.Id);
-							packet.PutShort(0); // Not too sure what this is.
+							zpacket.PutInt(collectionItem.Id);
+							zpacket.PutLong(collectionItem.Id);
+							zpacket.PutShort(0); // Not too sure what this is.
 						}
 					}
 					**/
@@ -3331,6 +3331,111 @@ namespace Melia.Zone.Network
 				packet.PutByte(b1);
 
 				character.Map.Broadcast(packet);
+			}
+
+			//
+			public static void PlayGatherCorpseParts(IActor caster, IActor corpse)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PlayGatherCorpseParts);
+
+				packet.PutInt(caster.Handle);
+				packet.PutInt(corpse.Handle);
+
+				caster.Map.Broadcast(packet, caster);
+			}
+
+			/// <summary>
+			/// Create a ring of corpse parts
+			/// </summary>
+			/// <param name="caster"></param>
+			/// <param name="effectHandle"></param>
+			/// <param name="ringExpansionDuration"></param>
+			/// <param name="ringRadius"></param>
+			/// <param name="ringPartsRotationSpeed"></param>
+			/// <param name="corpsePartCount"></param>
+			/// <param name="monsterIds"></param>
+			public static void PlayCorpsePartsRing(IActor caster, int effectHandle, float ringExpansionDuration, float ringRadius, float ringPartsRotationSpeed, int corpsePartCount, params int[] monsterIds)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PlayCorpsePartsRing);
+
+				packet.PutInt(caster.Handle);
+				packet.PutInt(effectHandle);
+				packet.PutFloat(ringExpansionDuration);
+				packet.PutFloat(ringRadius);
+				packet.PutFloat(ringPartsRotationSpeed);
+				packet.PutInt(monsterIds.Length);
+				for (var i = 0; i < monsterIds.Length; i++)
+				{
+					packet.PutInt(monsterIds[i]);
+					packet.PutByte((byte)i);
+					packet.PutInt(corpsePartCount);
+					packet.PutInt(corpsePartCount);
+				}
+
+				caster.Map.Broadcast(packet, caster);
+			}
+
+			/// <summary>
+			/// Remove effect
+			/// </summary>
+			/// <param name="caster"></param>
+			/// <param name="effectHandle"></param>
+			public static void RemoveEffect(IActor caster, int effectHandle)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.RemoveEffect);
+
+				packet.PutInt(caster.Handle);
+				packet.PutInt(effectHandle);
+
+				caster.Map.Broadcast(packet, caster);
+			}
+
+			public static void Skill_DB(IActor actor, int effectHandle, byte b1, int monsterId, byte b2, int i3, int i4)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.DropCorpseParts);
+
+				packet.PutInt(actor.Handle);
+				packet.PutInt(effectHandle);
+				packet.PutByte(b1);
+				packet.PutInt(monsterId);
+				packet.PutByte(b2);
+				packet.PutInt(i3);
+				packet.PutInt(i4);
+
+				actor.Map.Broadcast(packet, actor);
+			}
+
+			/// <summary>
+			/// 
+			/// </summary>
+			/// <param name="caster"></param>
+			/// <param name="effectHandle"></param>
+			/// <param name="position"></param>
+			/// <param name="particleSpread"></param>
+			/// <param name="startDelay"></param>
+			/// <param name="particleSpeed"></param>
+			/// <param name="f4"></param>
+			/// <param name="animationDuration"></param>
+			/// <param name="i2"></param>
+			public static void PlayThrowCorpseParts(IActor caster, int effectHandle, Position position, float particleSpread, float startDelay, float particleSpeed, float f4, float animationDuration, int i2)
+			{
+				var packet = new Packet(Op.ZC_NORMAL);
+				packet.PutInt(NormalOp.Zone.PlayThrowCorpseParts);
+
+				packet.PutInt(effectHandle);
+				packet.PutPosition(position);
+				packet.PutFloat(particleSpread);
+				packet.PutFloat(startDelay);
+				packet.PutFloat(particleSpeed);
+				packet.PutFloat(f4);
+				packet.PutFloat(animationDuration);
+				packet.PutInt(i2);
+
+				caster.Map.Broadcast(packet, caster);
 			}
 		}
 

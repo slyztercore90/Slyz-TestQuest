@@ -87,7 +87,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 
 			foreach (var currentTarget in targets.LimitBySDR(caster, skill))
 			{
-				Send.ZC_NORMAL.PlayTextEffect(currentTarget, caster, "SHOW_BUFF_TEXT", 301);
+				Send.ZC_NORMAL.PlayTextEffect(currentTarget, caster, AnimationName.ShowBuffText, 301);
 				var frostPillar = new Buff(BuffId.Cryomancer_FrostPillar, 0, 0, TimeSpan.FromSeconds(3), currentTarget, caster);
 				//frostPillar.Skill = skill;
 				var gustDebuff = new Buff(BuffId.Gust_Debuff, 0, 0, TimeSpan.FromSeconds(0), currentTarget, caster);

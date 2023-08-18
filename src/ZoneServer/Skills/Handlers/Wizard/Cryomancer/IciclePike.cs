@@ -60,7 +60,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 				{
 					var buff = new Buff(BuffId.Cryomancer_Freeze, 0, 0, TimeSpan.FromSeconds(5), currentTarget, caster);
 					//buff.Skill = skill;
-					Send.ZC_NORMAL.PlayTextEffect(currentTarget, caster, "SHOW_BUFF_TEXT", 238);
+					Send.ZC_NORMAL.PlayTextEffect(currentTarget, caster, AnimationName.ShowBuffText, 238);
 					Send.ZC_NORMAL.StatusEffect(currentTarget, 5000, "Freeze", "Cryomancer_Freeze");
 					Send.ZC_SYNC_START(caster, skillHandle, 1);
 					currentTarget.Components.Get<BuffComponent>()?.AddOrUpdate(buff);

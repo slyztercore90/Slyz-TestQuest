@@ -47,40 +47,23 @@ namespace Melia.Zone.Skills.Handlers.Sorcerer
 
 			if (caster is Character character)
 			{
-				var monsterId = 401581;
-				var summonedMonster = new Mob(monsterId, MonsterType.Friendly);
-
-				Send.ZC_EXEC_CLIENT_SCP(character.Connection, string.Format("UPDATE_PC_FOLLOWER_LIST(\"{0}:1#\")", monsterId));
-				summonedMonster.Map = caster.Map;
+				var summonedMonster = new Summon(character, MonsterId.Salamion, MonsterType.Friendly);
+				character.Summons.AddSummon(summonedMonster);
 				summonedMonster.Name = "!@#${Auto_1}_of_{Auto_2}$*$Auto_1$*$" + caster.Name + "$*$Auto_2$*$@dicID_^*$ETC_20150317_000235$*^#@!";
-				summonedMonster.Position = farPos;
+				summonedMonster.Direction = caster.Direction;
 				summonedMonster.OwnerHandle = caster.Handle;
 				summonedMonster.Faction = FactionType.Law;
 				summonedMonster.Properties.SetFloat(PropertyName.FIXMSPD_BM, 80f);
-				summonedMonster.Properties.SetFloat(PropertyName.MINPATK, 40f);
-				summonedMonster.Properties.SetFloat(PropertyName.MAXPATK, 50f);
-				summonedMonster.Properties.SetFloat(PropertyName.MINMATK, 40f);
-				summonedMonster.Properties.SetFloat(PropertyName.MAXMATK, 50f);
-				summonedMonster.Components.Add(new MovementComponent(summonedMonster));
-				//var ai = new CreatureAi(summonedMonster, "PC_Summon");
-				//ai.SetMaster(caster);
-				//ai.SetAggro(true);
-				//summonedMonster.Components.Add(ai);
-				var ai = new AiComponent(summonedMonster, "BasicMonster", caster);
-				summonedMonster.Components.Add(ai);
-				summonedMonster.Direction = caster.Direction;
-				caster.Map.AddMonster(summonedMonster);
-				Send.ZC_OWNER(character, summonedMonster);
-				Send.ZC_ENTER_MONSTER(summonedMonster);
-				Send.ZC_FACTION(character.Connection, summonedMonster, FactionType.Law);
-				Send.ZC_NORMAL.SummonPlayAnimation(summonedMonster, "SORCERER_SUMMONSALOON", 1);
-				Send.ZC_BUFF_LIST(summonedMonster);
+				summonedMonster.Properties.Overrides.SetFloat(PropertyName.MINPATK, 40f);
+				summonedMonster.Properties.Overrides.SetFloat(PropertyName.MAXPATK, 50f);
+				summonedMonster.Properties.Overrides.SetFloat(PropertyName.MINMATK, 40f);
+				summonedMonster.Properties.Overrides.SetFloat(PropertyName.MAXMATK, 50f);
+				summonedMonster.SetState(true);
 
 				skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
 				Send.ZC_SYNC_START(caster, skillHandle, 1);
 				Send.ZC_MSPD(character, summonedMonster, 0, 160f);
 				summonedMonster.Components.Get<BuffComponent>()?.AddOrUpdate(new Buff(BuffId.Ability_buff_PC_Summon, 0, 0, TimeSpan.Zero, summonedMonster, summonedMonster));
-				Send.ZC_IS_SUMMON_SORCERER_MONSTER(caster, summonedMonster);
 				Send.ZC_SYNC_END(caster, skillHandle, 0);
 				Send.ZC_SYNC_EXEC_BY_SKILL_TIME(caster, skillHandle, skill.Data.DefaultHitDelay);
 			}

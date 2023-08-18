@@ -36,6 +36,7 @@ public class BasicMonsterAiScript : AiScript
 		var master = GetMaster();
 		if (master != null)
 		{
+			yield return Animation("IDLE");
 			yield return Follow(master);
 			yield break;
 		}
@@ -128,7 +129,7 @@ public class BasicMonsterAiScript : AiScript
 			StartRoutine("StopAndIdle", StopAndIdle());
 		}
 	}
-	
+
 	private void CheckLocation()
 	{
 		if (this.Entity is IMonster monster && monster.SpawnLocation.Position.Get2DDistance(monster.Position) > MaxRoamDistance)

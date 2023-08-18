@@ -30,16 +30,20 @@ namespace Melia.Zone.World.Actors.Monsters
 			{
 				this.Map = this.Owner.Map;
 				this.OwnerHandle = this.Owner.Handle;
+				this.AssociatedHandle = this.Owner.Handle;
 				this.Components.Add(new MovementComponent(this));
-				this.Components.Add(new AiComponent(this, "BasicMonster"));
+				this.Components.Add(new AiComponent(this, "BasicMonster", this.Owner));
 				this.Position = this.Owner.Position.GetRandomInRange2D(15, new Random());
 				Send.ZC_SET_POS(this);
 				this.Map.AddMonster(this);
+				Send.ZC_HARDCODED_SKILL(this, 1);
 			}
 			else
 			{
+				Send.ZC_HARDCODED_SKILL(this, 0);
 				this.Position = Position.Zero;
 				this.OwnerHandle = 0;
+				this.AssociatedHandle = 0;
 				// Clear Buffs
 				this.Map.RemoveMonster(this);
 				this.Components.Remove<AiComponent>();

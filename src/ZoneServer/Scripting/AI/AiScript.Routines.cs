@@ -29,6 +29,9 @@ namespace Melia.Zone.Scripting.AI
 		/// <returns></returns>
 		protected IEnumerable MoveRandom(int min = 35, int max = 50, bool wait = true)
 		{
+			if (this.Entity.MoveType == MoveType.Holding)
+				yield break;
+
 			min = 100;
 			min = Math.Max(1, min);
 			max = Math.Max(min, max);
@@ -220,7 +223,7 @@ namespace Melia.Zone.Scripting.AI
 		/// <param name="minDistance">The minimum distance to the target the AI attempts to stay in.</param>
 		/// <param name="matchSpeed">If true, the entity's speed will be changed to match the target's.</param>
 		/// <returns></returns>
-		protected IEnumerable Follow(ICombatEntity followTarget, float minDistance = 50, bool matchSpeed = false)
+		protected IEnumerable Follow(ICombatEntity followTarget, float minDistance = 75, bool matchSpeed = false)
 		{
 			var movement = this.Entity.Components.Get<MovementComponent>();
 			var targetWasInRange = false;
@@ -275,7 +278,7 @@ namespace Melia.Zone.Scripting.AI
 				{
 					movement.Stop();
 
-					this.Entity.Position = followTarget.Position;
+					this.Entity.Position = followTarget.Position.GetRandomInRange2D(15, (int)minDistance - 1);
 					Send.ZC_SET_POS(this.Entity);
 				}
 
@@ -295,7 +298,7 @@ namespace Melia.Zone.Scripting.AI
 
 				if (catchUp)
 				{
-					var closePos = this.Entity.Position.GetRelative(followTarget.Position, 50);
+					var closePos = followTarget.Position.GetRandomInRange2D(15, (int)minDistance - 1);
 					yield return this.MoveTo(closePos, false);
 				}
 				else if (movement.IsMoving)

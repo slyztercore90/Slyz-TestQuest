@@ -42,6 +42,9 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\..\lib\MySqlConnector.dll</HintPath>
     </Reference>
+    <Reference Include="Yggdrasil.Structures">
+      <HintPath>..\..\lib\Yggdrasil.Structures.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />

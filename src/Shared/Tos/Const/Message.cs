@@ -448,6 +448,11 @@
 		/// String Arg: SSS:aae69a/1/aae748/1/;SS:aaea0a/1/aae749/1/;S:aaea0f/20/aaea09/1/aaea08/1/aaea0c/1/aaea0b/1/a86350/1/a86341/10/aae6a0/10/;A:aae6a9/20/aae6a7/30/aae6c4/20/aae6c2/30/996af/1/996b0/1/a86341/2/aae6a0/2/;B:a84e07/1/aaea07/3/9c59c/10/9c59d/10/78b12/2/77b47/5/a86341/1/aae6a0/1/;C:aae6ca/1/a8641d/3/9c5bf/10/9c5c0/10/78b12/1/77b47/1/a86311/1/aae69f/1/;
 		/// </summary>
 		public const string GODDESS_ROULETTE_ITEM_UPDATE = "GODDESS_ROULETTE_ITEM_UPDATE";
+
+		/// <summary>
+		/// Necromancer Corpse Parts Update
+		/// </summary>
+		public static readonly string UPDATE_NECRONOMICON_UI = "UPDATE_NECRONOMICON_UI";
 	}
 
 	/// <summary>
@@ -656,6 +661,11 @@
 		/// Open Skill Transmutation
 		/// </summary>
 		public const string REQ_COMMON_SKILL_ENCHANT_UI_OPEN = "REQ_COMMON_SKILL_ENCHANT_UI_OPEN()";
+
+		/// <summary>
+		/// Magnum Opus
+		/// </summary>
+		public const string PUZZLE_COMPLETE = "PUZZLE_COMPLETE()";
 	}
 
 	public static class CustomDialog

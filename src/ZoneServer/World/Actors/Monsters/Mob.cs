@@ -352,6 +352,8 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// <returns></returns>
 		private Character GetKillBeneficiary(ICombatEntity killer)
 		{
+			if (killer == null)
+				return null;
 			var beneficiary = killer;
 
 			var topAttacker = this.Components.Get<CombatComponent>()?.GetTopAttackerByDamage();

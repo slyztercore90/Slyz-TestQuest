@@ -3293,6 +3293,7 @@ public static class MonsterId
 	public const int RidePet_Cloudkepa = 65016;
 	public const int RidePet_Dragonboat_1 = 65017;
 	public const int RidePet_Unicorn = 65018;
+	public const int RidePet_Explorer = 65019;
 	public const int Gtower_StoneWhale = 90001;
 	public const int Gtower_Chapparition = 90002;
 	public const int Gtower_TombLord = 90003;

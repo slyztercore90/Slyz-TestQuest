@@ -56,7 +56,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 
 			if (target == null)
 			{
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 

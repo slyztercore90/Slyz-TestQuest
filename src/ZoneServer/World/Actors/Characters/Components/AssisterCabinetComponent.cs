@@ -8,7 +8,10 @@ using Melia.Zone.World.Actors.CombatEntities.Components;
 
 namespace Melia.Zone.World.Actors.Characters.Components
 {
-	public class AssisterCabinet : CharacterComponent
+	/// <summary>
+	/// Assister Cabinet.
+	/// </summary>
+	public class AssisterCabinetComponent : CharacterComponent
 	{
 		/// <summary>
 		/// Assister Collection
@@ -18,13 +21,16 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <summary>
 		/// Assister Collection Count
 		/// </summary>
-		public int Count()
+		public int Count
 		{
-			lock (_assisters)
-				return this._assisters.Count;
+			get
+			{
+				lock (_assisters)
+					return this._assisters.Count;
+			}
 		}
 
-		public AssisterCabinet(Character character) : base(character)
+		public AssisterCabinetComponent(Character character) : base(character)
 		{
 		}
 
@@ -34,7 +40,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="assister"></param>
 		public void Add(string assister)
 		{
-			var card = new AssisterCard(-1, assister, this.Count());
+			var card = new AssisterCard(-1, assister, this.Count);
 			this.Add(card);
 		}
 

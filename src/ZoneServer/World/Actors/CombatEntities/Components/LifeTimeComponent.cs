@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Melia.Zone.World.Actors.Monsters;
 using Yggdrasil.Composition;
 using Yggdrasil.Scheduling;
 

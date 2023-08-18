@@ -45,9 +45,6 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 		/// <param name="buff"></param>
 		private void Add(Buff buff)
 		{
-			if (this.Entity.IsDead)
-				return;
-
 			lock (_buffs)
 				_buffs[buff.Id] = buff;
 
@@ -65,9 +62,6 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 		/// <param name="buff"></param>
 		private void Overbuff(Buff buff)
 		{
-			if (this.Entity.IsDead)
-				return;
-
 			var overbuff = buff.OverbuffCounter;
 			buff.IncreaseOverbuff();
 

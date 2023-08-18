@@ -168,7 +168,7 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 		/// <returns></returns>
 		private Task OnEnterHealingPad(Dialog dialog)
 		{
-			if (!(dialog.Initiator is ICombatEntity initiator))
+			if (dialog.Initiator is not ICombatEntity initiator)
 				return Task.CompletedTask;
 
 			// I don't know how exactly the heal pads worked in the past,

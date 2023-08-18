@@ -194,8 +194,7 @@ namespace Melia.Zone.World.Actors
 		/// <param name="effect"></param>
 		public void AddEffect(Effect effect)
 		{
-			if (this.Components == null)
-				this.Components = new ComponentCollection();
+			this.Components ??= new ComponentCollection();
 			if (!this.Components.Has<EffectsComponent>())
 				this.Components.Add(new EffectsComponent(this));
 			this.Components.Get<EffectsComponent>()?.AddEffect(effect);

@@ -4016,10 +4016,13 @@ public static class ItemId
 	public const int Hat_Ep15unicorn01 = 11102009;
 	public const int Hat_Ep15unicorn02 = 11102010;
 	public const int Hat_7th_BritishRoyal = 11102011;
+	public const int Hat_Ep15explorer01 = 11102012;
+	public const int Hat_Ep15explorer02 = 11102013;
 	public const int Guiltynelaima_Shield = 11104006;
 	public const int EP15_Artefact_004 = 11104010;
 	public const int Ep15spring01_Shield = 11104014;
 	public const int Ep15unicorn_Shield = 11104019;
+	public const int Ep15explorer_Shield = 11104026;
 
 	// BELT
 	//-----------------------------------------------------------------------
@@ -4615,6 +4618,7 @@ public static class ItemId
 	public const int DRESS_ROOM_COLLECT_12 = 11039012;
 	public const int DRESS_ROOM_COLLECT_13 = 11039013;
 	public const int DRESS_ROOM_COLLECT_14 = 11039014;
+	public const int DRESS_ROOM_COLLECT_15 = 11039015;
 
 	// Consume
 	//-----------------------------------------------------------------------
@@ -17769,14 +17773,23 @@ public static class ItemId
 	public const int Costume_Ep15unicorn02_F = 11101016;
 	public const int Costume_7th_BritishRoyal_M = 11101017;
 	public const int Costume_7th_BritishRoyal_F = 11101018;
+	public const int Costume_Ep15explorer01_M = 11101019;
+	public const int Costume_Ep15explorer02_M = 11101020;
+	public const int Costume_Ep15explorer03_M = 11101021;
+	public const int Costume_Ep15explorer01_F = 11101022;
+	public const int Costume_Ep15explorer02_F = 11101023;
+	public const int Costume_Ep15explorer03_F = 11101024;
 	public const int EP15_Helmet_Ep15snowknight01 = 11103001;
 	public const int Helmet_Nightrabbit = 11103002;
+	public const int Helmet_M_Ep15explorer15 = 11103003;
+	public const int Helmet_F_Ep15explorer15 = 11103004;
 	public const int Wing_Guiltynelaima_1 = 11105001;
 	public const int Wing_Guiltynelaima_2 = 11105002;
 	public const int Wing_Spreader_Backboard = 11105004;
 	public const int Wing_Balloon_Nightrabbit = 11105005;
 	public const int Wing_Ep15unicorn = 11105006;
 	public const int Wing_7th_Helena = 11105007;
+	public const int Wing_Ep15explorer = 11105008;
 	public const int Effect_Ep15snowknight_Aurora = 11106001;
 	public const int Effect_Ep15snowknight_Snowflake = 11106002;
 	public const int Effect_Nightrabbit = 11106003;
@@ -17978,6 +17991,12 @@ public static class ItemId
 	public const int Engineer_Honor_Package_PAPAYA = 11205063;
 	public const int Engineer_Special_Package_PAPAYA = 11205064;
 	public const int Special_Gift_Box_Leticia_2308 = 11205065;
+	public const int Certificate_RidePet_Explorer = 11205070;
+	public const int Selectbox_Ep15explorer01 = 11205071;
+	public const int Selectbox_Ep15explorer02 = 11205072;
+	public const int Selectbox_Ep15explorer03 = 11205073;
+	public const int Setbox_Ep15explorer03_M = 11205074;
+	public const int Setbox_Ep15explorer03_F = 11205075;
 
 	// Quest
 	//-----------------------------------------------------------------------
@@ -25414,5 +25433,9 @@ public static class ItemId
 	public const int Ep15unicorn_Mace = 11104018;
 	public const int Ep15unicorn_Cannon = 11104020;
 	public const int Ep15unicorn_Bow = 11104021;
+	public const int Ep15explorer_Mace = 11104022;
+	public const int Ep15explorer_Sword = 11104023;
+	public const int Ep15explorer_Thstaff = 11104024;
+	public const int Ep15explorer_Bow = 11104025;
 }
 #pragma warning restore IDE1006 // Naming Conventions

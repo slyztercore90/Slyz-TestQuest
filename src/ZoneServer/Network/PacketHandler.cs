@@ -1864,11 +1864,13 @@ namespace Melia.Zone.Network
 			if (character == null)
 				return;
 
-			var targetCharacter = character.Map.GetCharacter(targetHandle);
-
-			if (targetCharacter == null)
+			if (!character.Map.TryGetCharacter(targetHandle, out var targetCharacter))
+			{
+				Log.Warning("CZ_EXCHANGE_REQUEST: User '{0}' trade partner not found.", conn.Account.Name);
 				return;
-			Trade.RequestTrade(character, targetCharacter);
+			}
+
+			TradeComponent.RequestTrade(character, targetCharacter);
 		}
 
 		/// <summary>
@@ -1881,12 +1883,13 @@ namespace Melia.Zone.Network
 		{
 			var character = conn.SelectedCharacter;
 
-			if (character.Trade != null)
-				character.Trade.Start();
-			else
+			if (character.Trade == null)
 			{
 				Log.Warning("CZ_EXCHANGE_ACCEPT:  User '{0}' tried to accept a non-existent trade.", conn.Account.Name);
+				return;
 			}
+
+			character.Trade.Start();
 		}
 
 		/// <summary>
@@ -1912,6 +1915,7 @@ namespace Melia.Zone.Network
 				Log.Warning("CZ_EXCHANGE_OFFER: User '{0}' tried to trade without actually trading.", conn.Account.Name);
 				return;
 			}
+
 			character.Trade.Offer(character, worldId, amount);
 		}
 
@@ -2876,8 +2880,7 @@ namespace Melia.Zone.Network
 			var isView = packet.GetByte() == 1;
 			var isLike = packet.GetByte() == 1;
 
-			var targetCharacter = conn.SelectedCharacter.Map.GetCharacter(handle);
-			if (targetCharacter == null)
+			if (conn.SelectedCharacter.Map.TryGetCharacter(handle, out var targetCharacter))
 			{
 				Log.Warning("Attempted to compare an unknown character '{0}'.", handle);
 				return;
@@ -3008,11 +3011,10 @@ namespace Melia.Zone.Network
 			var optionSelected = packet.GetInt();
 			var amount = packet.GetInt(); // 1?
 			var character = conn.SelectedCharacter;
-			var shopOwner = character.Map.GetCharacter(shopOwnerHandle);
 
 			// Check distance, if too far from seller, send system message
 			// "You're too far away from the distribution table..."
-			if (shopOwner == null || !shopOwner.Position.InRange2D(character.Position, 25))
+			if (!character.Map.TryGetCharacter(shopOwnerHandle, out var shopOwner) || !shopOwner.Position.InRange2D(character.Position, 25))
 			{
 				character.SystemMessage("FarFromFoodTable");
 				return;
@@ -3042,20 +3044,21 @@ namespace Melia.Zone.Network
 			var shopOwnerHandle = packet.GetInt();
 			var itemCount = packet.GetInt(); // 1?
 			var character = conn.SelectedCharacter;
-			var shopOwner = character.Map.GetCharacter(shopOwnerHandle);
 
 			// Check distance, if too far from seller, send system message
 			// "You're too far away from the distribution table..."
-			if (shopOwner == null || !shopOwner.Position.InRange2D(character.Position, 25))
+			if (!character.Map.TryGetCharacter(shopOwnerHandle, out var shopOwner) || !shopOwner.Position.InRange2D(character.Position, 25))
 			{
 				character.SystemMessage("FarFromFoodTable");
 				return;
 			}
+
 			if (shopOwner.Connection.ShopCreated == null)
 			{
 				Log.Warning("CZ_BUY_AUTOSELLER_ITEMS: {0} has no shop open.", conn.Account.Name);
 				return;
 			}
+
 			var shop = conn.ActiveShop = shopOwner.Connection.ShopCreated;
 			for (var i = 0; i < itemCount; i++)
 			{
@@ -3102,7 +3105,12 @@ namespace Melia.Zone.Network
 				return;
 			}
 			var shop = conn.ActiveShop;
-			var shopOwner = character.Map.GetCharacter(shopOwnerHandle);
+
+			if (!character.Map.TryGetCharacter(shopOwnerHandle, out var shopOwner))
+			{
+				Log.Warning("CZ_AUTOSELLER_BUYER_CLOSE: {0} shop owner not found.", conn.Account.Name);
+				return;
+			}
 
 			if (shop != shopOwner.Connection.ShopCreated)
 			{
@@ -3964,7 +3972,12 @@ namespace Melia.Zone.Network
 			var handle = packet.GetInt();
 			var command = packet.GetInt();
 
-			var targetCharacter = conn.SelectedCharacter.Map.GetCharacter(handle);
+			if (!conn.SelectedCharacter.Map.TryGetCharacter(handle, out var targetCharacter))
+			{
+				Log.Warning("CZ_REQ_DUMMYPC_INFO: Failed to find character with handle {0}, for account {1}.", handle, conn.Account.Name);
+				return;
+			}
+
 			switch (command)
 			{
 				case 4:
@@ -4006,8 +4019,7 @@ namespace Melia.Zone.Network
 				return;
 			}
 
-			var requester = receiver.Map.GetCharacter(handle);
-			if (requester == null)
+			if (!receiver.Map.TryGetCharacter(handle, out var requester))
 			{
 				Log.Warning("CZ_REQ_FRIENDLY_FIGHT: User '{0}' tried to respond to a player with handle ({1}) that doesn't exist on the map.", conn.Account.Name, handle);
 				return;

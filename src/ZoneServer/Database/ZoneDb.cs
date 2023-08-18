@@ -176,6 +176,7 @@ namespace Melia.Zone.Database
 			this.LoadCooldowns(character);
 			this.LoadQuests(character);
 			this.LoadProperties("character_properties", "characterId", character.DbId, character.Properties);
+			this.LoadProperties("etc_properties", "characterId", character.DbId, character.EtcProperties);
 			this.LoadCompanions(character);
 			this.LoadParty(character);
 			this.LoadGuild(character);
@@ -595,6 +596,7 @@ namespace Melia.Zone.Database
 			this.SaveVariables(character.Variables.Perm, "vars_characters", "characterId", character.DbId);
 			this.SaveSessionObjects(character);
 			this.SaveProperties("character_properties", "characterId", character.DbId, character.Properties);
+			this.SaveProperties("etc_properties", "characterId", character.DbId, character.EtcProperties);
 			this.SaveJobs(character);
 			this.SaveSkills(character);
 			this.SaveAbilities(character);

@@ -29,6 +29,8 @@
 
 #include "inc/common.bt"
 
+#define PROPERTY_NAMES
+
 typedef struct
 {
     short size;
@@ -678,7 +680,7 @@ switch (type)
         break;
 
     // Start a track (Client Side Cutscene)
-    case 0x94:
+    case 0x96:
         lpString trackName;
         int64 l1;
         int count;
@@ -688,12 +690,12 @@ switch (type)
 
     // NPC Related?
     // Set Track (Cutscene) Frame
-    case 0x95:
+    case 0x97:
         int frame; // 7, 74, -2, 16
         break;
 
     // NPC Related? Summoned monster 
-    case 0x97:
+    case 0x99:
         int handle;
         float f1; // 0
         break;
@@ -707,6 +709,7 @@ switch (type)
         break;
 
     // Item Appraised (Identified)
+    // ShowItemBalloon
     case 0x9C:
         byte b0;
         int npcHandle;
@@ -738,7 +741,7 @@ switch (type)
         lpString scroll; //EP14_3LINE_TUTO_MQ_13_scroll
         break;
 
-    // Spawn Pet?
+    // Pet Info
     case 0xA4:
         int i1;
         int petCount;
@@ -852,14 +855,15 @@ switch (type)
         float f6;
         break;
 
-    case 0xC6:
+    // Seen with Corpse Tower Skill (Sent After SetInvisible 0x99)
+    case 0xC8:
         int handle; // 231902
         byte b1; // 1
         break;
 
     // Skill Related?
     // Seen with Krivis Divine Stigma
-    case 0xC7:
+    case 0xC9:
         int casterHandle;
         int targetHandle;
         float f1; // 0.25
@@ -870,9 +874,14 @@ switch (type)
         int i3; // 0
         float f3; // 1
         break;
+    
+    // Gather corpse parts
+    case 0xCC:
+        int casterHandle; // 21548
+        int targetHandle; // 20939
+        break;
 
     // ?
-    case 0xDA:
     case 0xD6:
         if (!checkCompression())
         {
@@ -880,38 +889,86 @@ switch (type)
             int i1;
         }
         break;
+    
+    // Seen with Flesh Cannon
+    case 0xD8:
+        typedef struct
+        {
+            int monsterId;
+            byte b1; // 0,1,2,3,4,5... Index?
+            int i1; // 9
+            int i2; // 9
+        } CorpsePart <optimize=false>;
+    
+        int casterHandle;
+        int i1;
+        float f1;
+        float f2;
+        float f3;
+        int i2;
+        CorpsePart parts[i2];
+        break;
+    
+    case 0xDA:
+        int casterHandle;
+        int effectHandle;
+        break;
+    
+    // Drop part of the corpse ring
+    case 0xDB:
+        int casterHandle;
+        int i1; // 29607?
+        byte b1; // 1
+        int i2; // 400981
+        byte b2; // 0
+        int i3; // 1
+        int i4; // 2
+        break;
+    
+    // Seen with Flesh Cannon
+    case 0xDC:
+        int i1; // 29389
+        position pos;
+        float f1;
+        float f2;
+        float f3;
+        float f4;
+        float f5;
+        int i1;
+        break;
 
     // Collections
-    case 0xDB:
+    case 0xDD:        
+        typedef struct
+        {
+            int itemId;
+            int64 worldId;
+            short s1;
+        } CollectionItem <optimize=false>;
+        typedef struct
+        {
+            short collectionId;
+            int itemCount;
+            if (itemCount > 0)
+                CollectionItem items[itemCount];
+        } Collection <optimize=false>;
         if (!checkCompression())
         {
             int64 characterId;
             int collectionCount;
-            local int j;
-            for (j = 0; j < collectionCount; j++)
-            {
-                short collectionId;
-                int itemCount;
-                local int i;
-                for (i = 0; i < itemCount; i++)
-                {
-                    int itemId;
-                    int64 worldId;
-                    short s1;
-                }
-            }
+            Collection collections[collectionCount];
         }
         break;
 
     // Collection Related? (Unlock Collection?)
-    case 0xDD:
-        int64 l1;
+    case 0xDF:
+        int64 characterId;
         short collectionId;
         break;
 
     // Collection Related? (Add Item to Collection?)
-    case 0xDE:
-        int64 l1; // Character Id?
+    case 0xE0:
+        int64 characterId; // Character Id?
         int collectionId; // 118
         int i1; // Item Id
         int64 l1; // World Id?
@@ -1169,6 +1226,13 @@ switch (type)
     case 0xFF:
         lpString marketWorldId;
         int i1; // 0
+        break;
+    
+    // Chronomaster Backmasking
+    case 0x106:
+        int casterHandle;
+        float f1; // 60
+        float f2; // 40
         break;
 
     // Summoner Play Animation
@@ -1445,13 +1509,13 @@ switch (type)
         
     // Sets the session key.
     // Used for Web Requests (Guild/Party Search/Market)
-    case 0x146:
+    case 0x148:
         lpString sessionKey;
         byte b1;
         break;
 
     // Guild Skill Invite
-    case 0x147:
+    case 0x149:
         short s1; // 0
         lpString message; // GUILD_MEMBER_SKILL_INVITE
         lpString params; //76561198023169014#11501 (AccountId#SkillId)
@@ -1511,8 +1575,8 @@ switch (type)
         float f1;
         break;
 
-    // Unknown purpose sent with 0x6D -> 0x165 (now 0x6E -> 0x166)
-    case 0x166:
+    // Unknown purpose sent with 0x6D -> 0x165 (now 0x6E -> 0x166 -> 0x168)
+    case 0x168:
         int64 l1; // 0
         break;
 
@@ -1795,19 +1859,19 @@ switch (type)
         break;
 
     // Related to Lama Pose Skill???
-    case 0x1A7:
+    case 0x1A6:
         int handle;
         byte b1; // 0
         break;
 
     // Related to Lama Pose Skill?
-    case 0x1A8:
+    case 0x1A7:
         int handle;
         int skillId; // 42016
         break;
 
     // ?
-    case 0x1A9:
+    case 0x1A8:
         short s1; // 1
         int i[4]; // 50, 50, 100, 100
         float f1; // 0.3

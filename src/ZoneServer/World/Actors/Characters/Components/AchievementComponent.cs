@@ -6,12 +6,15 @@ using Yggdrasil.Logging;
 
 namespace Melia.Zone.World.Actors.Characters.Components
 {
-	public class Achievements : CharacterComponent
+	/// <summary>
+	/// Achievements
+	/// </summary>
+	public class AchievementComponent : CharacterComponent
 	{
 		private readonly Dictionary<int, bool> _achievements = new Dictionary<int, bool>();
 		private readonly Dictionary<int, int> _achievementPoints = new Dictionary<int, int>();
 
-		public Achievements(Character character) : base(character)
+		public AchievementComponent(Character character) : base(character)
 		{
 		}
 

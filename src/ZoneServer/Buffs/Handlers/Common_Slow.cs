@@ -13,6 +13,7 @@ namespace Melia.Zone.Buffs.Handlers
 	public class CommonSlowHandler : BuffHandler
 	{
 		private const float MspdDebuffRate = 0.5f;
+		private const string VarName = "Melia.ReduceMspd";
 
 		/// <summary>
 		/// Starts buff, modifying the movement speed.
@@ -27,7 +28,7 @@ namespace Melia.Zone.Buffs.Handlers
 			Send.ZC_NORMAL.PlayTextEffect(target, caster, AnimationName.ShowBuffText, (float)BuffId.Common_Slow, null);
 
 			var reduceMspd = target.Properties.GetFloat(PropertyName.MSPD) * MspdDebuffRate;
-			buff.Vars.SetFloat("Melia.ReduceMspd", reduceMspd);
+			buff.Vars.SetFloat(VarName, reduceMspd);
 
 			target.Properties.Modify(PropertyName.MSPD_BM, -reduceMspd);
 			Send.ZC_MSPD(target);
@@ -39,10 +40,11 @@ namespace Melia.Zone.Buffs.Handlers
 		/// <param name="buff"></param>
 		public override void OnEnd(Buff buff)
 		{
-			if (buff.Vars.TryGetFloat("Melia.ReduceMspd", out var reduceMspd))
+			if (buff.Vars.TryGetFloat(VarName, out var reduceMspd))
 			{
 				var target = buff.Target;
 
+				Send.ZC_SHOW_EMOTICON(target, "I_emo_slowdown", TimeSpan.Zero);
 				target.Properties.Modify(PropertyName.MSPD_BM, reduceMspd);
 				Send.ZC_MSPD(target);
 			}

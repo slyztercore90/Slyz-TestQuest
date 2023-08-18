@@ -175,3 +175,7 @@ $RECYCLE.BIN/
 # Mac crap
 .DS_Store
 *.lnk
+
+# Personal Crap
+/src/Giltine/*
+*.bak

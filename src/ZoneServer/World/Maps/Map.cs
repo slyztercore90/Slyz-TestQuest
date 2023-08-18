@@ -30,7 +30,7 @@ namespace Melia.Zone.World.Maps
 		/// <summary>
 		/// Collection of combat entities, which can be both characters
 		/// and monsters.
-		/// <pa ra>Key: <see cref="ICombatEntity.Handle"/></para>
+		/// <para>Key: <see cref="ICombatEntity.Handle"/></para>
 		/// <para>Value: <see cref="ICombatEntity"/></para>
 		/// </summary>
 		private readonly Dictionary<int, ICombatEntity> _combatEntities = new Dictionary<int, ICombatEntity>();
@@ -281,33 +281,24 @@ namespace Melia.Zone.World.Maps
 			lock (_combatEntities)
 				_combatEntities.Remove(character.Handle);
 
+			foreach (var monster in character.Summons?.GetSummons())
+			{
+				this.RemoveMonster(monster);
+			}
+
 			character.Map = null;
 
 			ZoneServer.Instance.UpdateServerInfo();
 		}
 
 		/// <summary>
-		/// Returns character by handle, or null if it doesn't exist.
-		/// </summary>
-		/// <param name="handle"></param>
-		/// <returns></returns>
-		public Character GetCharacter(int handle)
-		{
-			Character result;
-			lock (_characters)
-				_characters.TryGetValue(handle, out result);
-			return result;
-		}
-
-		/// <summary>
 		/// Returns first character found by team name, or null if none exist.
 		/// </summary>
-		/// <param name="handle"></param>
+		/// <param name="teamName"></param>
 		/// <returns></returns>
 		public Character GetCharacterByTeamName(string teamName)
 		{
-			lock (_characters)
-				return _characters.Values.FirstOrDefault(a => a.TeamName == teamName);
+			return this.GetCharacter(a => a.TeamName == teamName);
 		}
 
 		/// <summary>

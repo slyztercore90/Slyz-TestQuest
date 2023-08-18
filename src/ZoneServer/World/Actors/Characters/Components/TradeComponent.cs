@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Melia.Shared.Tos.Const;
 using Melia.Zone.Network;
 using Yggdrasil.Composition;
@@ -13,7 +9,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 	/// <summary>
 	/// A representation of a trade between two characters
 	/// </summary>
-	public class Trade : IComponent
+	public class TradeComponent : IComponent
 	{
 		Character Trader1 { get; set; }
 		Character Trader2 { get; set; }
@@ -34,7 +30,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 
 		public static void RequestTrade(Character sender, Character recipient)
 		{
-			var trade = new Trade(sender, recipient);
+			var trade = new TradeComponent(sender, recipient);
 
 			sender.Trade = trade;
 			recipient.Trade = trade;
@@ -43,7 +39,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			Send.ZC_EXCHANGE_REQUEST_RECEIVED(recipient, sender.Name);
 		}
 
-		private Trade(Character trader1, Character trader2)
+		private TradeComponent(Character trader1, Character trader2)
 		{
 			this.Trader1 = trader1;
 			this.Trader2 = trader2;

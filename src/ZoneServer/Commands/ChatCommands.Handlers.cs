@@ -87,6 +87,7 @@ namespace Melia.Zone.Commands
 			this.Add("spawn", "<monster id|class name> [amount=1] ['ai'=BasicMonster] ['tendency'=peaceful]", "Spawns monster.", this.HandleSpawn);
 			this.Add("madhatter", "", "Spawns all headgears.", this.HandleGetAllHats);
 			this.Add("levelup", "<levels>", "Increases character's level.", this.HandleLevelUp);
+			this.Add("classup", "<levels>", "Increases character's class level.", this.HandleClassLevelUp);
 			this.Add("speed", "<speed>", "Modifies character's speed.", this.HandleSpeed);
 			this.Add("iteminfo", "<name>", "Displays information about an item.", this.HandleItemInfo);
 			this.Add("monsterinfo", "<name>", "Displays information about a monster.", this.HandleMonsterInfo);
@@ -141,6 +142,67 @@ namespace Melia.Zone.Commands
 				Log.Debug("Testing {0}", args.Get(0));
 				switch (args.Get(0))
 				{
+						break;
+					}
+					case "dc":
+					{
+						var particleSpread = 30f;
+						var startDelay = 0.6f;
+						var particleSpeed = 0.2407438f;
+						var f4 = 2f;
+						var animationDuration = 1f;
+						var i1 = 1;
+						var i2 = 13277;
+						if (args.Count > 1)
+							float.TryParse(args.Get(1), out particleSpread);
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out startDelay);
+						if (args.Count > 3)
+							float.TryParse(args.Get(3), out particleSpeed);
+						if (args.Count > 4)
+							float.TryParse(args.Get(4), out f4);
+						if (args.Count > 5)
+							float.TryParse(args.Get(5), out animationDuration);
+						if (args.Count > 6)
+							int.TryParse(args.Get(6), out i1);
+						if (args.Count > 7)
+							int.TryParse(args.Get(7), out i2);
+						Send.ZC_NORMAL.PlayThrowCorpseParts(sender, i1, sender.Position.GetRandomInRange2D(30, 30), particleSpread, startDelay, particleSpeed, f4, animationDuration, i2);
+						break;
+					}
+					case "path":
+					{
+						if (!sender.Variables.Temp.Has("startPathX"))
+						{
+							sender.Variables.Temp.SetFloat("startPathX", sender.Position.X);
+							sender.Variables.Temp.SetFloat("startPathZ", sender.Position.Y);
+						}
+						else if (!sender.Variables.Temp.Has("endPathX"))
+						{
+							sender.Variables.Temp.SetFloat("endPathX", sender.Position.X);
+							sender.Variables.Temp.SetFloat("endPathZ", sender.Position.Y);
+						}
+						else
+						{
+							var monster = new Mob(400001, MonsterType.Mob);
+
+							Position pos = sender.Position;
+							Direction dir = sender.Direction;
+
+							monster.Position = pos;
+							monster.Direction = dir;
+							monster.Tendency = TendencyType.Peaceful;
+							var movement = new MovementComponent(monster);
+							movement.SetPath(new Position(sender.Variables.Temp.GetFloat("startPathX"), 0, sender.Variables.Temp.GetFloat("startPathZ"))
+								, new Position(sender.Variables.Temp.GetFloat("endPathX"), 0, sender.Variables.Temp.GetFloat("endPathZ")));
+							monster.Components.Add(movement);
+
+							monster.Components.Add(new AiComponent(monster, "BasicMonster"));
+
+							sender.Map.AddMonster(monster);
+						}
+						break;
+					}
 					case "addbuff":
 					{
 						var buffId = (int)BuffId.SoPowerful;
@@ -857,6 +919,38 @@ namespace Melia.Zone.Commands
 			{
 				target.ServerMessage(Localization.Get("Your level was changed by {0}."), sender.TeamName);
 				sender.ServerMessage(Localization.Get("The target's level was changed."));
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Levels up target.
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleClassLevelUp(Character sender, Character target, string message, string command, Arguments args)
+		{
+			var levels = 1;
+			if (args.Count >= 1 && (!int.TryParse(args.Get(0), out levels) || levels < 1))
+				return CommandResult.InvalidArgument;
+
+			if (target.Job.Level == target.Job.MaxLevel)
+				return CommandResult.Okay;
+			target.ClassUp(Math.Min(levels, target.Job.MaxLevel - target.Job.Level));
+
+			if (sender == target)
+			{
+				sender.ServerMessage(Localization.Get("Your class level was changed."));
+			}
+			else
+			{
+				target.ServerMessage(Localization.Get("Your class was changed by {0}."), sender.TeamName);
+				sender.ServerMessage(Localization.Get("The target's class level was changed."));
 			}
 
 			return CommandResult.Okay;

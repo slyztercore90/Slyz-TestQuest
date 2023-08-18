@@ -417,6 +417,7 @@ namespace Melia.Shared.Tos.Const
 		public const int Talt = 645268;
 		public const int Silver = 900011;
 		public const int Gold = 900012;
+		public const int Misc_Soil = 645621;
 	}
 
 	/// <summary>

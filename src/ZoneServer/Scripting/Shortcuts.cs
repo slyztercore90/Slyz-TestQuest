@@ -81,7 +81,7 @@ namespace Melia.Zone.Scripting
 		public static string LNF(string key, string keyPlural, int n, params object[] args)
 			=> string.Format(Localization.GetPlural(key, keyPlural, n), args);
 
-		public static Npc AddNpc(int genType, int monsterId, string name, string map, double x, double y, double z, double direction, string dialogFuncName = "", string enterFuncName = "", string leaveFuncName = "", double range = 100)
+		public static Npc AddNpc(int genType, int monsterId, string name, string map, double x, double y, double z, double direction, string dialogFuncName = "", string enterFuncName = "", string leaveFuncName = "", int status = -1, double range = 100)
 		{
 			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
 				throw new ArgumentException($"Map '{map}' not found.");

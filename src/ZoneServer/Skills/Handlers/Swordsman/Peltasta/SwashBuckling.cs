@@ -70,7 +70,7 @@ namespace Melia.Zone.Skills.Handlers.Peltasta
 			{
 				var buff = new Buff(BuffId.ProvocationImmunity_Debuff, 0, 0, TimeSpan.FromSeconds(5 + 2 * skill.Level), currentTarget, caster);
 				//buff.Skill = skill;
-				Send.ZC_NORMAL.PlayTextEffect(currentTarget, caster, "SHOW_BUFF_TEXT", 80);
+				Send.ZC_NORMAL.PlayTextEffect(currentTarget, caster, AnimationName.ShowBuffText, 80);
 				Send.ZC_NORMAL.SetActorColor(currentTarget, 150, 160, 255, 255, 1.5f, 1);
 				Send.ZC_SYNC_START(caster, skillHandle, 1);
 				currentTarget.Components.Get<BuffComponent>()?.AddOrUpdate(buff);

@@ -46,11 +46,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 
 			var unkForceId = skillHandle;
 			var damageDelay = TimeSpan.FromMilliseconds(0);
-			var skillHitDelay = skill.Properties.HitDelay;
-			var radius = (int)skill.Data.SplashRange * 2;
-			var splashTargets = caster.Map.GetAttackableEntitiesInRangeAroundEntity(caster, target, radius, 5);
-			var effectHandle = 0;
-
+			var splashTargets = caster.Map.GetAttackableEntitiesInRangeAroundEntity(caster, target, skill.Properties.GetFloat(PropertyName.SplRange), 5);
 			var skillHitResult = SCR_SkillHit(caster, target, skill);
 			target.TakeDamage(skillHitResult.Damage, caster);
 
@@ -64,7 +60,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 
 			foreach (var splashTarget in splashTargets)
 			{
-				effectHandle = ZoneServer.Instance.World.CreateEffectHandle();
+				var effectHandle = ZoneServer.Instance.World.CreateEffectHandle();
 				Send.ZC_SYNC_START(caster, skillHandle, 1);
 				Send.ZC_NORMAL.SkillEffectSplash(caster, target, splashTarget, effectHandle,
 					"I_force110_ice", 0.5f, null, null, 1, null, "SLOW", 300,

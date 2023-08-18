@@ -6,6 +6,11 @@
 	public enum NpcState
 	{
 		/// <summary>
+		/// As a buffer state between used states listed below
+		/// </summary>
+		IgnoreState = -2,
+
+		/// <summary>
 		/// Used for opened chests, when they disappear.
 		/// </summary>
 		Invisible = -1,

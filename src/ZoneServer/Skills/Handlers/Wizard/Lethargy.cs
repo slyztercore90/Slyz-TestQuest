@@ -6,7 +6,6 @@ using Melia.Zone.Network;
 using Melia.Zone.Skills.Handlers.Base;
 using Melia.Zone.Skills.SplashAreas;
 using Melia.Zone.World.Actors;
-using Melia.Zone.World.Actors.CombatEntities.Components;
 
 namespace Melia.Zone.Skills.Handlers.Wizard
 {
@@ -47,7 +46,7 @@ namespace Melia.Zone.Skills.Handlers.Wizard
 			skill.IncreaseOverheat();
 			caster.SetAttackState(true);
 
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, targetPos, null);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, targetPos);
 
 			var splashArea = new Circle(targetPos, skill.Properties.GetFloat(PropertyName.SklSplRange));
 			var targets = caster.Map.GetAttackableEntitiesIn(caster, splashArea);
