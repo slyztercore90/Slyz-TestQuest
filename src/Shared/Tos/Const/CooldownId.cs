@@ -1540,5 +1540,7 @@ namespace Melia.Shared.Tos.Const
 		BuffTurret = 4263,
 		KingMechaV = 4264,
 		RepairKit = 4265,
+		MasterContract = 4266,
+		MovingForward = 4267,
 	}
 }

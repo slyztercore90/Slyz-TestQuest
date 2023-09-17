@@ -13,6 +13,7 @@ using Melia.Shared.Tos.Properties;
 using Melia.Shared.Util;
 using Melia.Shared.World;
 using Melia.Zone.Network;
+using Melia.Zone.Scripting;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
@@ -142,6 +143,89 @@ namespace Melia.Zone.Commands
 				Log.Debug("Testing {0}", args.Get(0));
 				switch (args.Get(0))
 				{
+					case "7":
+					{
+						var effectId1 = 6836;
+						var effectId2 = 15113;
+						var effectSize1 = 0.5f;
+						var effectSize2 = 0.5f;
+						var f1 = 60f;
+						var f2 = 0f;
+						var f3 = 0.6f;
+						var f4 = 200f;
+						var f5 = 2f;
+						var f6 = 0f;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out effectId1);
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out effectSize1);
+						if (args.Count > 3)
+							int.TryParse(args.Get(3), out effectId2);
+						if (args.Count > 4)
+							float.TryParse(args.Get(4), out effectSize2);
+						if (args.Count > 5)
+							float.TryParse(args.Get(5), out f1);
+						if (args.Count > 6)
+							float.TryParse(args.Get(6), out f2);
+						if (args.Count > 7)
+							float.TryParse(args.Get(7), out f3);
+						if (args.Count > 8)
+							float.TryParse(args.Get(8), out f4);
+						if (args.Count > 9)
+							float.TryParse(args.Get(9), out f5);
+						if (args.Count > 10)
+							float.TryParse(args.Get(10), out f6);
+						Send.ZC_NORMAL.SkillFallingProjectile(sender, "Elementalist_Hail", effectId1, effectSize1, effectId2, effectSize2, sender.Position.GetRandomInRange2D(20, 40), f1, TimeSpan.FromSeconds(f2), f3, f4, f5, f6);
+						break;
+					}
+					case "e3":
+					{
+						var i1 = 0;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out i1);
+						var argStr = "";
+						if (args.Count > 2)
+							argStr = args.Get(2);
+
+						Send.ZC_NORMAL.PlayTextEffect(sender, sender, AnimationName.ShowCriticalDamage, i1, argStr);
+						break;
+					}
+					case "d8":
+					{
+						var monsterIds = new int[] { 400981, 400981, 400981, 400981, 400981, 400981, 400981, 400981, 400981, 400981 };
+						var animationExpansionDuration = 0.25f;
+						var animationRadius = 20f;
+						var animationRotationSpeed = 15f;
+						var i1 = 9;
+						if (args.Count > 1)
+							float.TryParse(args.Get(1), out animationExpansionDuration);
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out animationRadius);
+						if (args.Count > 3)
+							float.TryParse(args.Get(3), out animationRotationSpeed);
+						if (args.Count > 4)
+							int.TryParse(args.Get(4), out i1);
+						Send.ZC_NORMAL.PlayCorpsePartsRing(sender, 1, animationExpansionDuration, animationRadius, animationRotationSpeed, i1, monsterIds);
+						break;
+					}
+					case "da":
+						Send.ZC_NORMAL.RemoveEffect(sender, 1);
+						break;
+					case "db":
+					{
+						byte b1 = 1;
+						byte b2 = 0;
+						var i3 = 1;
+						var i4 = 2;
+						if (args.Count > 1)
+							byte.TryParse(args.Get(1), out b1);
+						if (args.Count > 2)
+							byte.TryParse(args.Get(2), out b2);
+						if (args.Count > 3)
+							int.TryParse(args.Get(3), out i3);
+						if (args.Count > 4)
+							int.TryParse(args.Get(4), out i4);
+						Send.ZC_NORMAL.Skill_DB(sender, 1, b1, 400981, b2, i3, i4);
 						break;
 					}
 					case "dc":
@@ -238,7 +322,7 @@ namespace Melia.Zone.Commands
 						var i1 = 72110;
 						if (args.Count > 1)
 							int.TryParse(args.Get(1), out i1);
-						float f1 = 0.99f;
+						var f1 = 0.99f;
 						if (args.Count > 2)
 							float.TryParse(args.Get(2), out f1);
 						Send.ZC_NORMAL.Skill_5F(sender, i1, f1);
@@ -246,10 +330,16 @@ namespace Melia.Zone.Commands
 					}
 					case "125":
 					{
-						var packetId = "I_emo_immobilize";
+						var f1 = 30f;
+						var f2 = 0.6f;
 						if (args.Count > 1)
-							packetId = args.Get(1);
-						Send.ZC_NORMAL.Skill_125(sender, packetId, 10, 0.05f, 0);
+							float.TryParse(args.Get(1), out f1);
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out f2);
+						var packetId = "I_laser005_blue#Dummy_effect_electrocute";
+						if (args.Count > 3)
+							packetId = args.Get(3);
+						Send.ZC_NORMAL.Skill_125(sender, packetId, f1, f2, (sender.Handle, ZoneServer.Instance.World.CreateSkillHandle()));
 						break;
 					}
 					case "emoticon":
@@ -2422,18 +2512,19 @@ namespace Melia.Zone.Commands
 			if (int.TryParse(args.Get(0), out var questId) && ZoneServer.Instance.Data.QuestDb.TryFind(questId, out var quest))
 			{
 				if (!sender.Quests.IsActive(questId) ||
-					string.IsNullOrEmpty(quest.StartNPC)
-					|| ZoneServer.Instance.World.NPCs.TryGetValue(quest.StartNPC, out var npc))
+					string.IsNullOrEmpty(quest.EndNPC)
+					|| !ZoneServer.Instance.World.NPCs.TryGetValue($"{quest.EndNPC}_{sender.Map.Data.ClassName}", out var npc))
 				{
 					return CommandResult.Okay;
 				}
 
 				var mapId = npc.Map.Id;
-				var newPosition = npc.Position.GetRelative(npc.Direction, 50);
+				var newPosition = npc.Position.GetRelative(npc.Direction, 20);
 				var newDirection = -npc.Direction;
 
 				sender.SetDirection(newDirection);
-				sender.Warp(mapId, newPosition);
+				// Official server adds 20 position units to npc's Y gen position.
+				sender.Warp(mapId, newPosition + new Position(0, 20, 0));
 			}
 
 			return CommandResult.Okay;
@@ -2456,11 +2547,19 @@ namespace Melia.Zone.Commands
 			if (args.Count < 1)
 
 			{
-				Log.Debug("HandleGacha: Invalid call by user '{0}': {1}", sender.Username, command);
+				Log.Debug("HandleHairGacha: Invalid call by user '{0}': {1}", sender.Username, command);
 				return CommandResult.Okay;
 			}
 
-			if (sender.RemoveItem(args.Get(0)) == 1)
+			//if (IsPlayingPairAnimation(pc) == 0)
+			//	RunScript('SCR_USE_GHACHA_TPCUBE', pc, arg1);
+			if (!ScriptableFunctions.Item.TryGet("SCR_USE_GHACHA_TPCUBE", out var script))
+			{
+				Log.Debug("HandleHairGacha: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			if (sender.HasItem(args.Get(0), 1))
 			{
 				var randomItem = ZoneServer.Instance.Data.ItemDb.Entries.ToArray().Random();
 				sender.Inventory.Add(new Item(randomItem.Value.Id), InventoryAddType.NotNew, InventoryType.Inventory, 99999);
@@ -2613,7 +2712,7 @@ namespace Melia.Zone.Commands
 			var title = args.Get(0);
 			var items = new List<Tuple<int, int, int>>();
 
-			for (var i = 2; i < args.Count; ++i)
+			for (var i = 1; i < args.Count; ++i)
 			{
 				var split = args.Get(i).Split(',');
 
@@ -2626,21 +2725,31 @@ namespace Melia.Zone.Commands
 				items.Add(new Tuple<int, int, int>(id, amount, price));
 			}
 
+			if (!ZoneServer.Instance.Data.PacketStringDb.TryFind("PersonalShop", out var packetString))
+			{
+				Log.Debug("HandleBuyShop: Unable to find packet string for PersonalShop by user '{0}'.", sender.Username);
+				return CommandResult.Okay;
+			}
+
 			// Create auto seller packet from arguments and have the
 			// channel handle it as if the client had sent it.
 			var packet = new Packet(Op.CZ_REGISTER_AUTOSELLER);
+			packet.PutShort(0); // Sending 0 Size
 			packet.PutString(title, 64);
 			packet.PutInt(items.Count);
-			packet.PutInt(270065); // PersonalShop
-			packet.PutInt(0);
+			packet.PutInt(packetString.Id); // PersonalShop
 
+			var j = 0;
 			foreach (var item in items)
 			{
 				packet.PutInt(item.Item1);
+				packet.PutInt(j++);
 				packet.PutInt(item.Item2);
 				packet.PutInt(item.Item3);
-				packet.PutEmptyBin(264);
+				packet.PutInt(0);
+				packet.PutEmptyBin(260);
 			}
+			packet.Rewind();
 
 			ZoneServer.Instance.PacketHandler.Handle(sender.Connection, packet);
 

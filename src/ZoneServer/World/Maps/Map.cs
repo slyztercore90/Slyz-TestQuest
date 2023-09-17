@@ -23,6 +23,11 @@ namespace Melia.Zone.World.Maps
 		private int _layer = 1;
 
 		/// <summary>
+		/// The default layer for every map.
+		/// </summary>
+		public const int DefaultLayer = 0;
+
+		/// <summary>
 		/// Range a character can see.
 		/// </summary>
 		public const int VisibleRange = 500;

@@ -105,6 +105,12 @@ namespace Melia.Zone.World.Actors.Monsters
 
 		/// <summary>
 		/// Gets or sets the name of the function to call when someone
+		/// is inside the monster's trigger area.
+		/// </summary>
+		public string WhileInsideName { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the function to call when someone
 		/// leaves the monster's trigger area.
 		/// </summary>
 		public string LeaveName { get; set; }

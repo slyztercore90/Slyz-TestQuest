@@ -44,6 +44,9 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 			var splashParam = skill.GetSplashParameters(caster, originPos, farPos, length: 30, width: 40, angle: 0);
 			var splashArea = skill.GetSplashArea(SplashType.Circle, splashParam);
 
+			Send.ZC_SKILL_READY(caster, skill, originPos, farPos);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
+
 			this.Attack(skill, caster, splashArea);
 		}
 
@@ -57,8 +60,6 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 		{
 			var damageDelay = TimeSpan.FromMilliseconds(270);
 			var skillHitDelay = TimeSpan.Zero;
-
-			await Task.Delay(damageDelay);
 
 			var targets = caster.Map.GetAttackableEntitiesIn(caster, splashArea);
 			var hits = new List<SkillHitInfo>();

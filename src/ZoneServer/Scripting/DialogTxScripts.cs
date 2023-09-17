@@ -66,6 +66,20 @@ namespace Melia.Zone.Scripting
 			this.NumArgs = numArgs;
 			this.StrArgs = strArgs;
 		}
+
+		/// <summary>
+		/// Creates new arguments.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="txItem"></param>
+		public DialogTxArgs(Character character, DialogTxItem txItem)
+		{
+			this.Character = character;
+			this.TxItems = new DialogTxItem[1];
+			this.TxItems[0] = txItem;
+			this.NumArgs = null;
+			this.StrArgs = null;
+		}
 	}
 
 	/// <summary>

@@ -161,8 +161,10 @@ namespace Melia.Barracks.Database
 		/// <returns></returns>
 		public Character GetCharacterById(long id)
 		{
+			if (id >= ObjectIdRanges.Characters)
+				id -= ObjectIdRanges.Characters;
 			lock (_characters)
-				return _characters.FirstOrDefault(a => a.DbId == id);
+				return _characters.Find(a => a.DbId == id);
 		}
 
 		/// <summary>

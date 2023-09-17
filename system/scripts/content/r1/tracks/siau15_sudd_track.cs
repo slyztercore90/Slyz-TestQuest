@@ -1,0 +1,98 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Melia.Shared.Tos.Const;
+using Melia.Shared.World;
+using Melia.Zone.Network;
+using Melia.Zone.Scripting;
+using Melia.Zone.World.Actors;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.Effects;
+using Melia.Zone.World.Tracks;
+using Yggdrasil.Logging;
+
+[TrackScript("SIAU15_SUDD_TRACK")]
+public class SIAU15SUDDTRACK : TrackScript
+{
+	protected override void Load()
+	{
+		SetId("SIAU15_SUDD_TRACK");
+		//SetMap("f_siauliai_15_re");
+		//CenterPos(8.24,1101.67,-2455.42);
+	}
+
+	public override IActor[] OnStart(Character character, Track track)
+	{
+		base.OnStart(character, track);
+
+		var actors = new List<IActor>();
+		character.Movement.MoveTo(new Position(54.7253f, 1101.667f, -2281.746f));
+		actors.Add(character);
+
+		var mob0 = Shortcuts.AddMonster(0, 57071, "", "f_siauliai_15_re", -493.9627, 1145.472, -2495.92, 174.375);
+		mob0.SetVisibilty(ActorVisibility.Track, character.ObjectId);
+		mob0.Level = 55;
+		mob0.AddEffect(new ScriptInvisibleEffect());
+		mob0.Layer = character.Layer;
+		actors.Add(mob0);
+
+		var mob1 = Shortcuts.AddMonster(0, 41248, "", "f_siauliai_15_re", 28.23584, 1101.677, -2536.952, 21.52174);
+		mob1.SetVisibilty(ActorVisibility.Track, character.ObjectId);
+		mob1.AddEffect(new ScriptInvisibleEffect());
+		mob1.Layer = character.Layer;
+		actors.Add(mob1);
+
+		var mob2 = Shortcuts.AddMonster(0, 41248, "", "f_siauliai_15_re", 0.155235, 1101.677, -2568.923, 24.78261);
+		mob2.SetVisibilty(ActorVisibility.Track, character.ObjectId);
+		mob2.AddEffect(new ScriptInvisibleEffect());
+		mob2.Layer = character.Layer;
+		actors.Add(mob2);
+
+		var mob3 = Shortcuts.AddMonster(0, 41248, "", "f_siauliai_15_re", 65.78989, 1101.677, -2571.156, 20.43478);
+		mob3.SetVisibilty(ActorVisibility.Track, character.ObjectId);
+		mob3.AddEffect(new ScriptInvisibleEffect());
+		mob3.Layer = character.Layer;
+		actors.Add(mob3);
+
+		var mob4 = Shortcuts.AddMonster(0, 400322, "", "f_siauliai_15_re", 54.66116, 1101.677, -2532.901, 33.18182);
+		mob4.SetVisibilty(ActorVisibility.Track, character.ObjectId);
+		mob4.AddEffect(new ScriptInvisibleEffect());
+		mob4.Layer = character.Layer;
+		actors.Add(mob4);
+
+		var mob5 = Shortcuts.AddMonster(0, 400322, "", "f_siauliai_15_re", -21.2343, 1101.677, -2569.128, 35.22727);
+		mob5.SetVisibilty(ActorVisibility.Track, character.ObjectId);
+		mob5.AddEffect(new ScriptInvisibleEffect());
+		mob5.Layer = character.Layer;
+		actors.Add(mob5);
+
+		var mob6 = Shortcuts.AddMonster(0, 400322, "", "f_siauliai_15_re", 103.1453, 1101.677, -2561.612, 28.40909);
+		mob6.SetVisibilty(ActorVisibility.Track, character.ObjectId);
+		mob6.AddEffect(new ScriptInvisibleEffect());
+		mob6.Layer = character.Layer;
+		actors.Add(mob6);
+
+		var mob7 = Shortcuts.AddMonster(0, 57071, "", "f_siauliai_15_re", 36.44427, 1101.677, -2468.332, 0);
+		mob7.SetVisibilty(ActorVisibility.Track, character.ObjectId);
+		mob7.Level = 39;
+		mob7.AddEffect(new ScriptInvisibleEffect());
+		mob7.Layer = character.Layer;
+		actors.Add(mob7);
+
+		return actors.ToArray();
+	}
+
+	public override async Task OnProgress(Character character, Track track, int frame)
+	{
+		switch (frame)
+		{
+			case 21:
+				break;
+			default:
+				Log.Warning("OnProgress: Unsupported frame {0} called from {1}.", frame, this.TrackId);
+				break;
+		}
+		await base.OnProgress(character, track, frame);
+	}
+
+}

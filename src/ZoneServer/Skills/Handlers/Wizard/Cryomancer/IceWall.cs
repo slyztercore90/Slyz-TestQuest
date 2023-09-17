@@ -73,12 +73,12 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 			}
 
 			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, hits);
-			Send.ZC_NORMAL.Skill(caster, skill, "Cryomancer_IceWall", farPos, caster.Direction, 0, 18.5f, skillHandle, 12);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Cryomancer_IceWall", farPos, caster.Direction, 0, 18.5f, skillHandle, 12);
 
 			// TODO: Figure out if this possible without variables
 			if (caster is Character character)
 			{
-				if (!character.Variables.Temp.TryGet<Position>("SkillCelloriginPos", out var cellPosition))
+				if (!character.Variables.Temp.TryGet<Position>("SkillCellCastPosition", out var cellPosition))
 				{
 					Log.Warning("No cell position found for skill {0}.", skill.Id);
 					return;
@@ -123,7 +123,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 						}
 					}
 				}
-				Task.Delay(TimeSpan.FromSeconds(15)).ContinueWith(_ => Send.ZC_NORMAL.Skill(caster, skill, "Cryomancer_IceWall", farPos, caster.Direction, 0, 18.5f, skillHandle, 12, false));
+				Task.Delay(TimeSpan.FromSeconds(15)).ContinueWith(_ => Send.ZC_NORMAL.SkillPad(caster, skill, "Cryomancer_IceWall", farPos, caster.Direction, 0, 18.5f, skillHandle, 12, false));
 			}
 		}
 

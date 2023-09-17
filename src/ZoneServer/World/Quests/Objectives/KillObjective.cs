@@ -68,6 +68,10 @@ namespace Melia.Zone.World.Quests.Objectives
 				{
 					progress.Count = Math.Min(objective.TargetCount, progress.Count + 1);
 					progress.Done = progress.Count >= objective.TargetCount;
+
+					character.Quests.UpdateQuestProgress(quest.Data.Id, objective.Id);
+					if (progress.Done)
+						character.Quests.CompleteObjective(quest.Data.Id, objective.Ident);
 				}
 			});
 		}

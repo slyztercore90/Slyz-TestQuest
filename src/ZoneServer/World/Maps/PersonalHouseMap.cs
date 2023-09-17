@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Melia.Shared.Tos.Const;
-using Melia.Shared.World;
+﻿using Melia.Shared.Tos.Const;
 using Melia.Zone.World.Actors.Monsters;
 using Melia.Zone.World.Houses;
 
@@ -25,15 +19,9 @@ namespace Melia.Zone.World.Maps
 		/// </summary>
 		private void Load()
 		{
-			var monster = new Mob(3010001, MonsterType.NPC);
-			var dir = CardinalDirection.South;
-			monster.Position = new Position(-40f, 0f, 140f);
-			monster.Direction = Direction.FromCardinalDirection(dir);
-			monster.DialogName = "PERSONAL_HOUSING_OBJ_BARRACK_06_CHAIR_1";
-			//monster.Talk = NpcFunctions.PERSONAL_HOUSING_OBJ_BARRACK_06_CHAIR_1;
 			foreach (var prop in this.House.Props)
 			{
-				monster = new Mob(prop.MonsterId, MonsterType.NPC);
+				var monster = new Mob(prop.MonsterId, MonsterType.NPC);
 				monster.Position = prop.Position;
 				monster.Direction = prop.Direction;
 				monster.IsProp = true;

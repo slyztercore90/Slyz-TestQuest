@@ -27,26 +27,21 @@ namespace Melia.Shared.Data.Database
 		public PersonalShopType Type { get; set; } = PersonalShopType.NPC;
 		public Dictionary<int, ProductData> Products { get; set; } = new Dictionary<int, ProductData>();
 		public int Level { get; set; }
-		public int EffectId { get; set; } = 270065;
+		public int EffectId { get; set; } = 7966;
 		public bool IsClosed { get; set; }
 
 		public int SkillIcon
 		{
 			get
 			{
-				switch (Type)
+				return this.Type switch
 				{
-					case PersonalShopType.Buff:
-						return 40805;
-					case PersonalShopType.Repair:
-						return 50301;
-					case PersonalShopType.FoodTable:
-						return 50304;
-					case PersonalShopType.ItemAwakening:
-						return 21007;
-					default:
-						return 0;
-				}
+					PersonalShopType.Buff => 40805,
+					PersonalShopType.Repair => 50301,
+					PersonalShopType.FoodTable => 50304,
+					PersonalShopType.ItemAwakening => 21007,
+					_ => 0,
+				};
 			}
 		}
 

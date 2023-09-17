@@ -72,6 +72,16 @@ namespace Melia.Zone.World.Quests
 		public ReadOnlyCollection<QuestProgress> Progresses => _progresses.AsReadOnly();
 
 		/// <summary>
+		/// Returns progress value of the quest's objectives with a shared objective id.
+		/// </summary>
+		public int ProgressValue(int objectiveId) => Progresses.Sum(a => a.Objective.Id == objectiveId ? a.Count : 0);
+
+		/// <summary>
+		/// Returns progress count of the quest's objectives with a shared objective id.
+		/// </summary>
+		public int ProgressCount(int objectiveId) => Progresses.Sum(a => a.Objective.Id == objectiveId ? 1 : 0);
+
+		/// <summary>
 		/// Returns true if all of the quest's objectives were completed.
 		/// </summary>
 		public bool ObjectivesCompleted => this.Progresses.All(a => a.Done);
@@ -79,7 +89,17 @@ namespace Melia.Zone.World.Quests
 		/// <summary>
 		/// Returns true if the quest is currently in progress.
 		/// </summary>
-		public bool InProgress => this.Status == QuestStatus.InProgress;
+		public bool InProgress => this.Status >= QuestStatus.Progress && this.Status < QuestStatus.Complete;
+
+		/// <summary>
+		/// Returns true if the quest is possible.
+		/// </summary>
+		public bool IsPossible => this.Status > QuestStatus.Impossible && this.Status < QuestStatus.Progress;
+
+		/// <summary>
+		/// Returns true if the quest is able to be completed.
+		/// </summary>
+		public bool IsCompletable => this.ObjectivesCompleted && this.Status < QuestStatus.Complete;
 
 		/// <summary>
 		/// Gets or sets whether any objectives' progresses changed during
@@ -107,7 +127,7 @@ namespace Melia.Zone.World.Quests
 		private void Load()
 		{
 			this.QuestStaticData = ZoneServer.Instance.Data.QuestDb.Find(this.Data.Id);
-			this.SessionObjectStaticData = ZoneServer.Instance.Data.SessionObjectDb.Find(QuestStaticData.QuestSSN);
+			this.SessionObjectStaticData = ZoneServer.Instance.Data.SessionObjectDb.Find(this.QuestStaticData.QuestSSN);
 		}
 
 		/// <summary>
@@ -291,27 +311,6 @@ namespace Melia.Zone.World.Quests
 	public enum QuestStatus
 	{
 		/// <summary>
-		/// The quest hasn't been started yet and the character has yet
-		/// to actually receive it.
-		/// </summary>
-		NotStarted = 0,
-
-		/// <summary>
-		/// The quest is currently in progress.
-		/// </summary>
-		InProgress = 200,
-
-		/// <summary>
-		/// The quest was completed successfully.
-		/// </summary>
-		Completed = 300,
-
-		/// <summary>
-		/// The quest was given up.
-		/// </summary>
-		Canceled = -10,
-
-		/// <summary>
 		/// When quest is reset due to rank reset.
 		/// </summary>
 		RankReset = -10000,
@@ -338,24 +337,29 @@ namespace Melia.Zone.World.Quests
 		Abandoned = -10,
 
 		/// <summary>
+		/// The quest hasn't been started yet and the character has yet
+		/// to actually receive it.
+		/// </summary>
+		Possible = 0,
+
+		/// <summary>
 		/// The quest has been restarted after being abandoned
 		/// </summary>
 		Restarted = 1,
 
 		/// <summary>
-		/// The quest hasn't been started yet and the character has yet
-		/// to actually receive it.
+		/// The quest is currently in progress.
 		/// </summary>
-		Possible = 11,
-
-		/// <summary>
-		/// The quest is started but no progress made.
-		/// </summary>
-		Started = 100,
+		Progress = 100,
 
 		/// <summary>
 		/// The quest objectives are met.
 		/// </summary>
-		Succeeded = 250,
+		Success = 200,
+
+		/// <summary>
+		/// The quest was completed successfully.
+		/// </summary>
+		Complete = 300,
 	}
 }

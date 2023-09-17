@@ -453,6 +453,17 @@ namespace Melia.Zone.Scripting.Dialogues
 		/// </summary>
 		/// <param name="hookName"></param>
 		/// <returns></returns>
+		public async Task<bool> HooksByDialogName(string hookName)
+		{
+			return await this.Hooks(this.Npc.DialogName, hookName);
+		}
+
+		/// <summary>
+		/// Executes the given hooks, if any, and returns true if any were
+		/// executed.
+		/// </summary>
+		/// <param name="hookName"></param>
+		/// <returns></returns>
 		public async Task<bool> Hooks(string hookName)
 		{
 			return await this.Hooks(this.Npc.UniqueName, hookName);
@@ -466,6 +477,10 @@ namespace Melia.Zone.Scripting.Dialogues
 		/// <returns></returns>
 		public async Task<bool> Hooks(string owner, string hookName)
 		{
+			// Skip hooks for mobs.
+			if (this.Initiator is Mob)
+				return false;
+
 			var hooks = ScriptHooks.GetAll<DialogHook>(owner, hookName);
 			if (hooks.Length == 0)
 				return false;

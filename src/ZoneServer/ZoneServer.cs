@@ -82,6 +82,11 @@ namespace Melia.Zone
 		public DialogFunctions DialogFunctions { get; } = new DialogFunctions();
 
 		/// <summary>
+		/// Returns the trigger function handlers.
+		/// </summary>
+		public TriggerFunctions TriggerFunctions { get; } = new TriggerFunctions();
+
+		/// <summary>
 		/// Returns reference to the server's IES mods.
 		/// </summary>
 		public IesModList IesMods { get; } = new IesModList();
@@ -113,6 +118,7 @@ namespace Melia.Zone
 			this.InitSkills();
 			this.InitWorld();
 			this.LoadDialogFunctions();
+			this.LoadTriggerFunctions();
 			this.LoadScripts("system/scripts/scripts_zone.txt");
 			this.LoadIesMods();
 			this.StartWorld();
@@ -330,6 +336,25 @@ namespace Melia.Zone
 			{
 				this.DialogFunctions.LoadMethods();
 				Log.Info("  loaded {0} dialog functions.", this.DialogFunctions.Count);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to load dialog functions: {0}", ex);
+				ConsoleUtil.Exit(1);
+			}
+		}
+
+		/// <summary>
+		/// Sets up Trigger Functions.
+		/// </summary>
+		private void LoadTriggerFunctions()
+		{
+			Log.Info("Loading trigger functions...");
+
+			try
+			{
+				this.TriggerFunctions.LoadMethods();
+				Log.Info("  loaded {0} trigger functions.", this.TriggerFunctions.Count);
 			}
 			catch (Exception ex)
 			{

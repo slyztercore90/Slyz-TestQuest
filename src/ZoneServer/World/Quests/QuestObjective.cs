@@ -9,6 +9,11 @@ namespace Melia.Zone.World.Quests
 	public abstract class QuestObjective
 	{
 		/// <summary>
+		/// Shared quest objective id
+		/// </summary>
+		public int Id { get; internal set; }
+
+		/// <summary>
 		/// Gets or sets the objective's description.
 		/// </summary>
 		public string Text { get; internal set; }

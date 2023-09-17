@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Melia.Shared.World;
 using Melia.Zone.Network;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Monsters;
 using Melia.Zone.World.Quests;
-using Melia.Zone.World.Quests.Prerequisites;
 using Melia.Zone.World.Tracks;
 using Yggdrasil.Scripting;
 
@@ -96,6 +96,9 @@ namespace Melia.Zone.Scripting
 		protected void SetId(string id)
 			=> this.Data.Id = id;
 
+		protected void SetPropertyId(string id)
+			=> this.Data.PropertyId = id;
+
 		/// <summary>
 		/// Sets whether the track can be cancelled.
 		/// </summary>
@@ -121,6 +124,8 @@ namespace Melia.Zone.Scripting
 		public virtual IActor[] OnStart(Character character, Track track)
 		{
 			character.StartLayer();
+			if (track.Data.QuestId != 0)
+				character.Quests.UpdateQuestStatus(track.Data.QuestId, track.Data.OnStartQuestStatus);
 			return Array.Empty<IActor>();
 		}
 
@@ -141,11 +146,28 @@ namespace Melia.Zone.Scripting
 		/// Called when a character completes this track successfully.
 		/// </summary>
 		/// <remarks>
-		/// Called after the track was marked as completed, but before
-		/// it's removed from the track log and the rewards were given.
+		/// Called after the track was marked as completed.
 		/// </remarks>
 		public virtual void OnComplete(Character character, Track track)
 		{
+			if (string.IsNullOrEmpty(this.Data.PropertyId))
+				character.SetEtcProperty(track.Id, 1);
+			else
+				character.SetEtcProperty(this.Data.PropertyId, 1);
+
+			if (track.Data.QuestId != 0)
+			{
+				character.Quests.UpdateQuestStatus(track.Data.QuestId, track.Data.OnCompleteQuestStatus);
+				if (track.Data.OnCompleteQuestStatus == QuestStatus.Complete)
+					character.Quests.Complete(track.Data.QuestId);
+			}
+
+			if (track.HasBattleBoxInLayer)
+			{
+				Send.ZC_REMOVE_SCROLLLOCKBOX(character);
+				track.HasBattleBoxInLayer = false;
+			}
+
 			character.StopLayer();
 			foreach (var actor in track.Actors)
 			{
@@ -158,16 +180,48 @@ namespace Melia.Zone.Scripting
 		/// Called when a character gives up this track.
 		/// </summary>
 		/// <remarks>
-		/// Called after the track was marked as completed, but before
-		/// it's removed from the track log.
+		/// Called after the track was marked as cancelled.
 		/// </remarks>
 		public virtual void OnCancel(Character character, Track track)
 		{
+			if (string.IsNullOrEmpty(this.Data.PropertyId))
+				character.SetEtcProperty(track.Id, 0);
+			else
+				character.SetEtcProperty(this.Data.PropertyId, 0);
+
+			if (track.Data.QuestId != 0)
+			{
+				if (track.Data.OriginalQuestStatus == QuestStatus.Possible && character.Quests.TryGetById(track.Data.QuestId, out var quest))
+					character.Quests.Cancel(quest);
+				character.Quests.UpdateQuestStatus(track.Data.QuestId, track.Data.OriginalQuestStatus);
+			}
+
 			character.StopLayer();
+			if (track.Actors != null)
+			{
+				foreach (var actor in track.Actors)
+				{
+					if (actor != character && actor is IMonster monster)
+						character.Map.RemoveMonster(monster);
+				}
+			}
+		}
+
+		public void CreateBattleBoxInLayer(Character character, Track track)
+		{
+			track.HasBattleBoxInLayer = true;
 			foreach (var actor in track.Actors)
 			{
-				if (actor != character && actor is IMonster monster)
-					character.Map.RemoveMonster(monster);
+				if (actor.Handle != character.Handle && actor is ICombatEntity combatEntity && character.CanAttack(combatEntity))
+				{
+					var distance = (float)character.Position.Get2DDistance(actor.Position);
+					if (distance > 0)
+						distance = (float)Math.Floor(distance / 2 + 150);
+					var lPos = new Position(character.Position.X - distance, 0f, character.Position.Z - distance);
+					var rPos = new Position(character.Position.X + distance, 0f, character.Position.Z + distance);
+					var width = Math.Abs(lPos.X - rPos.X);
+					Send.ZC_CREATE_SCROLLLOCKBOX(character, actor, lPos, rPos, width);
+				}
 			}
 		}
 	}

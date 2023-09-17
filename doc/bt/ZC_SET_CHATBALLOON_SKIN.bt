@@ -15,8 +15,5 @@
 ServerHeaderFixed header;
 
 int handle;
-int64 l1;
-short s3;
-ushort s4;
-int i1;
-short s5;
+int chatBalloonId;
+ShortDate date;

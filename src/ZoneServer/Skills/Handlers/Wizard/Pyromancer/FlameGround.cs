@@ -53,7 +53,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 			}
 
 			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, hits);
-			Send.ZC_NORMAL.Skill(caster, skill, "Pyromancer_FlameGround", farPos, caster.Direction, 2.551542f, 0.9648228f, skillHandle, 100);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Pyromancer_FlameGround", farPos, caster.Direction, 2.551542f, 0.9648228f, skillHandle, 100);
 
 			foreach (var currentTarget in targets.LimitBySDR(caster, skill))
 			{
@@ -64,7 +64,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 				Send.ZC_SYNC_END(caster, skillHandle, 0);
 				Send.ZC_SYNC_EXEC_BY_SKILL_TIME(caster, skillHandle, TimeSpan.FromMilliseconds(400));
 			}
-			Task.Delay(TimeSpan.FromSeconds(8)).ContinueWith(_ => Send.ZC_NORMAL.Skill(caster, skill, "Pyromancer_FlameGround", farPos, caster.Direction, 2.551542f, 0.9648228f, skillHandle, 100, false));
+			Task.Delay(TimeSpan.FromSeconds(8)).ContinueWith(_ => Send.ZC_NORMAL.SkillPad(caster, skill, "Pyromancer_FlameGround", farPos, caster.Direction, 2.551542f, 0.9648228f, skillHandle, 100, false));
 		}
 	}
 }

@@ -356,7 +356,7 @@ namespace Melia.Zone.World.Items
 		/// <param name="position">Initial position of the drop item.</param>
 		/// <param name="direction">Direction to toss the item in.</param>
 		/// <param name="distance">Distance to toss the item.</param>
-		public ItemMonster Drop(Map map, Position position, Direction direction, float distance)
+		public ItemMonster Drop(Map map, Position position, Direction direction, float distance, int layer = 0)
 		{
 			// ZC_NORMAL_ItemDrop animates the item flying from its
 			// initial drop position to its final position. To keep
@@ -375,6 +375,7 @@ namespace Melia.Zone.World.Items
 			itemMonster.Direction = direction;
 			itemMonster.FromGround = true;
 			itemMonster.DisappearTime = DateTime.Now.AddSeconds(ZoneServer.Instance.Conf.World.DropDisappearSeconds);
+			itemMonster.Layer = layer;
 
 			map.AddMonster(itemMonster);
 
@@ -390,12 +391,12 @@ namespace Melia.Zone.World.Items
 		/// <param name="map">Map to drop to the item on.</param>
 		/// <param name="fromPosition">Initial position of the drop item.</param>
 		/// <param name="toPosition">Position the item gets tossed to.</param>
-		public ItemMonster Drop(Map map, Position fromPosition, Position toPosition)
+		public ItemMonster Drop(Map map, Position fromPosition, Position toPosition, int layer = 0)
 		{
 			var direction = fromPosition.GetDirection(toPosition);
 			var distance = (float)fromPosition.Get2DDistance(toPosition);
 
-			return this.Drop(map, fromPosition, direction, distance);
+			return this.Drop(map, fromPosition, direction, distance, layer);
 		}
 
 		/// <summary>

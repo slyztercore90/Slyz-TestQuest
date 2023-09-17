@@ -8,6 +8,7 @@ using Melia.Shared.L10N;
 using Melia.Shared.Network;
 using Melia.Shared.Network.Helpers;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Const.Web;
 using Melia.Shared.Tos.Properties;
 using Melia.Shared.World;
 using Melia.Zone.Events;
@@ -24,6 +25,7 @@ using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Monsters;
 using Melia.Zone.World.Items;
 using Melia.Zone.World.Maps;
+using Microsoft.VisualBasic;
 using Yggdrasil.Logging;
 
 namespace Melia.Zone.Network
@@ -135,7 +137,7 @@ namespace Melia.Zone.Network
 
 			Send.ZC_STANCE_CHANGE(character);
 			Send.ZC_NORMAL.AdventureBook(conn);
-			Send.ZC_SET_CHATBALLOON_SKIN(conn);
+			Send.ZC_SET_CHATBALLOON_SKIN(character);
 
 			Send.ZC_IES_MODIFY_LIST(conn);
 			Send.ZC_ITEM_INVENTORY_DIVISION_LIST(character);
@@ -163,6 +165,8 @@ namespace Melia.Zone.Network
 			Send.ZC_START_GAME(conn);
 			Send.ZC_UPDATE_ALL_STATUS(character, 0);
 			Send.ZC_SET_WEBSERVICE_URL(conn);
+			Send.ZC_RES_DAMAGEFONT_SKIN(character);
+			Send.ZC_RES_DAMAGEEFFECT_SKIN(character);
 			Send.ZC_MOVE_SPEED(character);
 			Send.ZC_STAMINA(character, character.Stamina);
 			Send.ZC_UPDATE_SP(character, character.Sp, false);
@@ -933,11 +937,6 @@ namespace Melia.Zone.Network
 				//Log.Debug("CZ_CLICK_TRIGGER: User '{0}' is already in a dialog.", conn.Account.Name);
 				return;
 			}
-
-			// I don't remember what this does or why it was put here,
-			// but it makes the client lag for a second before starting
-			// the dialog.
-			//Send.ZC_SHARED_MSG(conn, 108);
 
 			conn.CurrentDialog = new Dialog(character, npc);
 			conn.CurrentDialog.Start();
@@ -2088,6 +2087,82 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Sent when using a Tx Item.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_REQ_TX_ITEM)]
+		public void CZ_REQ_TX_ITEM(IZoneConnection conn, Packet packet)
+		{
+			var size = packet.GetShort();
+			var txClassId = packet.GetInt();
+			var worldId = packet.GetLong();
+			var l1 = packet.GetLong();
+			var l2 = packet.GetLong();
+			var b1 = packet.GetByte();
+			var numArg = packet.GetInt();
+			var character = conn.SelectedCharacter;
+
+			// Get data
+			if (!ZoneServer.Instance.Data.DialogTxDb.TryFind(txClassId, out var data))
+			{
+				character.ServerMessage(Localization.Get("Apologies, something went wrong there. Please report this issue."));
+				Log.Warning("CZ_REQ_TX_ITEM: User '{0}' sent an unknown dialog transaction id: {1}", conn.Account.Name, txClassId);
+				return;
+			}
+
+			// Get handler
+			if (!ScriptableFunctions.Item.TryGet(data.Script, out var scriptFunc))
+			{
+				character.ServerMessage(Localization.Get("This action has not been implemented yet."));
+				Log.Debug("CZ_REQ_TX_ITEM: No handler registered for transaction script '{0}'", data.Script);
+				return;
+			}
+
+			// Get item from character
+			var item = character.Inventory.GetItem(worldId);
+			if (item == null)
+			{
+				Log.Warning("CZ_REQ_TX_ITEM: User '{0}' tried to use an item they don't have.", conn.Account.Name);
+				return;
+			}
+
+			// Try to execute script
+			var script = item.Data.Script;
+			try
+			{
+				var result = scriptFunc(character, item, script.StrArg, script.NumArg1, (float)numArg);
+				if (result == ItemUseResult.Fail)
+				{
+					character.ServerMessage(Localization.Get("Item usage failed."));
+					return;
+				}
+
+				// Remove consumeable items on success
+				if (item.Data.Type == ItemType.Consume)
+				{
+					if (result != ItemUseResult.OkayNotConsumed)
+						character.Inventory.Remove(item, 1, InventoryItemRemoveMsg.Used);
+				}
+
+				if (item.Data.HasCooldown && item.CooldownData != null)
+					character.Components.Get<CooldownComponent>().Start(item.CooldownData.Id, item.CooldownData.OverheatResetTime);
+
+				Send.ZC_ITEM_USE(character, item.Id);
+			}
+			catch (BuffNotImplementedException ex)
+			{
+				character.ServerMessage(Localization.Get("This item has not been fully implemented yet."));
+				Log.Debug("CZ_REQ_TX_ITEM: Buff handler '{4}' missing for script execution of '{0}(\"{1}\", {2}, {3})'", script.Function, script.StrArg, script.NumArg1, script.NumArg2, ex.BuffId);
+			}
+			catch (Exception ex)
+			{
+				character.ServerMessage(Localization.Get("Apologies, something went wrong there. Please report this issue."));
+				Log.Debug("CZ_REQ_TX_ITEM: Exception while executing script function '{0}(\"{1}\", {2}, {3})': {4}", script.Function, script.StrArg, script.NumArg1, script.NumArg2, ex);
+			}
+		}
+
+		/// <summary>
 		/// Sent after a loading screen is completed.
 		/// </summary>
 		/// <param name="conn"></param>
@@ -2095,7 +2170,34 @@ namespace Melia.Zone.Network
 		[PacketHandler(Op.CZ_LOAD_COMPLETE)]
 		public void CZ_LOAD_COMPLETE(IZoneConnection conn, Packet packet)
 		{
+			var character = conn.SelectedCharacter;
+			var house = conn.ActiveHouse;
+
+			if (character.Map.Id >= 7000 && character.Map.Id <= 7002)
+			{
+				if (house != null)
+				{
+					Send.ZC_SET_LAYER(character, Map.DefaultLayer, false);
+					character.AddonMessage(AddonMessage.SET_PERSONAL_HOUSE_NAME, house.Name);
+					character.AddonMessage(AddonMessage.ENTER_PERSONAL_HOUSE, house.IsOwner(character) ? "YES" : "NO");
+					character.AddonMessage(AddonMessage.HOUSINGCRAFT_UPDATE_ENDTIME);
+				}
+				else
+				{
+					var lastMapId = (int)character.Properties.GetFloat(PropertyName.LastWarpMapID, 1001);
+
+					if (ZoneServer.Instance.World.Maps.TryGet(lastMapId, out var map) && map.Ground.TryGetRandomPosition(out var rndPos))
+						character.Warp(map.Id, rndPos);
+				}
+			}
 			Send.ZC_LOAD_COMPLETE(conn);
+			character.AddonMessage(AddonMessage.RECEIVE_SERVER_NATION);
+			foreach (var quest in character.Quests.GetList())
+			{
+				if (!quest.InProgress || quest.SessionObjectStaticData == null)
+					continue;
+				character.AddSessionObject(quest.SessionObjectStaticData.Id);
+			}
 		}
 
 		/// <summary>
@@ -2949,16 +3051,16 @@ namespace Melia.Zone.Network
 				};
 				switch (group)
 				{
-					case 440007:
+					case 8657:
 						shop.Type = PersonalShopType.Buff;
 						break;
-					case 1240082:
+					case 3076:
 						shop.Type = PersonalShopType.ItemAwakening;
 						break;
-					case 690006:
+					case 4376:
 						shop.Type = PersonalShopType.Repair;
 						break;
-					case 1770085:
+					case 8565:
 						shop.Type = PersonalShopType.Portal;
 						break;
 					default:
@@ -3279,6 +3381,15 @@ namespace Melia.Zone.Network
 			// We'll just leave this empty for now.
 		}
 
+		[PacketHandler(Op.CZ_CLIENT_DIRECT)]
+		public void CZ_CLIENT_DIRECT(IZoneConnection conn, Packet packet)
+		{
+			var type = packet.GetInt();
+			var param = packet.GetString(16);
+
+			Send.ZC_CLIENT_DIRECT(conn, type, param);
+		}
+
 		/// <summary>
 		/// Sent when transferring item between Warehouse and Inventory
 		/// </summary>
@@ -3497,7 +3608,6 @@ namespace Melia.Zone.Network
 
 			var character = conn.SelectedCharacter;
 			var fee = 0;
-			var commissionFee = 0f;
 			var item = character.Inventory.GetItem(itemWorldId);
 
 			if (item == null)
@@ -3506,21 +3616,13 @@ namespace Melia.Zone.Network
 				return;
 			}
 
-			switch (saleLength)
+			var commissionFee = saleLength switch
 			{
-				case 1:
-					commissionFee = 0.005f;
-					break;
-				case 3:
-					commissionFee = 0.0075f;
-					break;
-				case 5:
-					commissionFee = 0.01f;
-					break;
-				default:
-					commissionFee = 0.0125f;
-					break;
-			}
+				1 => 0.005f,
+				3 => 0.0075f,
+				5 => 0.01f,
+				_ => 0.0125f,
+			};
 			fee += (int)Math.Truncate(itemPrice * commissionFee);
 
 			if (!character.HasItem(ItemId.Silver, fee))
@@ -3556,7 +3658,8 @@ namespace Melia.Zone.Network
 				return;
 			}
 
-			Send.ZC_SYSTEM_MSG(character, 10322);
+			// If no prices are found.
+			character.SystemMessage("MarketMinMaxInfo_None");
 			// TODO: Calculate Market Min/Max Price
 			Send.ZC_NORMAL.MarketMinMaxInfo(character, true, 113, 56, 453, 2265, 283);
 		}
@@ -4433,6 +4536,26 @@ namespace Melia.Zone.Network
 			// ones, and stop all if anything goes wrong.
 
 			Send.ZC_STOP_FLUTING(character, note, octave, semitone);
+		}
+
+		/// <summary>
+		/// Request to select class representation
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="packet"></param>
+		[PacketHandler(Op.CZ_CHANGE_REPRESENTATION_CLASS)]
+		public void CZ_CHANGE_REPRESENTATION_CLASS(IZoneConnection conn, Packet packet)
+		{
+			var jobId = (JobId)packet.GetInt();
+			var character = conn.SelectedCharacter;
+
+			if (!character.Jobs.Has(jobId))
+			{
+				Log.Warning("CZ_CHANGE_REPRESENTATION_CLASS: User '{0}' tried to select a class they don't have {1}.", conn.Account.Name, jobId.ToString());
+				return;
+			}
+			character.EtcProperties.SetString(PropertyName.RepresentationClassID, jobId.ToString());
+			character.AddonMessage(AddonMessage.UPDATE_REPRESENTATION_CLASS_ICON, "None", (int)jobId);
 		}
 
 		/// <summary>

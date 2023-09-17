@@ -8358,6 +8358,35 @@
 		public const string ep15explorer_thstaff_cabinet = "ep15explorer_thstaff_cabinet";
 		public const string ep15explorer_shield_cabinet = "ep15explorer_shield_cabinet";
 		public const string ep15explorer_mace_cabinet = "ep15explorer_mace_cabinet";
+		public const string POPOBOOST_PROGRESS6 = "POPOBOOST_PROGRESS6";
+		public const string POPOBOOST_PROGRESS2 = "POPOBOOST_PROGRESS2";
+		public const string POPO_ROULETTE_USE_ROULETTE_COUNT = "POPO_ROULETTE_USE_ROULETTE_COUNT";
+		public const string POPOBOOST_PROGRESS4 = "POPOBOOST_PROGRESS4";
+		public const string POPOBOOST_PROGRESS1 = "POPOBOOST_PROGRESS1";
+		public const string POPOBOOST_PROGRESS3 = "POPOBOOST_PROGRESS3";
+		public const string POPOBOOST_PROGRESS0 = "POPOBOOST_PROGRESS0";
+		public const string POPOBOOST_PROGRESS5 = "POPOBOOST_PROGRESS5";
+		public const string dmg_font_002 = "dmg_font_002";
+		public const string damage_effect_002 = "damage_effect_002";
+		public const string dmg_font_001 = "dmg_font_001";
+		public const string dmg_font_004 = "dmg_font_004";
+		public const string dmg_font_005 = "dmg_font_005";
+		public const string dmg_font_003 = "dmg_font_003";
+		public const string damage_effect_001 = "damage_effect_001";
+		public const string MASTER_EX_COOL_210015 = "MASTER_EX_COOL_210015";
+		public const string MASTER_EX_210015 = "MASTER_EX_210015";
+		public const string MASTER_EX_EQUIP = "MASTER_EX_EQUIP";
+		public const string HadVisited_11267 = "HadVisited_11267";
+		public const string EVENT_TOS_WHOLE_SHOP_54 = "EVENT_TOS_WHOLE_SHOP_54";
+		public const string AchieveReward_Challenge_ex_0 = "AchieveReward_Challenge_ex_0";
+		public const string AchieveReward_Challenge_ex_2 = "AchieveReward_Challenge_ex_2";
+		public const string AchieveReward_Challenge_ex_1 = "AchieveReward_Challenge_ex_1";
+		public const string AchieveReward_Challenge_14 = "AchieveReward_Challenge_14";
+		public const string AchieveReward_Challenge_17 = "AchieveReward_Challenge_17";
+		public const string AchieveReward_Challenge_13 = "AchieveReward_Challenge_13";
+		public const string AchieveReward_Challenge_16 = "AchieveReward_Challenge_16";
+		public const string AchieveReward_Challenge_15 = "AchieveReward_Challenge_15";
+		public const string AchieveReward_Challenge_18 = "AchieveReward_Challenge_18";
 
 		// Guild
 		public const string MaxCount = "MaxCount";
@@ -8673,6 +8702,9 @@
 		public const string PAPAYA_GUILDEVENT_TOTAL_CLEAR_COUNT_125346 = "PAPAYA_GUILDEVENT_TOTAL_CLEAR_COUNT_125346";
 		public const string PAPAYA_GUILDEVENT_WEEKLY_CLEAR_COUNT_125346 = "PAPAYA_GUILDEVENT_WEEKLY_CLEAR_COUNT_125346";
 		public const string PAPAYA_GUILDEVENT_NEXT_RESET_125346 = "PAPAYA_GUILDEVENT_NEXT_RESET_125346";
+		public const string GuildEvent_FallenDragoon_Reset = "GuildEvent_FallenDragoon_Reset";
+		public const string GuildEvent_FallenDragoon_Reset_Hour = "GuildEvent_FallenDragoon_Reset_Hour";
+		public const string GuildEvent_FallenDragoon_Count = "GuildEvent_FallenDragoon_Count";
 
 		// GuildMember
 		public const string Contribution = "Contribution";
@@ -9181,6 +9213,7 @@
 		public const string StringArg3 = "StringArg3";
 		public const string BlessInfo = "BlessInfo";
 		public const string RadaOption = "RadaOption";
+		public const string popoboost = "popoboost";
 
 		// Monster
 		public const string MonDmgRate = "MonDmgRate";
@@ -19112,6 +19145,20 @@
 		public const string Kill_boss_Slogutis_Auto = "Kill_boss_Slogutis_Auto";
 		public const string Kill_boss_Slogutis_Solo = "Kill_boss_Slogutis_Solo";
 		public const string Kill_boss_upinis_Auto = "Kill_boss_upinis_Auto";
+		public const string Kill_RE_boss_solcomm = "Kill_RE_boss_solcomm";
+		public const string Kill_RE_boss_gresmetruth = "Kill_RE_boss_gresmetruth";
+		public const string Kill_RE_boss_helga = "Kill_RE_boss_helga";
+		public const string Kill_RE_boss_lecifer = "Kill_RE_boss_lecifer";
+		public const string Kill_RE_boss_zawra_dummy = "Kill_RE_boss_zawra_dummy";
+		public const string CollectionRead_325 = "CollectionRead_325";
+		public const string Kill_RE_boss_zawra = "Kill_RE_boss_zawra";
+		public const string Damage_Font_Skin = "Damage_Font_Skin";
+		public const string Damage_Effect_Skin = "Damage_Effect_Skin";
+		public const string Kill_dragoon_master_ex = "Kill_dragoon_master_ex";
+		public const string Kill_guild_boss_dragoon_ex = "Kill_guild_boss_dragoon_ex";
+		public const string EVENT_2023_POPOBOOST_MAX_GEARSCORE = "EVENT_2023_POPOBOOST_MAX_GEARSCORE";
+		public const string Hide_3435 = "Hide_3435";
+		public const string Kill_boss_dragoon_ex = "Kill_boss_dragoon_ex";
 
 		// SessionObject
 		public const string PosX = "PosX";
@@ -26959,6 +27006,8 @@
 		public const string MG_Last_Goddess_Raid_DreamyForest_Party = "MG_Last_Goddess_Raid_DreamyForest_Party";
 		public const string MG_Last_Goddess_Raid_AbyssalObserver_Party = "MG_Last_Goddess_Raid_AbyssalObserver_Party";
 		public const string MG_Last_Goddess_Raid_DreamyForest_Auto = "MG_Last_Goddess_Raid_DreamyForest_Auto";
+		public const string MG_Last_FallenDragoon_Guild_Raid = "MG_Last_FallenDragoon_Guild_Raid";
+		public const string MG_Last_FallenDragoon_Guild_Raid_Block = "MG_Last_FallenDragoon_Guild_Raid_Block";
 
 		// Skill
 		public const string Tooltip_Attr = "Tooltip_Attr";

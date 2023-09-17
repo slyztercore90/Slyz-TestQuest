@@ -56,7 +56,7 @@ namespace Melia.Zone.Skills.Handlers.Chronomancer
 			skill.IncreaseOverheat();
 
 			// Is this correct, why is "Chronomancer_Slow" not being sent here?
-			Send.ZC_NORMAL.Skill(caster, skill, "Chronomancer_Slow", farPos, caster.Direction, 0.06292176f, 85.76556f, skillHandle, 60);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Chronomancer_Slow", farPos, caster.Direction, 0.06292176f, 85.76556f, skillHandle, 60);
 
 			var targets = caster.Map.GetAttackableEntitiesInRange(caster, farPos, (int)skill.Data.SplashRange * 4);
 

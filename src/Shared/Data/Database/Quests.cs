@@ -44,7 +44,7 @@ namespace Melia.Shared.Data.Database
 		/// <returns></returns>
 		public QuestStaticData Find(string className)
 		{
-			return this.Entries.Values.FirstOrDefault(a => a.ClassName == className);
+			return this.Entries.Values.FirstOrDefault(a => a.ClassName.ToLower() == className.ToLower());
 		}
 
 		public bool TryFind(string className, out QuestStaticData quest)

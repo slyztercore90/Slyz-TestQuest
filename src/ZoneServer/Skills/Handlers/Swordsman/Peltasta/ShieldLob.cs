@@ -46,7 +46,7 @@ namespace Melia.Zone.Skills.Handlers.Peltasta
 			Send.ZC_SKILL_READY(caster, skill, skillHandle, originPos, farPos);
 			Send.ZC_NORMAL.UpdateSkillEffect(caster, 0, caster.Position, caster.Direction, Position.Zero);
 			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
-			Send.ZC_NORMAL.Skill(caster, skill, "Peltasta_ShieldLob", originPos, caster.Direction, -0.7853982f, 0, skillHandle, 30);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Peltasta_ShieldLob", originPos, caster.Direction, -0.7853982f, 0, skillHandle, 30);
 
 			var shieldMonster = new Mob(57001, MonsterType.NPC);
 			shieldMonster.Name = "pad_attach_object33";
@@ -58,7 +58,7 @@ namespace Melia.Zone.Skills.Handlers.Peltasta
 			shieldMonster.Properties.SetFloat(PropertyName.Scale, 0.41f);
 			shieldMonster.Died += (killer, killed) =>
 			{
-				Send.ZC_NORMAL.Skill(caster, skill, "Peltasta_ShieldLob2", originPos, caster.Direction, 0, 145.8735f, skillHandle, 30, false);
+				Send.ZC_NORMAL.SkillPad(caster, skill, "Peltasta_ShieldLob2", originPos, caster.Direction, 0, 145.8735f, skillHandle, 30, false);
 			};
 
 			caster.Map.AddMonster(shieldMonster);

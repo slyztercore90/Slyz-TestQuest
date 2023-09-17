@@ -47,7 +47,8 @@ Melia.Override("BUFFSELLER_REG_EXEC", function(original, frame)
 		msg = msg .. " " .. info.classID..","..info.remainCount..","..info.price
 	end
 
-	ui.Chat(msg)
+	ui.Chat(msg);
+	session.autoSeller.RequestRegister(groupName, serverGroupName, title, nil);
 	
 	frame:ShowWindow(0);
 

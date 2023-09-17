@@ -98,6 +98,9 @@
 		public const string DIALOG_SPACE_TUTORIAL_LIME3 = "DIALOG_SPACE_TUTORIAL_LIME3";
 		public const string MINIMIZED_TUTORIALNOTE_EFFECT_CHECK = "MINIMIZED_TUTORIALNOTE_EFFECT_CHECK"; // Parameter: guide_1
 
+		/// <summary>
+		/// Enable PC Bang Shop (Popo Shop)
+		/// </summary>
 		public const string ENABLE_PCBANG_SHOP = "ENABLE_PCBANG_SHOP";
 
 		public const string UPDATE_GUILD_MILEAGE = "UPDATE_GUILD_MILEAGE";
@@ -239,14 +242,19 @@
 		/// <summary>
 		/// Instance Dungeon Related Addons
 		/// </summary>
-		public const string REFRESH_INDUN_REWARD_HUD = "REFRESH_INDUN_REWARD_HUD";
+		public const string OPEN_INDUN_REWARD_HUD = "OPEN_INDUN_REWARD_HUD"; // param: Indun_rokas1
+		public const string REFRESH_INDUN_REWARD_HUD = "REFRESH_INDUN_REWARD_HUD"; // param: Indun_rokas1
 		public const string INDUN_REWARD_RESULT = "INDUN_REWARD_RESULT"; // param: 100#0#misc_BlessedStone;1/misc_talt#6#276659552#256121984#0#0#
 		public const string QUEST_UPDATE_ = "QUEST_UPDATE_";
+		public const string ON_QUEST_UPDATED = "ON_QUEST_UPDATED";
+		public const string ON_DESTROY_NPC_ICON = "ON_DESTROY_NPC_ICON";
+
 		/// <summary>
 		/// Show Crystal in top left HUD, used during raids
 		/// param: unlimited
 		/// </summary>
 		public static string SHOW_SOUL_CRISTAL = "SHOW_SOUL_CRISTAL";
+
 		/// <summary>
 		/// ? Pre-raid starting npc
 		/// params: irredians_level
@@ -402,6 +410,12 @@
 		/// Update Class Icon
 		/// </summary>
 		public const string UPDATE_REPRESENTATION_CLASS_ICON = "UPDATE_REPRESENTATION_CLASS_ICON";
+
+		/// <summary>
+		/// Update Relic Equip
+		/// Parameter: None
+		/// </summary>
+		public const string UPDATE_RELIC_EQUIP = "UPDATE_RELIC_EQUIP";
 
 		/// <summary>
 		/// Open Bounty Hunt
@@ -666,6 +680,11 @@
 		/// Magnum Opus
 		/// </summary>
 		public const string PUZZLE_COMPLETE = "PUZZLE_COMPLETE()";
+
+		/// <summary>
+		/// An effect played when you unlock Legendary Card Slot?
+		/// </summary>
+		public const string MSG_PLAY_LEGENDCARD_OPEN_EFFECT = "MSG_PLAY_LEGENDCARD_OPEN_EFFECT";
 	}
 
 	public static class CustomDialog

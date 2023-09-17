@@ -11,3 +11,25 @@ function M_TOGGLE_PERSONAL_SHOP()
 	end
 	
 end
+
+Melia.Override("OPEN_PERSONAL_SHOP_REGISTER", function()
+
+--	if true == session.loginInfo.IsPremiumState(ITEM_TOKEN) then
+--		ui.SysMsg(ClMsg("NeedPremiunState"));
+--		return;
+--	end
+
+	if session.autoSeller.GetMyAutoSellerShopState(1) == true then
+		ui.OpenFrame("buffseller_my");
+	else
+		local mapCls = GetClass("Map", session.GetMapName());
+		if nil == mapCls then
+			return;
+		end
+		if 'City' ~= mapCls.MapType then
+			ui.SysMsg(ClMsg("AllowedInTown"));
+			return;
+		end
+		ui.OpenFrame("personal_shop_register");
+	end
+end)

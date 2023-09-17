@@ -66,6 +66,9 @@ namespace Melia.Zone.Scripting.AI
 		/// <returns></returns>
 		protected IEnumerable MoveTo(Position destination, bool wait = true)
 		{
+			if (!this.Entity.CanMove())
+				yield break;
+
 			var movement = this.Entity.Components.Get<MovementComponent>();
 			var moveTime = movement.MoveTo(destination);
 

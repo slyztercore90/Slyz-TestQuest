@@ -5,6 +5,7 @@
 //---------------------------------------------------------------------------
 
 using System.Linq;
+using Melia.Shared.Network;
 using Melia.Shared.Tos.Const;
 using Melia.Zone;
 using Melia.Zone.Network;
@@ -12,7 +13,6 @@ using Melia.Zone.Scripting;
 using Melia.Zone.Skills;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Items;
-using Yggdrasil.Geometry.Shapes;
 using Yggdrasil.Logging;
 
 public class NormalTxFunctionsScript : GeneralScript
@@ -184,6 +184,40 @@ public class NormalTxFunctionsScript : GeneralScript
 		Send.ZC_ADDON_MSG(character, AddonMessage.RESET_SKL_UP, 0, null);
 		Send.ZC_JOB_PTS(character, job);
 		//Send.ZC_ADDITIONAL_SKILL_POINT(character, job);
+
+		return NormalTxResult.Okay;
+	}
+
+	[ScriptableFunction]
+	public NormalTxResult ABANDON_Q(Character character, string strArg)
+	{
+		if (!int.TryParse(strArg, out var questId))
+		{
+			Log.Warning("ABANDON_Q: Failed to parse quest id {0} to abandon.", strArg);
+			return NormalTxResult.Fail;
+		}
+		if (!character.Quests.Abandon(questId))
+		{
+			Log.Warning("ABANDON_Q: Failed to abandon quest {0}.", questId);
+			return NormalTxResult.Fail;
+		}
+
+		return NormalTxResult.Okay;
+	}
+
+	[ScriptableFunction]
+	public NormalTxResult RESTART_Q(Character character, string strArg)
+	{
+		if (!int.TryParse(strArg, out var questId))
+		{
+			Log.Warning("RESTART_Q: Failed to parse quest id {0} to restart.", strArg);
+			return NormalTxResult.Fail;
+		}
+		if (!character.Quests.Restart(questId))
+		{
+			Log.Warning("RESTART_Q: Failed to restart quest {0}.", questId);
+			return NormalTxResult.Fail;
+		}
 
 		return NormalTxResult.Okay;
 	}

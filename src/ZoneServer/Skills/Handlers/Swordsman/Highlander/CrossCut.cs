@@ -50,7 +50,7 @@ namespace Melia.Zone.Skills.Handlers.Highlander
 				currentTarget.Components.Get<BuffComponent>()?.AddOrUpdate(crossCutDebuff);
 			}
 
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, null);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
 		}
 	}
 }

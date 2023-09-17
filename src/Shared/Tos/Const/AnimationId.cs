@@ -40,6 +40,8 @@
 		/// </summary>
 		public static readonly string ShowBuffText = "SHOW_BUFF_TEXT";
 
+		public static readonly string ShowCriticalDamage = "SHOW_DMG_CRI";
+
 		/// <summary>
 		/// Used in snowball skill
 		/// </summary>

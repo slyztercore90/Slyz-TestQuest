@@ -14,6 +14,7 @@ namespace Melia.Shared.Data
 		public AchievementPointDb AchievementPointDb { get; set; } = new AchievementPointDb();
 		public BarrackDb BarrackDb { get; set; } = new BarrackDb();
 		public BuffDb BuffDb { get; set; } = new BuffDb();
+		public CabinetDb CabinetDb { get; set; } = new CabinetDb();
 		public ChatMacroDb ChatMacroDb { get; set; } = new ChatMacroDb();
 		public CollectionDb CollectionDb { get; set; } = new CollectionDb();
 		public CooldownDb CooldownDb { get; set; } = new CooldownDb();
@@ -27,6 +28,7 @@ namespace Melia.Shared.Data
 		public GroundDb GroundDb { get; set; } = new GroundDb();
 		public HairTypeDb HairTypeDb { get; set; } = new HairTypeDb();
 		public HelpDb HelpDb { get; set; } = new HelpDb();
+		public InstanceDungeonDb InstanceDungeonDb { get; set; } = new InstanceDungeonDb();
 		public InvBaseIdDb InvBaseIdDb { get; set; } = new InvBaseIdDb();
 		public ItemDb ItemDb { get; set; } = new ItemDb();
 		public ItemMonsterDb ItemMonsterDb { get; set; } = new ItemMonsterDb();

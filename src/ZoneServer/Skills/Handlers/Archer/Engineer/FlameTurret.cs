@@ -41,7 +41,7 @@ namespace Melia.Zone.Skills.Handlers.Archer.Engineer
 			var groundEffectHandle = ZoneServer.Instance.World.CreateEffectHandle();
 
 			Send.ZC_SKILL_READY(caster, skill, 1, caster.Position, originPos);
-			Send.ZC_NORMAL.Skill(caster, skill, "Engineer_FlameTurret_Default", caster.Position, caster.Direction, 0, 0, groundEffectHandle, 100);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Engineer_FlameTurret_Default", caster.Position, caster.Direction, 0, 0, groundEffectHandle, 100);
 
 			var turret = new Mob(300041, MonsterType.Friendly);
 			turret.Faction = FactionType.Law;
@@ -56,7 +56,7 @@ namespace Melia.Zone.Skills.Handlers.Archer.Engineer
 				// Compensate for Disappearance Time (Additional 2 seconds)
 				Task.Delay(2000).ContinueWith(_ =>
 				{
-					Send.ZC_NORMAL.Skill(caster, skill, "Engineer_FlameTurret_Default", caster.Position, caster.Direction, 0, 0, groundEffectHandle, 100, false);
+					Send.ZC_NORMAL.SkillPad(caster, skill, "Engineer_FlameTurret_Default", caster.Position, caster.Direction, 0, 0, groundEffectHandle, 100, false);
 				});
 			};
 			caster.Map.AddMonster(turret);

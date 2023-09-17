@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Melia.Zone.Scripting.Hooking;
 using Melia.Zone.World.Actors.Characters;
-using Melia.Zone.World.Actors.Prerequisites;
 using Melia.Zone.World.Quests;
 using Melia.Zone.World.Quests.Modifiers;
 using Melia.Zone.World.Quests.Prerequisites;
@@ -18,12 +17,18 @@ namespace Melia.Zone.Scripting
 		private readonly static object ScriptsSyncLock = new object();
 		private readonly static Dictionary<int, QuestScript> Scripts = new Dictionary<int, QuestScript>();
 		private readonly static Dictionary<Type, QuestObjective> Objectives = new Dictionary<Type, QuestObjective>();
+		private readonly static Dictionary<Type, QuestModifier> Modifiers = new Dictionary<Type, QuestModifier>();
 		private readonly static List<QuestScript> AutoReceiveQuests = new List<QuestScript>();
 
 		/// <summary>
 		/// Returns this script's quest data.
 		/// </summary>
 		public QuestData Data { get; } = new QuestData();
+
+		/// <summary>
+		/// Returns this script's quest track data.
+		/// </summary>
+		public QuestTrackData TrackData { get; } = new QuestTrackData();
 
 		/// <summary>
 		/// Returns the id of the quest this script created.
@@ -33,7 +38,7 @@ namespace Melia.Zone.Scripting
 		/// <summary>
 		/// Returns the id of the track associated with this script.
 		/// </summary>
-		public string TrackId => this.Data.Track;
+		public string TrackId => this.TrackData.TrackName;
 
 		/// <summary>
 		/// Initializes script, creating the quest and saving it for
@@ -67,6 +72,16 @@ namespace Melia.Zone.Scripting
 					{
 						Objectives[type] = objective;
 						objective.Load();
+					}
+				}
+
+				foreach (var modifier in this.Data.Modifiers)
+				{
+					var type = modifier.GetType();
+					if (!Modifiers.ContainsKey(type))
+					{
+						Modifiers[type] = modifier;
+						modifier.Load();
 					}
 				}
 
@@ -130,6 +145,16 @@ namespace Melia.Zone.Scripting
 		}
 
 		/// <summary>
+		/// Check if the quest is active (Started but not Completed).
+		/// </summary>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		public bool IsActive(Character character)
+		{
+			return character.Quests.IsActive(this.Data.Id);
+		}
+
+		/// <summary>
 		/// Cleans up saved quests and objectives.
 		/// </summary>
 		public void Dispose()
@@ -143,13 +168,21 @@ namespace Melia.Zone.Scripting
 
 			lock (ScriptsSyncLock)
 			{
-				if (Objectives.Count == 0)
-					return;
+				if (Objectives.Count != 0)
+				{
+					foreach (var objective in Objectives.Values)
+						objective.Unload();
 
-				foreach (var objective in Objectives.Values)
-					objective.Unload();
+					Objectives.Clear();
+				}
 
-				Objectives.Clear();
+				if (Modifiers.Count != 0)
+				{
+					foreach (var modifier in Modifiers.Values)
+						modifier.Unload();
+
+					Modifiers.Clear();
+				}
 			}
 		}
 
@@ -208,11 +241,23 @@ namespace Melia.Zone.Scripting
 		protected void SetDelay(TimeSpan startDelay)
 			=> this.Data.StartDelay = startDelay;
 
-		protected void SetTrack(string startCondition, string endCondition, string track, int trackValue = 0)
-			=> this.Data.Track = track;
+		protected void SetTrack(QuestStatus onTrackStart, QuestStatus onTrackEnd, string track, int trackStartDelay = 0)
+		{
+			this.TrackData.QuestId = this.QuestId;
+			this.TrackData.TrackName = track;
+			this.TrackData.StartDelay = TimeSpan.FromMilliseconds(trackStartDelay);
+			this.TrackData.OnTrackStart = onTrackStart;
+			this.TrackData.OnTrackEnd = onTrackEnd;
+		}
 
-		protected void SetTrack(string startCondition, string endCondition, string track, string effectName)
-			=> this.Data.Track = track;
+		protected void SetTrack(QuestStatus onTrackStart, QuestStatus onTrackEnd, string track, string effectName)
+		{
+			this.TrackData.QuestId = this.QuestId;
+			this.TrackData.TrackName = track;
+			this.TrackData.OnTrackStart = onTrackStart;
+			this.TrackData.OnTrackEnd = onTrackEnd;
+			this.TrackData.EffectName = effectName;
+		}
 
 		protected void AddDrop(string itemClassName, float dropChance, params string[] monsterIds)
 		{
@@ -316,6 +361,30 @@ namespace Melia.Zone.Scripting
 		/// </remarks>
 		public virtual void OnStart(Character character, Quest quest)
 		{
+		}
+
+		/// <summary>
+		/// Called when a character progresses in this quest.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="quest"></param>
+		public virtual void OnProgress(Character character, Quest quest, int key, int progress)
+		{
+		}
+
+		/// <summary>
+		/// Called when a character succeeded in quest objectives.
+		/// </summary>
+		/// <remarks>
+		/// Called after the quest was marked as completed, but before
+		/// it's removed from the quest log and the rewards were given.
+		/// </remarks>
+		public virtual void OnSuccess(Character character, Quest quest)
+		{
+			if (character.Tracks.ActiveTrack != null 
+				&& character.Tracks.ActiveTrack.Id == this.TrackData.TrackName 
+				&& this.TrackData?.OnTrackEnd == QuestStatus.Success)
+				character.Tracks.End(this.TrackData.TrackName);
 		}
 
 		/// <summary>

@@ -132,6 +132,8 @@ namespace Melia.Zone.Network
 			var character = this.SelectedCharacter;
 			var justSaved = character?.SavedForWarp ?? false;
 
+			character?.Tracks?.Cancel();
+
 			if (!justSaved)
 			{
 				if (account != null)

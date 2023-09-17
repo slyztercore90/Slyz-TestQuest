@@ -15,9 +15,11 @@ using Melia.Zone.Scripting.Dialogues;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Components;
 using Melia.Zone.World.Actors.Monsters;
+using Melia.Zone.World.Maps;
 using Melia.Zone.World.Spawning;
 using Yggdrasil.Geometry;
 using Yggdrasil.Geometry.Shapes;
+using Yggdrasil.Logging;
 using Yggdrasil.Util;
 
 namespace Melia.Zone.Scripting
@@ -81,6 +83,48 @@ namespace Melia.Zone.Scripting
 		public static string LNF(string key, string keyPlural, int n, params object[] args)
 			=> string.Format(Localization.GetPlural(key, keyPlural, n), args);
 
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="genType"></param>
+		/// <param name="monsterId"></param>
+		/// <param name="map"></param>
+		/// <param name="x"></param>
+		/// <param name="y"></param>
+		/// <param name="z"></param>
+		/// <param name="direction"></param>
+		/// <param name="faction"></param>
+		/// <param name="tendency"></param>
+		/// <returns></returns>
+		/// <exception cref="ArgumentException"></exception>
+		/// Shortcuts.AddMonster(0, 400001, "", "f_siauliai_west", -1231.022, 260.8354, -547.764, 16.875, "");
+		public static Mob AddMonster(int genType, int monsterId, string name, string map, double x, double y, double z, double direction, string faction = "Monster", string tendency = "")
+		{
+			if (!ZoneServer.Instance.Data.MonsterDb.TryFind(monsterId, out var monsterData))
+			{
+				Log.Warning("AddMonster: Failed monster not found with id: {0}", monsterId);
+				throw new ArgumentException($"AddMonster: Monster '{monsterId}'  not found.");
+			}
+
+			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
+			{
+				Log.Warning("AddMonster: Failed map not found with className: {0}", map);
+				throw new ArgumentException($"Map '{map}' not found.");
+			}
+
+			var monster = new Mob(monsterData.Id, faction == "Our_Forces" ? MonsterType.Friendly : MonsterType.Mob);
+			monster.Name = name;
+			monster.GenType = genType;
+			monster.Position = new Position((float)x, (float)y, (float)z);
+			monster.Direction = new Direction(direction);
+			if (Enum.TryParse(typeof(FactionType), faction, true, out var factionType))
+				monster.Faction = (FactionType)factionType;
+
+			mapObj.AddMonster(monster);
+
+			return monster;
+		}
+
 		public static Npc AddNpc(int genType, int monsterId, string name, string map, double x, double y, double z, double direction, string dialogFuncName = "", string enterFuncName = "", string leaveFuncName = "", int status = -1, double range = 100)
 		{
 			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
@@ -109,15 +153,21 @@ namespace Melia.Zone.Scripting
 			var dir = new Direction(direction);
 
 			ZoneServer.Instance.DialogFunctions.TryGet(dialogFuncName, out var dialog);
-			ZoneServer.Instance.DialogFunctions.TryGet(enterFuncName, out var enter);
-			ZoneServer.Instance.DialogFunctions.TryGet(leaveFuncName, out var leave);
+			ZoneServer.Instance.TriggerFunctions.TryGet(enterFuncName, out var enter);
+			ZoneServer.Instance.TriggerFunctions.TryGet(leaveFuncName, out var leave);
 
 			var uniqueId = Interlocked.Increment(ref UniqueNpcNameId);
 			var uniqueName = $"__NPC{uniqueId}__";
 			var monster = new Npc(monsterId, name, location, dir, genType);
 			monster.UniqueName = uniqueName;
 			if (dialog != null)
+			{
 				monster.SetClickTrigger(dialogFuncName, dialog);
+				var uniqueDialogName = $"{dialogFuncName}_{mapObj.Data.ClassName}";
+				// Account for multiple npcs using the same dialogue.
+				if (!ZoneServer.Instance.World.NPCs.ContainsKey(uniqueDialogName))
+					ZoneServer.Instance.World.NPCs.Add(uniqueDialogName, monster);
+			}
 			if (enter != null || leave != null)
 				monster.SetTriggerArea(Spot(monster.Position.X, monster.Position.Z, range));
 			if (enter != null)
@@ -244,15 +294,21 @@ namespace Melia.Zone.Scripting
 			var location = new Location(mapObj.Id, pos);
 			var dir = new Direction(direction);
 			ZoneServer.Instance.DialogFunctions.TryGet(dialogFuncName, out var dialog);
-			ZoneServer.Instance.DialogFunctions.TryGet(enterFuncName, out var enter);
-			ZoneServer.Instance.DialogFunctions.TryGet(leaveFuncName, out var leave);
+			ZoneServer.Instance.TriggerFunctions.TryGet(enterFuncName, out var enter);
+			ZoneServer.Instance.TriggerFunctions.TryGet(leaveFuncName, out var leave);
 
 			var uniqueId = Interlocked.Increment(ref UniqueNpcNameId);
 			var uniqueName = $"__NPC{uniqueId}__";
 			var monster = new Npc(monsterId, name, location, dir);
 			monster.UniqueName = uniqueName;
 			if (dialog != null)
+			{
 				monster.SetClickTrigger(dialogFuncName, dialog);
+				var uniqueDialogName = $"{dialogFuncName}_{mapObj.Data.ClassName}";
+				// Account for multiple npcs using the same dialogue.
+				if (!ZoneServer.Instance.World.NPCs.ContainsKey(uniqueDialogName))
+					ZoneServer.Instance.World.NPCs.Add(uniqueDialogName, monster);
+			}
 			if (enter != null || leave != null)
 				monster.SetTriggerArea(Spot(monster.Position.X, monster.Position.Z, range));
 			if (enter != null)

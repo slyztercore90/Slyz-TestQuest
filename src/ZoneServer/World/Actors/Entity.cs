@@ -66,11 +66,6 @@ namespace Melia.Zone.World.Actors
 		bool IsDead { get; }
 
 		/// <summary>
-		/// Returns the entity's component collection.
-		/// </summary>
-		ComponentCollection Components { get; }
-
-		/// <summary>
 		/// Makes entity take damage and kills it if its HP reach 0.
 		/// Returns whether the entity is dead.
 		/// </summary>
@@ -91,6 +86,12 @@ namespace Melia.Zone.World.Actors
 		/// <param name="entity"></param>
 		/// <returns></returns>
 		bool CanAttack(ICombatEntity entity);
+
+		/// <summary>
+		/// Returns true if this entity is able to move.
+		/// </summary>
+		/// <returns></returns>
+		bool CanMove();
 
 		/// <summary>
 		/// Heals the entity's HP and SP by the given amounts.

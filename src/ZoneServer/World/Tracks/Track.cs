@@ -44,6 +44,21 @@ namespace Melia.Zone.World.Tracks
 		public IActor[] Actors { get; set; }
 
 		/// <summary>
+		/// Returns if a battle box is created.
+		/// </summary>
+		public bool HasBattleBoxInLayer { get; internal set; }
+
+		/// <summary>
+		/// Raised when the character starts a track.
+		/// </summary>
+		public event Action TrackStarted;
+
+		/// <summary>
+		/// Raised when the character completes a track.
+		/// </summary>
+		public event Action TrackCompleted;
+
+		/// <summary>
 		/// Creates new quest.
 		/// </summary>
 		/// <param name="trackId"></param>

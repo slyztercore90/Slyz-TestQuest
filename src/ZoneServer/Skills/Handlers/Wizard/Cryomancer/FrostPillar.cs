@@ -54,7 +54,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 			var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
 
 			Send.ZC_SKILL_READY(caster, skill, skillHandle, caster.Position, farPos);
-			Send.ZC_NORMAL.Skill(caster, skill, "Cryomancer_FrostPillar", farPos, caster.Direction, 0.06292176f, 85.76556f, skillHandle, 60);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Cryomancer_FrostPillar", farPos, caster.Direction, 0.06292176f, 85.76556f, skillHandle, 60);
 
 			var tree = new Mob(41400, MonsterType.Friendly);
 			tree.Faction = FactionType.Law;
@@ -69,7 +69,7 @@ namespace Melia.Zone.Skills.Handlers.Cryomancer
 				// Compensate for Disappearance Time (Additional 2 seconds)
 				Task.Delay(2000).ContinueWith(_ =>
 				{
-					Send.ZC_NORMAL.Skill(caster, skill, "Cryomancer_FrostPillar", farPos, caster.Direction, 0.06292176f, 85.76556f, skillHandle, 60, false);
+					Send.ZC_NORMAL.SkillPad(caster, skill, "Cryomancer_FrostPillar", farPos, caster.Direction, 0.06292176f, 85.76556f, skillHandle, 60, false);
 				});
 			};
 			caster.Map.AddMonster(tree);

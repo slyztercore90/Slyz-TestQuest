@@ -7,6 +7,7 @@ using Melia.Shared.Network.Helpers;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Scripting;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Const.Web;
 using Melia.Shared.Tos.Properties;
 using Melia.Shared.Util;
 using Melia.Shared.World;
@@ -196,6 +197,17 @@ namespace Melia.Zone.World.Actors.Characters
 		/// TODO: I'm not sure when this gets rolled over;
 		///   More investigation is needed.
 		public int HpChangeCounter { get; private set; }
+
+		/// <summary>
+		/// Gets or sets the character's chat balloon.
+		/// </summary>
+		public int ChatBalloon { get; set; } = 1;
+
+		/// <summary>
+		/// Get or set the character's chat balloon expiration
+		/// Max Date: 2999/12/31 (2) 23:59:59:00
+		/// </summary>
+		public DateTime ChatBalloonExpiration { get; set; } = new DateTime(2999, 12, 31, 23, 59, 59, DateTimeKind.Local);
 
 		/// <summary>
 		/// Specifies whether the character currently updates the visible
@@ -422,6 +434,10 @@ namespace Melia.Zone.World.Actors.Characters
 		/// Animation Pairing
 		/// </summary>
 		public bool IsPaired { get; set; }
+		/// <summary>
+		/// Character is riding a "vehicle" (Companion)
+		/// </summary>
+		public bool IsRiding { get; set; }
 		public long PartyId { get; set; }
 		public long GuildId { get; set; }
 
@@ -470,6 +486,20 @@ namespace Melia.Zone.World.Actors.Characters
 			//   aformentioned tooltip anymore right now, even if this
 			//   object is missing.
 			//this.SessionObjects.Add(new SessionObject(SessionObjectId.Jansori));
+
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.Jansori));
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.Drop));
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.MapEventReward));
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.SmartGen));
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.Raid));
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.NpcDialogCount));
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.Request));
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.Shop));
+			this.SessionObjects.Add(new SessionObject(SessionObjectId.ExpCardUse));
+
+			var sessionObject = new SessionObject(SessionObjectId.Main);
+			sessionObject.Properties.SetString(PropertyName.QSTARTZONETYPE, "StartLine1");
+			this.SessionObjects.Add(sessionObject);
 		}
 
 		/// <summary>
@@ -971,7 +1001,7 @@ namespace Melia.Zone.World.Actors.Characters
 
 					monster.Components?.Get<EffectsComponent>()?.ShowEffects(this.Connection);
 
-					if (monster.AttachableEffects.Count != 0)
+					if (!monster.AttachableEffects.IsEmpty)
 					{
 						foreach (var effect in monster.AttachableEffects)
 							Send.ZC_NORMAL.AttachEffect(this.Connection, monster, effect.PacketString, effect.Scale);
@@ -1012,7 +1042,7 @@ namespace Melia.Zone.World.Actors.Characters
 				{
 					Send.ZC_ENTER_PC(this.Connection, character);
 
-					if (character.AttachableEffects.Count != 0)
+					if (!character.AttachableEffects.IsEmpty)
 					{
 						foreach (var effect in character.AttachableEffects)
 							Send.ZC_NORMAL.AttachEffect(this.Connection, character, effect.PacketString, effect.Scale);
@@ -1264,13 +1294,16 @@ namespace Melia.Zone.World.Actors.Characters
 		/// </summary>
 		public void SendPCEtcProperties()
 		{
-			this.EtcProperties.SetString("SkintoneName", "skintone2");
-			if (ZoneServer.Instance.Data.HairTypeDb.TryFind(this.Hair, out var hair))
-				this.EtcProperties.SetString("StartHairName", hair.ClassName);
-			this.EtcProperties.SetFloat("LobbyMapID", this.MapId);
-			this.EtcProperties.SetString("RepresentationClassID", this.JobId.ToString());
-			this.EtcProperties.SetFloat("LastPlayDate", DateTimeUtils.ToSPropertyDateToFloat(DateTime.Now));
-			//pcEtcProps.SetFloat("CTRLTYPE_RESET_EXCEPT", 1);
+			if (!this.EtcProperties.Has(PropertyName.SkintoneName))
+			{
+				this.EtcProperties.SetString(PropertyName.SkintoneName, "skintone2");
+				if (ZoneServer.Instance.Data.HairTypeDb.TryFind(this.Hair, out var hair))
+					this.EtcProperties.SetString(PropertyName.StartHairName, hair.ClassName);
+				this.EtcProperties.SetFloat(PropertyName.LobbyMapID, this.MapId);
+				this.EtcProperties.SetString(PropertyName.RepresentationClassID, ((int)this.JobId).ToString());
+				this.EtcProperties.SetFloat(PropertyName.CTRLTYPE_RESET_EXCEPT, 1);
+			}
+			this.EtcProperties.SetFloat(PropertyName.LastPlayDate, DateTimeUtils.ToSPropertyDateToFloat(DateTime.Now));
 
 			Send.ZC_OBJECT_PROPERTY(this.Connection, this.SocialUserId, this.EtcProperties.GetAll());
 		}
@@ -1284,7 +1317,7 @@ namespace Melia.Zone.World.Actors.Characters
 		/// <returns></returns>
 		public bool TakeDamage(float damage, ICombatEntity attacker)
 		{
-			// Don't hit an already dead monster
+			// Don't hit an already dead character
 			if (this.IsDead)
 				return true;
 
@@ -1314,6 +1347,8 @@ namespace Melia.Zone.World.Actors.Characters
 
 			Send.ZC_DEAD(this);
 
+			this.Tracks.Cancel();
+
 			_resurrectDialogTimer = ResurrectDialogDelay;
 		}
 
@@ -1342,18 +1377,6 @@ namespace Melia.Zone.World.Actors.Characters
 		}
 
 		/// <summary>
-		/// Returns true if the character can attack others.
-		/// </summary>
-		/// <returns></returns>
-		public bool CanFight()
-		{
-			if (this.IsDead)
-				return false;
-
-			return true;
-		}
-
-		/// <summary>
 		/// Returns true if the character can attack the entity.
 		/// </summary>
 		/// <param name="entity"></param>
@@ -1370,6 +1393,30 @@ namespace Melia.Zone.World.Actors.Characters
 			// monsters.
 			var isHostileMonster = (entity is IMonster monster && monster.MonsterType == MonsterType.Mob);
 			if (!isHostileMonster)
+				return false;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Returns true if the character can attack others.
+		/// </summary>
+		/// <returns></returns>
+		public bool CanFight()
+		{
+			if (this.IsDead)
+				return false;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Returns true if the character can move.
+		/// </summary>
+		/// <returns></returns>
+		public bool CanMove()
+		{
+			if (this.IsDead || this.IsBuffActive(BuffId.Stop_Debuff))
 				return false;
 
 			return true;
@@ -1466,7 +1513,7 @@ namespace Melia.Zone.World.Actors.Characters
 		/// Add a session object
 		/// </summary>
 		/// <param name="sessionObjectId"></param>
-		public SessionObject AddSessionObject(string sessionObjectId)
+		public SessionObject AddSessionObject(string sessionObjectId, int i1 = 1)
 		{
 			return this.AddSessionObject(PropertyTable.GetId("SessionObject", sessionObjectId));
 		}
@@ -1497,6 +1544,18 @@ namespace Melia.Zone.World.Actors.Characters
 		}
 
 		/// <summary>
+		/// Remove an item from the inventory.
+		/// </summary>
+		/// <param name="itemClassName"></param>
+		/// <param name="amount"></param>
+		public bool HasItem(string itemClassName, int amount = 1)
+		{
+			if (ZoneServer.Instance.Data.ItemDb.TryFind(itemClassName, out var item))
+				return this.HasItem(item.Id, amount);
+			return false;
+		}
+
+		/// <summary>
 		/// Returns true if the player has the item and has at least
 		/// the request amount.
 		/// </summary>
@@ -1515,8 +1574,7 @@ namespace Melia.Zone.World.Actors.Characters
 		/// <param name="amount"></param>
 		public int RemoveItem(string itemClassName, int amount = 1)
 		{
-			var item = ZoneServer.Instance.Data.ItemDb.FindByClass(itemClassName);
-			if (item != null)
+			if (ZoneServer.Instance.Data.ItemDb.TryFind(itemClassName, out var item))
 				return this.RemoveItem(item.Id, amount);
 			return -1;
 		}
@@ -1561,7 +1619,7 @@ namespace Melia.Zone.World.Actors.Characters
 		public Companion GetCompanion(long companionId)
 		{
 			lock (_companions)
-				return _companions.FirstOrDefault(c => c.ObjectId == companionId);
+				return _companions.Find(c => c.ObjectId == companionId);
 		}
 
 		/// <summary>
@@ -1688,10 +1746,21 @@ namespace Melia.Zone.World.Actors.Characters
 		/// Set ETC property and updates client.
 		/// </summary>
 		/// <param name="propertyName"></param>
-		/// <param name="amount"></param>
-		public void SetEtcProperty(string propertyName, int amount)
+		/// <param name="value"></param>
+		public void SetEtcProperty(string propertyName, int value)
 		{
-			this.EtcProperties.SetFloat(propertyName, amount);
+			this.EtcProperties.SetFloat(propertyName, value);
+			Send.ZC_OBJECT_PROPERTY(this, this.SocialUserId, this.EtcProperties.GetSelect(propertyName));
+		}
+
+		/// <summary>
+		/// Set ETC property and updates client.
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="value"></param>
+		public void SetEtcProperty(string propertyName, string value)
+		{
+			this.EtcProperties.SetString(propertyName, value);
 			Send.ZC_OBJECT_PROPERTY(this, this.SocialUserId, this.EtcProperties.GetSelect(propertyName));
 		}
 

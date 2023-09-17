@@ -140,7 +140,7 @@ namespace Melia.Zone.World.Actors
 		/// <summary>
 		/// Returns the components the actor has.
 		/// </summary>
-		public ComponentCollection Components { get; set; }
+		public ComponentCollection Components { get; set; } = new ComponentCollection();
 
 		/// <summary>
 		/// Returns the actor's visibility.

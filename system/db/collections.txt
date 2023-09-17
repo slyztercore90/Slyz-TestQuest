@@ -227,4 +227,6 @@
 { classId: 321, className: "COLLECT_321", name: "Collection: What Grasme Left Behind", requiredItems: ["misc_collect_ep14_2_5","misc_collect_ep14_2_6"], rewardProperties: "MHP_BM/4000" },
 { classId: 322, className: "COLLECT_322", name: "Collection: Jolly Merry Winter Festival", requiredItems: ["Event_2212_Gold_Key","Event_2212_Gold_Key","Event_2212_Gold_Key"], rewardProperties: "STR_BM/20/DEX_BM/20/INT_BM/20/MNA_BM/20/CON_BM/20" },
 { classId: 323, className: "COLLECT_323", name: "Collection: Plunderer's Belongings", requiredItems: ["misc_collect_ep15_1_1","misc_collect_ep15_1_2","misc_collect_ep15_1_3"], rewardProperties: "MHP_BM/3000" },
+{ classId: 324, className: "COLLECT_324", name: "Collection: Lada's Authority", requiredItems: ["Goddess_fragments_radaA","Goddess_fragments_radaB","Goddess_fragments_radaC"], rewardProperties: "PATK_BM/3300/MATK_BM/3300" },
+{ classId: 325, className: "COLLECT_325", name: "Collection: Stranger's Belongings", requiredItems: ["misc_collect_ep15_2_1","misc_collect_ep15_2_2","misc_collect_ep15_2_3"], rewardProperties: "MHP_BM/5000" },
 ]

@@ -42,7 +42,6 @@
     <Content Include="content\r1\mobs\scripts.txt" />
     <Content Include="content\r1\scripts.txt" />
     <Content Include="content\r1\warps\scripts.txt" />
-    <Content Include="content\test\scripts.txt" />
     <Content Include="scripts_custom.txt" />
     <Content Include="scripts_content.txt" />
     <Content Include="scripts_zone.txt" />

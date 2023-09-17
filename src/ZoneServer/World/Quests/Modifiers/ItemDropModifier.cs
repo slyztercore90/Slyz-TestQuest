@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
 using Melia.Zone.Events;
@@ -27,33 +28,29 @@ namespace Melia.Zone.World.Quests.Modifiers
 		public float DropChance { get; }
 
 		/// <summary>
-		/// Returns an array of monster ids that drops the item.
+		/// Returns the tags which monsters must match to qualify for this
+		/// objective.
 		/// </summary>
-		public int[] MonsterIds { get; }
-
-		/// <summary>
-		/// Returns the monster id that drops the item.
-		/// </summary>
-		public int MonsterId { get; }
+		public HashSet<int> MonsterIds { get; }
 
 		public ItemDropModifier(int itemId, float dropChance, params int[] monsterIds)
 		{
 			this.ItemId = itemId;
 			this.DropChance = dropChance;
-			this.MonsterIds = monsterIds;
+			this.MonsterIds = new HashSet<int>(monsterIds);
 		}
 
 		public ItemDropModifier(int itemId, float dropChance, params string[] monsterIds)
 		{
 			this.ItemId = itemId;
 			this.DropChance = dropChance;
-			this.MonsterIds = new int[monsterIds.Length];
+			this.MonsterIds = new HashSet<int>(monsterIds.Length);
 
 			for (var i = 0; i < monsterIds.Length; i++)
 			{
 				var monster = monsterIds[i];
 				if (ZoneServer.Instance.Data.MonsterDb.TryFind(monster, out var data))
-					this.MonsterIds[i] = data.Id;
+					this.MonsterIds.Add(data.Id);
 			}
 		}
 
@@ -88,20 +85,21 @@ namespace Melia.Zone.World.Quests.Modifiers
 
 			character.Quests.UpdateModifiers<ItemDropModifier>((quest, modifier, progress) =>
 			{
-				if (modifier.MonsterIds == null)
+				if (modifier.IsTarget(monster))
 				{
-					if (monster.Id == modifier.MonsterId)
-						monster.DropItem(character, modifier.ItemId, modifier.DropChance);
-				}
-				else
-				{
-					foreach (var monsterId in modifier.MonsterIds)
-					{
-						if (monster.Id == monsterId)
-							monster.DropItem(character, modifier.ItemId, modifier.DropChance);
-					}
+					monster.DropItem(character, modifier.ItemId, modifier.DropChance);
 				}
 			});
+		}
+
+		/// <summary>
+		/// Returns true if the given monster is a target for this objective.
+		/// </summary>
+		/// <param name="monster"></param>
+		/// <returns></returns>
+		private bool IsTarget(IMonster monster)
+		{
+			return this.MonsterIds.Contains(monster.Id);
 		}
 	}
 }

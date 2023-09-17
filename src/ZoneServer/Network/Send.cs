@@ -2999,6 +2999,24 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
+		/// Unknown purpose.
+		/// Seen with using backspace to return
+		/// to quest giver.
+		/// </summary>
+		/// <param name="conn"></param>
+		/// <param name="type"></param>
+		/// <param name="param"></param>
+		public static void ZC_CLIENT_DIRECT(IZoneConnection conn, int type, string param)
+		{
+			var packet = new Packet(Op.ZC_CLIENT_DIRECT);
+
+			packet.PutInt(type);
+			packet.PutString(param, 16);
+
+			conn.Send(packet);
+		}
+
+		/// <summary>
 		/// Makes the character the owner of actor.
 		/// </summary>
 		/// <param name="character"></param>
@@ -3488,15 +3506,18 @@ namespace Melia.Zone.Network
 		}
 
 		/// <summary>
-		/// Sends ZC_SET_CHATBALLOON_SKIN to client (dummy).
+		/// Sends ZC_SET_CHATBALLOON_SKIN to visible players on the map.
 		/// </summary>
 		/// <param name="conn"></param>
-		public static void ZC_SET_CHATBALLOON_SKIN(IZoneConnection conn)
+		public static void ZC_SET_CHATBALLOON_SKIN(Character character)
 		{
 			var packet = new Packet(Op.ZC_SET_CHATBALLOON_SKIN);
-			packet.PutBinFromHex("71820100010000000000000000000100008000000000D86E");
 
-			conn.Send(packet);
+			packet.PutInt(character.Handle);
+			packet.PutInt(character.ChatBalloon);
+			packet.PutShortDate(character.ChatBalloonExpiration);
+
+			character.Map.Broadcast(packet);
 		}
 
 		/// <summary>
@@ -3534,6 +3555,8 @@ namespace Melia.Zone.Network
 		public static void ZC_PCBANG_SHOP_RENTAL(IZoneConnection conn)
 		{
 			var packet = new Packet(Op.ZC_PCBANG_SHOP_RENTAL);
+
+			packet.PutInt(29); // Count
 
 			packet.PutString("PC_SWD01_137", 64);
 			packet.PutInt(0);
@@ -3987,6 +4010,38 @@ namespace Melia.Zone.Network
 
 			packet.PutInt(summon.Handle);
 			packet.PutByte(character.Handle == summon.OwnerHandle); // I think this 0 if it's not your monster
+
+			character.Connection.Send(packet);
+		}
+
+		/// <summary>
+		/// Sends Damage Font Skin?
+		/// </summary>
+		/// <param name="character"></param>
+		public static void ZC_RES_DAMAGEFONT_SKIN(Character character)
+		{
+			var packet = new Packet(Op.ZC_RES_DAMAGEFONT_SKIN);
+
+			packet.PutLong(0);
+			packet.PutInt(0);
+			packet.PutInt(character.Handle);
+			packet.PutInt(0);
+
+			character.Connection.Send(packet);
+		}
+
+		/// <summary>
+		/// Sends Damage Effect Skin?
+		/// </summary>
+		/// <param name="character"></param>
+		public static void ZC_RES_DAMAGEEFFECT_SKIN(Character character)
+		{
+			var packet = new Packet(Op.ZC_RES_DAMAGEEFFECT_SKIN);
+
+			packet.PutLong(0);
+			packet.PutInt(0);
+			packet.PutInt(character.Handle);
+			packet.PutInt(1);
 
 			character.Connection.Send(packet);
 		}
@@ -4885,16 +4940,21 @@ namespace Melia.Zone.Network
 			character.Connection.Send(packet);
 		}
 
+
 		/// <summary>
 		/// Shifts in-game camera to create cinematic effect, isn't removed
 		/// automatically.
 		/// </summary>
 		/// <param name="character"></param>
-		public static void ZC_CREATE_SCROLLLOCKBOX(Character character, Actor sender, Position leftPos, Position rightPos, float width)
+		/// <param name="actor"></param>
+		/// <param name="leftPos"></param>
+		/// <param name="rightPos"></param>
+		/// <param name="width"></param>
+		public static void ZC_CREATE_SCROLLLOCKBOX(Character character, IActor actor, Position leftPos, Position rightPos, float width)
 		{
 			var packet = new Packet(Op.ZC_CREATE_SCROLLLOCKBOX);
 
-			packet.PutInt(sender.Handle);
+			packet.PutInt(actor.Handle);
 			packet.PutPosition(leftPos);
 			packet.PutPosition(rightPos);
 			packet.PutFloat(width);
@@ -4909,6 +4969,7 @@ namespace Melia.Zone.Network
 		public static void ZC_REMOVE_SCROLLLOCKBOX(Character character)
 		{
 			var packet = new Packet(Op.ZC_REMOVE_SCROLLLOCKBOX);
+
 			packet.PutInt(character.Handle);
 
 			character.Connection.Send(packet);

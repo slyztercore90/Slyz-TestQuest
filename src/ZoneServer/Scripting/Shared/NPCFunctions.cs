@@ -73,8 +73,6 @@ namespace Melia.Zone.Scripting.Shared
 		/// <summary>
 		/// Treasure Box
 		/// </summary>
-		/// <param name="player"></param>
-		/// <param name="npc"></param>
 		/// <param name="dialog"></param>
 		/// <param name="className"></param>
 		/// <param name="amount"></param>
@@ -206,7 +204,7 @@ namespace Melia.Zone.Scripting.Shared
 		{
 			await dialog.Msg("FEDIMIAN_OLDMAN1_BASIC01");
 			await dialog.Msg("FEDIMIAN_OLDMAN1_3");
-			await dialog.Msg("");
+
 			dialog.Close();
 		}
 
@@ -2288,13 +2286,16 @@ namespace Melia.Zone.Scripting.Shared
 		public static async Task SIALUL_WEST_DRASIUS(Dialog dialog)
 		{
 			await dialog.Msg("SIALUL_WEST_DRASIUS_basic1");
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAUL_WEST_NAGLIS2")]
 		public static async Task SIAUL_WEST_NAGLIS2(Dialog dialog)
 		{
 			await dialog.Msg("SIAUL_WEST_NAGLIS2_basic1");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("WARP_F_SIAULIAI_WEST")]
@@ -2304,17 +2305,17 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("SIAUL_WEST_CAMP_MANAGER")]
 		public static async Task SIAUL_WEST_CAMP_MANAGER(Dialog dialog)
 		{
-			await dialog.Hooks(dialog.Npc.DialogName, "BeforeStart");
-			await dialog.Hooks(dialog.Npc.DialogName, "BeforeEnd");
 			await dialog.Msg("SIAUL_WEST_CAMP_MANAGER_basic1");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAUL_WEST_LAIMONAS")]
 		public static async Task SIAUL_WEST_LAIMONAS(Dialog dialog)
 		{
 			await dialog.Msg("SIAUL_WEST_LAIMONAS_basic1");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAU_FRON_NPC_01")]
@@ -2322,6 +2323,8 @@ namespace Melia.Zone.Scripting.Shared
 		{
 			await dialog.Msg("SIAU_FRON_NPC_01_basic01");
 			await dialog.Msg("SIAU_FRON_NPC_01_basic02");
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 			dialog.Close();
 		}
 
@@ -2330,33 +2333,38 @@ namespace Melia.Zone.Scripting.Shared
 		{
 			await dialog.Msg("SIAUL_WEST_RESIDENT1_basic1");
 			await dialog.Msg("SIAUL_WEST_RESIDENT1_basic2");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("F_SIAUL_GAURD")]
 		public static async Task F_SIAUL_GAURD(Dialog dialog)
 		{
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAUL_ST1_ST2_GAURD")]
 		public static async Task SIAUL_ST1_ST2_GAURD(Dialog dialog)
 		{
 			await dialog.Msg("SIAUL_ST1_ST2_GAURD_basic1");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAUL_ST1_ST2")]
 		public static async Task SIAUL_ST1_ST2(Dialog dialog)
 		{
 			await dialog.Msg("SIAUL_ST1_ST2_basic1");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAUL_WEST_SOLDIER3")]
 		public static async Task SIAUL_WEST_SOLDIER3(Dialog dialog)
 		{
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAU_FRON_NPC_04")]
@@ -2364,7 +2372,8 @@ namespace Melia.Zone.Scripting.Shared
 		{
 			await dialog.Msg("SIAU_FRON_NPC_04_basic01");
 			await dialog.Msg("SIAU_FRON_NPC_04_basic02");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAU_FRON_NPC_05")]
@@ -2372,7 +2381,8 @@ namespace Melia.Zone.Scripting.Shared
 		{
 			await dialog.Msg("SIAU_FRON_NPC_05_basic01");
 			await dialog.Msg("SIAU_FRON_NPC_05_basic02");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAU_FRON_NPC_03")]
@@ -2380,7 +2390,8 @@ namespace Melia.Zone.Scripting.Shared
 		{
 			await dialog.Msg("SIAU_FRON_NPC_03_basic01");
 			await dialog.Msg("SIAU_FRON_NPC_03_basic02");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAU_FRON_NPC_02")]
@@ -2388,14 +2399,16 @@ namespace Melia.Zone.Scripting.Shared
 		{
 			await dialog.Msg("SIAU_FRON_NPC_02_basic01");
 			await dialog.Msg("SIAU_FRON_NPC_02_basic02");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAUL_WEST_SOL3")]
 		public static async Task SIAUL_WEST_SOL3(Dialog dialog)
 		{
 			await dialog.Msg("SIAUL_WEST_SOL3_basic1");
-			dialog.Close();
+			await dialog.HooksByDialogName("BeforeStart");
+			await dialog.HooksByDialogName("BeforeEnd");
 		}
 
 		[DialogFunction("SIAUL1_BOARD2")]
@@ -4206,7 +4219,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("KATYN72_SECTOR_01")]
 		public static async Task KATYN72_SECTOR_01(Dialog dialog)
 		{
-			await dialog.Msg("");
+
 			await dialog.Msg("KATYN72_SECTOR_01_basic1");
 			dialog.Close();
 		}
@@ -4214,7 +4227,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("KATYN72_SECTOR_02")]
 		public static async Task KATYN72_SECTOR_02(Dialog dialog)
 		{
-			await dialog.Msg("");
+
 			await dialog.Msg("KATYN72_SECTOR_02_basic1");
 			dialog.Close();
 		}
@@ -4222,7 +4235,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("KATYN72_SECTOR_03")]
 		public static async Task KATYN72_SECTOR_03(Dialog dialog)
 		{
-			await dialog.Msg("");
+
 			await dialog.Msg("KATYN72_SECTOR_03_basic1");
 			dialog.Close();
 		}
@@ -4230,7 +4243,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("KATYN72_SECTOR_04")]
 		public static async Task KATYN72_SECTOR_04(Dialog dialog)
 		{
-			await dialog.Msg("");
+
 			await dialog.Msg("KATYN72_SECTOR_04_basic1");
 			dialog.Close();
 		}
@@ -4596,7 +4609,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("KATYN14_JOHN")]
 		public static async Task KATYN14_JOHN(Dialog dialog)
 		{
-			await dialog.Msg("");
+
 			await dialog.Msg("KATYN14_JOHN_basic1");
 			await dialog.Msg("KATYN14_JOHN_BASIC01");
 			dialog.Close();
@@ -4618,7 +4631,7 @@ namespace Melia.Zone.Scripting.Shared
 		[DialogFunction("KATYN14_VACENIN_CHASE")]
 		public static async Task KATYN14_VACENIN_CHASE(Dialog dialog)
 		{
-			await dialog.Msg("");
+
 			await dialog.Msg("KATYN14_VACENIN_CHASE_basic1");
 			dialog.Close();
 		}

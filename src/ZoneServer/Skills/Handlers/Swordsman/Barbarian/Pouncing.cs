@@ -29,7 +29,7 @@ namespace Melia.Zone.Skills.Handlers.Barbarian
 			caster.Properties.SetFloat(PropertyName.Jumpable, 0);
 
 			var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
-			Send.ZC_NORMAL.Skill(caster, skill, "Barbarian_Pouncing", caster.Position, caster.Direction, 0, 35, skillHandle, 45);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Barbarian_Pouncing", caster.Position, caster.Direction, 0, 35, skillHandle, 45);
 			var buff = new Buff(BuffId.Pouncing_Buff, 0, 0, TimeSpan.Zero, caster, caster);
 			caster.Components.Get<BuffComponent>()?.AddOrUpdate(buff);
 			Send.ZC_PLAY_SOUND(caster, "voice_war_atk_long_cast");
@@ -47,7 +47,7 @@ namespace Melia.Zone.Skills.Handlers.Barbarian
 				Send.ZC_NORMAL.Skill_DynamicCastEnd(character, skill.Id, 3.5f);
 			}
 			var skillHandle = ZoneServer.Instance.World.CreateSkillHandle();
-			Send.ZC_NORMAL.Skill(caster, skill, "Barbarian_Pouncing", caster.Position, caster.Direction, 0, 35, skillHandle, 45);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Barbarian_Pouncing", caster.Position, caster.Direction, 0, 35, skillHandle, 45);
 		}
 	}
 }

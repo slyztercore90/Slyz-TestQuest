@@ -4,14 +4,15 @@ using System.Threading.Tasks;
 using Melia.Shared.L10N;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
-using Melia.Zone.Buffs;
 using Melia.Zone.Network;
+using Melia.Zone.Scripting.Dialogues;
 using Melia.Zone.Skills.Combat;
 using Melia.Zone.Skills.Handlers.Base;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.CombatEntities.Components;
-using Yggdrasil.Logging;
+using Melia.Zone.World.Actors.Monsters;
+using Yggdrasil.Geometry.Shapes;
 using static Melia.Zone.Skills.SkillUseFunctions;
 
 namespace Melia.Zone.Skills.Handlers.Pyromancer
@@ -40,7 +41,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 			}
 		}
 
-		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity target)
+		public void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity designatedTarget)
 		{
 			if (!skill.Vars.TryGet<Position>("Melia.ToolGroundPos", out var targetPos))
 			{
@@ -75,18 +76,70 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 			}
 
 			Send.ZC_SKILL_MELEE_GROUND(caster, skill, targetPos, hits);
-			Send.ZC_NORMAL.Skill(caster, skill, "Wizard_New_FirePillar10", targetPos, caster.Direction, -0.2594702f, 62.63292f, skillHandle, 50);
 
-			foreach (var currentTarget in targets.LimitBySDR(caster, skill))
-			{
-				var buff = new Buff(BuffId.FirePillar_Debuff, 0, 0, TimeSpan.FromSeconds(10), currentTarget, caster);
-				//buff.Skill = skill;
-				Send.ZC_SYNC_START(caster, skillHandle, 1);
-				currentTarget.Components.Get<BuffComponent>()?.AddOrUpdate(buff);
-				Send.ZC_SYNC_END(caster, skillHandle, 0);
-				Send.ZC_SYNC_EXEC_BY_SKILL_TIME(caster, skillHandle, TimeSpan.FromMilliseconds(400));
-			}
-			Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => Send.ZC_NORMAL.Skill(caster, skill, "Wizard_New_FirePillar10", targetPos, caster.Direction, -0.2594702f, 62.63292f, skillHandle, 50, false));
+			ExecuteFirePillar(caster, designatedTarget, skill);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="caster"></param>
+		/// <param name="target"></param>
+		/// <param name="skill"></param>
+		private void ExecuteFirePillar(ICombatEntity caster, ICombatEntity target, Skill skill)
+		{
+			var position = caster.Position;
+			var direction = caster.Direction;
+			var effectHandle = ZoneServer.Instance.World.CreateEffectHandle();
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Wizard_New_FirePillar10", caster.Position, caster.Direction, -0.2594702f, 62.63292f, effectHandle, 50);
+
+			var area = new CircleF(position, 50);
+
+			var trigger = new Npc(12082, "", new Location(caster.Map.Id, caster.Position), caster.Direction);
+			trigger.Vars.Set("Melia.FirePillarCaster", caster);
+			trigger.Vars.Set("Melia.FirePillarSkill", skill);
+			trigger.SetTriggerArea(area);
+			trigger.SetEnterTrigger("PYROMANCER_FIRE_PILLAR_ENTER", this.OnEnterFirePillarPad);
+
+			trigger.DisappearTime = DateTime.Now.AddSeconds(10);
+			caster.Map.AddMonster(trigger);
+
+			Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => Send.ZC_NORMAL.SkillPad(caster, skill, "Wizard_New_FirePillar10", caster.Position, caster.Direction, -0.2594702f, 62.63292f, effectHandle, 50, false));
+		}
+
+		/// <summary>
+		/// Burns a target directly with a buff.
+		/// </summary>
+		/// <param name="caster"></param>
+		/// <param name="target"></param>
+		/// <param name="skill"></param>
+		private void BuffFirePillar(ICombatEntity caster, ICombatEntity target, Skill skill)
+		{
+			target.StartBuff(BuffId.FirePillar_Debuff, 0, 0, TimeSpan.FromSeconds(10), caster);
+		}
+
+		/// <summary>
+		/// Called when a target enters a fire pillar pad.
+		/// </summary>
+		/// <param name="dialog"></param>
+		/// <returns></returns>
+		private Task OnEnterFirePillarPad(Dialog dialog)
+		{
+			if (dialog.Initiator is not ICombatEntity initiator)
+				return Task.CompletedTask;
+
+			if (initiator.Components.Get<BuffComponent>().Has(BuffId.FirePillar_Debuff))
+				return Task.CompletedTask;
+
+			var trigger = dialog.Npc;
+
+			var caster = trigger.Vars.Get<ICombatEntity>("Melia.FirePillarCaster");
+			var skill = trigger.Vars.Get<Skill>("Melia.FirePillarSkill");
+
+			if (initiator.Faction != caster.Faction)
+				this.BuffFirePillar(caster, initiator, skill);
+
+			return Task.CompletedTask;
 		}
 	}
 }

@@ -139,6 +139,11 @@ namespace Melia.Barracks.Database
 		}
 
 		/// <summary>
+		/// Returns the character's chat balloon.
+		/// </summary>
+		public int ChatBalloon { get; set; }
+
+		/// <summary>
 		/// Gets or sets the character's HP multiplier from their base job.
 		/// </summary>
 		public float HpRateByJob { get; set; }

@@ -49,7 +49,7 @@ namespace Melia.Zone.Skills.Handlers.Pyromancer
 			}
 
 			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, hits);
-			Send.ZC_NORMAL.Skill(caster, skill, "Pyromancer_HellBreath", farPos, caster.Direction, 0.7853983f, 0f, skillHandle, 15);
+			Send.ZC_NORMAL.SkillPad(caster, skill, "Pyromancer_HellBreath", farPos, caster.Direction, 0.7853983f, 0f, skillHandle, 15);
 
 			var buff = new Buff(BuffId.HellBreath_Buff, 0, 0, TimeSpan.Zero, caster, caster);
 			Send.ZC_SYNC_START(caster, skillHandle, 1);

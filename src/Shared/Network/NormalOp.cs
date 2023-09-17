@@ -41,7 +41,6 @@
 			public const int BarrackSlotCount = 0x3C;
 			public const int AccountUpdate = 0x4C;
 			public const int Skill = 0x57;
-			public const int Skill_59 = 0x59;
 			public const int ParticleEffect = 0x61;
 			public const int Unknown_A1 = 0xA1;
 			public const int Unknown_E4 = 0xE4;
@@ -49,6 +48,7 @@
 			public const int TimeActionStart = 0x00;
 			public const int TimeActionEnd = 0x01;
 			public const int Skill_MissileThrow = 0x06;
+			public const int SkillFallingProjectile = 0x07;
 			public const int Skill_ItemToss = 0x09;
 			public const int PlayEffectAtPosition = 0x0F;
 			/// <summary>

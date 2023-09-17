@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Melia.Shared.Data.Database;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.Tos.Const.Web;
 using Melia.Shared.World;
@@ -428,10 +429,7 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 					continue;
 
 				var dialog = new Dialog(this.Entity, triggerArea);
-				if (this.Entity is Character character)
-					triggerArea.EnterFunc.Invoke(dialog);
-				else
-					triggerArea.EnterFunc.Invoke(dialog);
+				triggerArea.EnterFunc.Invoke(dialog);
 			}
 
 			foreach (var triggerArea in leftTriggerAreas)
@@ -441,6 +439,15 @@ namespace Melia.Zone.World.Actors.CombatEntities.Components
 
 				var dialog = new Dialog(this.Entity, triggerArea);
 				triggerArea.LeaveFunc.Invoke(dialog);
+			}
+
+			foreach (var triggerArea in triggerAreas)
+			{
+				if (triggerArea.WhileInsideFunc == null)
+					continue;
+
+				var dialog = new Dialog(this.Entity, triggerArea);
+				triggerArea.WhileInsideFunc.Invoke(dialog);
 			}
 
 			_triggerAreas = triggerAreas;
