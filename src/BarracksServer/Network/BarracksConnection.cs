@@ -46,7 +46,7 @@ namespace Melia.Barracks.Network
 			if (this.Account != null)
 			{
 				this.Account.Save();
-				BarracksServer.Instance.Database.UpdateLoginState(this.Account.Id, 0, LoginState.LoggedOut);
+				BarracksServer.Instance.Database.UpdateLoginState(this.Account.DbId, 0, LoginState.LoggedOut);
 			}
 		}
 	}

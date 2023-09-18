@@ -1,7 +1,7 @@
 //------------------------------------------------
 //--- 010 Editor v8.0 Binary Template
 //
-//      File: ZC_ADVENTURE_BOOK_INFO
+//      File: ZC_ADVENTURE_BOOK_INFO.bt
 //   Authors: exec, Salman T. Khan
 //   Version: i350756
 //   Purpose: 
@@ -10,6 +10,7 @@
 //  ID Bytes: 
 //   History: 
 //  - i350756 added i2 and i3
+//  - i377415 noticed s1 (could be two bytes)
 //------------------------------------------------
 
 #include "inc/common.bt"
@@ -54,7 +55,7 @@ typedef struct
 
     for (i = 0; i < jobCount; i++)
     {
-        int i2;
+        int index;
         int jobId;
     }
 }
@@ -66,6 +67,7 @@ int count;
 AdventureBookType type;
 byte b1;
 byte b2;
+short s1;
 if (!checkCompression())
 {
 	switch(type)

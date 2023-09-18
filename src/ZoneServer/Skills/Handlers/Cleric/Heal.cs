@@ -45,7 +45,7 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 
 			caster.StartBuff(BuffId.Heal_Overload_Buff, TimeSpan.FromSeconds(3));
 
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, null);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
 		}
 
 		/// <summary>
@@ -70,7 +70,8 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 		/// <param name="skill"></param>
 		private void BuffHeal(ICombatEntity caster, ICombatEntity target, Skill skill)
 		{
-			Send.ZC_NORMAL.PlayEffect(target, "F_cleric_heal_active_ground_new");
+			//Send.ZC_NORMAL.PlayEffect(target, "F_cleric_heal_active_ground_new");
+			Send.ZC_NORMAL.PlayEffect(target, 1, "BOT", 0, 1, "F_cleric_heal_active_ground_new");
 
 			// TODO: Do we actually need the Heal_Buff? Feels like we could
 			//   just heal the target. But maybe there's a reason for it?
@@ -88,7 +89,7 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 		/// <param name="skill"></param>
 		private void DamageHeal(ICombatEntity caster, ICombatEntity target, Skill skill)
 		{
-			Send.ZC_NORMAL.PlayEffect(target, "F_cleric_heal_active_ground_new");
+			Send.ZC_NORMAL.PlayEffect(target, 1, "BOT", 0, 1, "F_cleric_heal_active_ground_new");
 
 			var skillHitResult = SCR_SkillHit(caster, target, skill);
 
@@ -155,7 +156,7 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 					trigger.DisappearTime = DateTime.Now.AddSeconds(10);
 					caster.Map.AddMonster(trigger);
 
-					Send.ZC_NORMAL.AttachEffect(trigger, "F_cleric_heal_loop_ground_cleric01_3", scale);
+					Send.ZC_NORMAL.AttachEffect(trigger, "F_cleric_heal_loop_ground_cleric01_3", scale, HeightOffset.BOT);
 				}
 			}
 		}
@@ -167,7 +168,7 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 		/// <returns></returns>
 		private Task OnEnterHealingPad(Dialog dialog)
 		{
-			if (!(dialog.Initiator is ICombatEntity initiator))
+			if (dialog.Initiator is not ICombatEntity initiator)
 				return Task.CompletedTask;
 
 			// I don't know how exactly the heal pads worked in the past,

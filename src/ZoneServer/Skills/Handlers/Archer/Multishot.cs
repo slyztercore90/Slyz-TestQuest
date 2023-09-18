@@ -32,9 +32,10 @@ namespace Melia.Zone.Skills.Handlers.Archer
 		/// </summary>
 		/// <param name="skill"></param>
 		/// <param name="caster"></param>
-		public void StartDynamicCast(Skill skill, ICombatEntity caster)
+		public void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_PLAY_SOUND(caster, "voice_archer_multishot_cast");
+			if (caster is Character character)
+				Send.ZC_PLAY_SOUND(character, "voice_archer_multishot_cast");
 		}
 
 		/// <summary>
@@ -42,9 +43,10 @@ namespace Melia.Zone.Skills.Handlers.Archer
 		/// </summary>
 		/// <param name="skill"></param>
 		/// <param name="caster"></param>
-		public void EndDynamicCast(Skill skill, ICombatEntity caster)
+		public void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime)
 		{
-			Send.ZC_STOP_SOUND(caster, "voice_archer_multishot_cast");
+			if (caster is Character character)
+				Send.ZC_STOP_SOUND(character, "voice_archer_multishot_cast");
 		}
 
 		/// <summary>
@@ -72,7 +74,7 @@ namespace Melia.Zone.Skills.Handlers.Archer
 			caster.TurnTowards(farPos);
 			caster.SetAttackState(true);
 
-			Send.ZC_SKILL_READY(caster, skill, originPos, farPos);
+			Send.ZC_SKILL_READY(caster, skill, 0, originPos, farPos);
 			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, null);
 
 			var splashArea = new Circle(farPos, SplashRadius);
@@ -110,7 +112,7 @@ namespace Melia.Zone.Skills.Handlers.Archer
 						targetPos = target.Position;
 
 						var hit = new HitInfo(caster, target, skill, skillHitResult.Damage, skillHitResult.Result);
-						Send.ZC_HIT_INFO(caster, target, skill, hit);
+						Send.ZC_HIT_INFO(caster, target, hit);
 					}
 
 					// It seems like the game uses ZC_SYNC_* packets

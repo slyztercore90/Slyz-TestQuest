@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using Melia.Shared.World;
 using Melia.Zone.World.Actors;
+using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.CombatEntities.Components;
 
 namespace Melia.Zone.Skills.Handlers.Base
 {
@@ -20,7 +22,7 @@ namespace Melia.Zone.Skills.Handlers.Base
 
 	public interface IGroundSkillHandler : ISkillHandler
 	{
-		void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity target);
+		void Handle(Skill skill, ICombatEntity caster, Position originPos, Position farPos, ICombatEntity designatedTarget);
 	}
 
 	public interface IMeleeGroundSkillHandler : ISkillHandler
@@ -38,9 +40,16 @@ namespace Melia.Zone.Skills.Handlers.Base
 		void Handle(Skill skill, ICombatEntity caster, Position originPos, Direction dir);
 	}
 
+	/// <summary>
+	/// A skill handler interface when the client provides a target
+	/// </summary>
 	public interface IDynamicCasted : ISkillHandler
 	{
-		void StartDynamicCast(Skill skill, ICombatEntity caster);
-		void EndDynamicCast(Skill skill, ICombatEntity caster);
+		void StartDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime);
+		void EndDynamicCast(Skill skill, ICombatEntity caster, float maxCastTime);
 	}
+
+	public interface IDynamicGroundSkillHandler : IGroundSkillHandler, IDynamicCasted { }
+	public interface IDynamicForceSkillHandler : IForceSkillHandler, IDynamicCasted { }
+	public interface IDynamicTargetSkillHandler : ITargetSkillHandler, IDynamicCasted { }
 }

@@ -38,7 +38,7 @@ namespace Melia.Zone.Skills.Handlers.Scout
 			var duration = TimeSpan.FromMinutes(30);
 			target.StartBuff(BuffId.FreeStep_Buff, skill.Level, 0, duration, caster);
 
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, originPos, null);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, originPos);
 		}
 	}
 }

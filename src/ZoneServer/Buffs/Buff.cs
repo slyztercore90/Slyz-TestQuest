@@ -19,7 +19,7 @@ namespace Melia.Zone.Buffs
 		/// <summary>
 		/// Returns the entity that casted the buff.
 		/// </summary>
-		public ICombatEntity Caster { get; }
+		public IActor Caster { get; }
 
 		/// <summary>
 		/// Returns the entity that received the buff.
@@ -131,6 +131,21 @@ namespace Melia.Zone.Buffs
 		public float NumArg2 { get; }
 
 		/// <summary>
+		/// Returns the second argument the buff was started with.
+		/// </summary>
+		public float NumArg3 { get; set; }
+
+		/// <summary>
+		/// Returns the second argument the buff was started with.
+		/// </summary>
+		public float NumArg4 { get; set; }
+
+		/// <summary>
+		/// Returns the second argument the buff was started with.
+		/// </summary>
+		public float NumArg5 { get; set; }
+
+		/// <summary>
 		/// Creates a new instance.
 		/// </summary>
 		/// <param name="caster"></param>
@@ -141,7 +156,7 @@ namespace Melia.Zone.Buffs
 		/// <param name="target"></param>
 		/// <param name="caster"></param>
 		/// <param name="skillId">Id of the skill associated with this buff.</param>
-		public Buff(BuffId buffId, float numArg1, float numArg2, TimeSpan duration, ICombatEntity target, ICombatEntity caster, SkillId skillId = SkillId.Normal_Attack)
+		public Buff(BuffId buffId, float numArg1, float numArg2, TimeSpan duration, ICombatEntity target, IActor caster, SkillId skillId = SkillId.Normal_Attack)
 		{
 			this.Id = buffId;
 			this.NumArg1 = numArg1;

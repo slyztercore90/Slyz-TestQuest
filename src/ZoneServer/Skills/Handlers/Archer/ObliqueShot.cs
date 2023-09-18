@@ -37,14 +37,14 @@ namespace Melia.Zone.Skills.Handlers.Archer
 
 			if (target == null)
 			{
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 
 			if (!caster.InSkillUseRange(skill, target))
 			{
 				caster.ServerMessage(Localization.Get("Too far away."));
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 
@@ -73,7 +73,7 @@ namespace Melia.Zone.Skills.Handlers.Archer
 				bounceTarget.TakeDamage(skillHitResult.Damage, caster);
 
 				var hit = new HitInfo(caster, target, skill, skillHitResult);
-				Send.ZC_HIT_INFO(caster, bounceTarget, skill, hit);
+				Send.ZC_HIT_INFO(caster, bounceTarget, hit);
 			}
 		}
 

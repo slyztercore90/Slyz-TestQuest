@@ -49,7 +49,7 @@ namespace Melia.Zone.Skills.Handlers.Cleric
 
 			caster.StartBuff(BuffId.Cure_Overload_Buff, TimeSpan.FromSeconds(5));
 
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, null);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
 		}
 
 		/// <summary>

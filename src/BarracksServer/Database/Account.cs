@@ -14,11 +14,17 @@ namespace Melia.Barracks.Database
 	{
 		private readonly object _moneyLock = new object();
 		private readonly List<Character> _characters = new List<Character>();
+		private readonly List<Companion> _companions = new List<Companion>();
 
 		/// <summary>
 		/// Account id.
 		/// </summary>
-		public long Id { get; set; }
+		public long DbId { get; set; }
+
+		/// <summary>
+		/// Account's Object Id.
+		/// </summary>
+		public long ObjectId => this.DbId;
 
 		/// <summary>
 		/// Account name.
@@ -100,6 +106,16 @@ namespace Melia.Barracks.Database
 		public int TeamExp { get; set; }
 
 		/// <summary>
+		/// Get or sets the account type.
+		/// </summary>
+		public AccountType Type { get; set; } = AccountType.Normal;
+
+		/// <summary>
+		/// Gets or sets the account's mail box.
+		/// </summary>
+		public Mailbox Mailbox { get; } = new Mailbox();
+
+		/// <summary>
 		/// Returns a reference to the account's properties.
 		/// </summary>
 		public Properties Properties { get; } = new Properties("Account");
@@ -145,8 +161,10 @@ namespace Melia.Barracks.Database
 		/// <returns></returns>
 		public Character GetCharacterById(long id)
 		{
+			if (id >= ObjectIdRanges.Characters)
+				id -= ObjectIdRanges.Characters;
 			lock (_characters)
-				return _characters.FirstOrDefault(a => a.Id == id);
+				return _characters.Find(a => a.DbId == id);
 		}
 
 		/// <summary>
@@ -183,6 +201,48 @@ namespace Melia.Barracks.Database
 		}
 
 		/// <summary>
+		/// Returns list of all companions on account.
+		/// </summary>
+		/// <returns></returns>
+		public Companion[] GetCompanions()
+		{
+			lock (_companions)
+				return _companions.ToArray();
+		}
+
+		/// <summary>
+		/// Adds companion to account object and assigns index and team name.
+		/// </summary>
+		/// <param name="companion"></param>
+		private void AddCompanion(Companion companion)
+		{
+			lock (_companions)
+			{
+				for (byte i = 1; i <= byte.MaxValue; ++i)
+				{
+					if (!_companions.Any(a => a.Index == i))
+					{
+						companion.Index = i;
+						break;
+					}
+				}
+
+				_companions.Add(companion);
+			}
+		}
+
+		/// <summary>
+		/// Returns companion by companion id, or null if it doesn't exist.
+		/// </summary>
+		/// <param name="id"></param>
+		/// <returns></returns>
+		public Companion GetCompanionById(long id)
+		{
+			lock (_companions)
+				return _companions.FirstOrDefault(a => a.ObjectId == id);
+		}
+
+		/// <summary>
 		/// Loads account with given name from database, incl. characters,
 		/// and returns it.
 		/// </summary>
@@ -194,9 +254,15 @@ namespace Melia.Barracks.Database
 			if (account == null)
 				return null;
 
-			var characters = BarracksServer.Instance.Database.GetCharacters(account.Id);
+			var characters = BarracksServer.Instance.Database.GetCharacters(account.DbId);
 			foreach (var character in characters)
 				account.AddCharacter(character);
+
+			var companions = BarracksServer.Instance.Database.GetCompanions(account.DbId);
+			foreach (var companion in companions)
+				account.AddCompanion(companion);
+
+			BarracksServer.Instance.Database.LoadMailbox(account);
 
 			return account;
 		}
@@ -220,7 +286,7 @@ namespace Melia.Barracks.Database
 			// do this regardless of the query result.
 			this.RemoveCharacter(character);
 
-			return BarracksServer.Instance.Database.DeleteCharacter(character.Id);
+			return BarracksServer.Instance.Database.DeleteCharacter(character.DbId);
 		}
 
 		/// <summary>
@@ -229,7 +295,7 @@ namespace Melia.Barracks.Database
 		/// <param name="character"></param>
 		public void CreateCharacter(Character character)
 		{
-			BarracksServer.Instance.Database.CreateCharacter(this.Id, character);
+			BarracksServer.Instance.Database.CreateCharacter(this.DbId, character);
 			this.AddCharacter(character);
 		}
 
@@ -307,11 +373,18 @@ namespace Melia.Barracks.Database
 		public void Save()
 		{
 			BarracksServer.Instance.Database.SaveAccount(this);
+			BarracksServer.Instance.Database.SaveMail(this);
 
 			lock (_characters)
 			{
 				foreach (var character in _characters)
 					BarracksServer.Instance.Database.SaveCharacter(character);
+			}
+
+			lock (_companions)
+			{
+				foreach (var companion in _companions)
+					BarracksServer.Instance.Database.SaveCompanion(companion);
 			}
 		}
 	}

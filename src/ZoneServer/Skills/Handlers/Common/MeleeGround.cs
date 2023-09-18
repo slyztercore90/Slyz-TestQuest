@@ -8,7 +8,6 @@ using Melia.Zone.Network;
 using Melia.Zone.Skills.Combat;
 using Melia.Zone.Skills.Handlers.Base;
 using Melia.Zone.World.Actors;
-using Melia.Zone.World.Actors.CombatEntities.Components;
 using static Melia.Zone.Skills.SkillUseFunctions;
 
 namespace Melia.Zone.Skills.Handlers.Common
@@ -16,7 +15,7 @@ namespace Melia.Zone.Skills.Handlers.Common
 	/// <summary>
 	/// Handles melee skills targeting the ground in front of the caster.
 	/// </summary>
-	[SkillHandler(SkillId.Normal_Attack, SkillId.Hammer_Attack, SkillId.Common_DaggerAries)]
+	[SkillHandler(SkillId.Normal_Attack, SkillId.Normal_Attack_TH, SkillId.Hammer_Attack, SkillId.Hammer_Attack_TH, SkillId.Common_DaggerAries, SkillId.Common_BubbleStick)]
 	public class MeleeGroundSkillHandler : IMeleeGroundSkillHandler
 	{
 		/// <summary>
@@ -38,7 +37,7 @@ namespace Melia.Zone.Skills.Handlers.Common
 			skill.IncreaseOverheat();
 			caster.SetAttackState(true);
 
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos, null);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, farPos);
 
 			this.Attack(skill, caster, originPos, farPos, targets);
 		}

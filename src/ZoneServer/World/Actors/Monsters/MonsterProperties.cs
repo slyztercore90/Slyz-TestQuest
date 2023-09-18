@@ -41,7 +41,8 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// </summary>
 		private void AddDefaultProperties()
 		{
-			this.Create(new RFloatProperty(PropertyName.Level, () => this.Monster.Data.Level));
+			this.Create(new FloatProperty(PropertyName.Level, this.Monster.Data.Level));
+			this.Create(new FloatProperty(PropertyName.Lv, this.Monster.Data.Level));
 
 			this.Create(new CFloatProperty(PropertyName.MHP, () => this.CalculateProperty("SCR_Get_MON_MHP")));
 			this.Create(new FloatProperty(PropertyName.HP, min: 0));
@@ -59,6 +60,9 @@ namespace Melia.Zone.World.Actors.Monsters
 			this.Create(new CFloatProperty(PropertyName.HR, () => this.CalculateProperty("SCR_Get_MON_HR")));
 			this.Create(new CFloatProperty(PropertyName.SR, () => this.CalculateProperty("SCR_Get_MON_SR")));
 			this.Create(new CFloatProperty(PropertyName.SDR, () => this.CalculateProperty("SCR_Get_MON_SDR")));
+			this.Create(new CFloatProperty(PropertyName.CRTHR, () => this.CalculateProperty("SCR_Get_MON_CRTHR")));
+			this.Create(new CFloatProperty(PropertyName.CRTDR, () => this.CalculateProperty("SCR_Get_MON_CRTDR")));
+			this.Create(new CFloatProperty(PropertyName.CRTATK, () => this.CalculateProperty("SCR_Get_MON_CRTATK")));
 
 			this.Create(new FloatProperty(PropertyName.WlkMSPD, this.Monster.Data.WalkSpeed));
 			this.Create(new FloatProperty(PropertyName.RunMSPD, this.Monster.Data.RunSpeed));
@@ -66,6 +70,7 @@ namespace Melia.Zone.World.Actors.Monsters
 
 			this.Create(new RFloatProperty(PropertyName.Attribute, () => (int)this.Monster.Data.Attribute));
 			this.Create(new RFloatProperty(PropertyName.ArmorMaterial, () => (int)this.Monster.Data.ArmorMaterial));
+			this.Create(new StringProperty(PropertyName.MonRank, this.Monster.Data.Rank.ToString()));
 		}
 
 		/// <summary>

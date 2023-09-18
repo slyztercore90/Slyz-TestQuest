@@ -1,7 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Melia.Shared.ObjectProperties;
+using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Properties;
 
 namespace Melia.Zone.World.Actors.Characters
 {
@@ -11,6 +14,11 @@ namespace Melia.Zone.World.Actors.Characters
 	public class SessionObjects
 	{
 		private readonly Dictionary<int, SessionObject> _objects = new Dictionary<int, SessionObject>();
+
+		/// <summary>
+		/// Get Main Session Object
+		/// </summary>
+		public SessionObject Main => this.GetOrCreate(SessionObjectId.Main);
 
 		/// <summary>
 		/// Adds given session object to collection.
@@ -60,7 +68,10 @@ namespace Melia.Zone.World.Actors.Characters
 			lock (_objects)
 			{
 				if (!_objects.TryGetValue(sessionObjectId, out var obj))
+				{
 					obj = new SessionObject(sessionObjectId);
+					_objects[sessionObjectId] = obj;
+				}
 				return obj;
 			}
 		}
@@ -73,6 +84,23 @@ namespace Melia.Zone.World.Actors.Characters
 		{
 			lock (_objects)
 				return _objects.Values.ToArray();
+		}
+
+
+		public bool Has(string sessionObjectId)
+		{
+			return this.Has(PropertyTable.GetId("SessionObject", sessionObjectId));
+		}
+
+		/// <summary>
+		/// Check if a session id exists
+		/// </summary>
+		/// <param name="sessionObjectId"></param>
+		/// <returns></returns>
+		public bool Has(int sessionObjectId)
+		{
+			lock (_objects)
+				return _objects.ContainsKey(sessionObjectId);
 		}
 	}
 

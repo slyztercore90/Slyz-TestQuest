@@ -210,6 +210,7 @@ switch(type)
     // Client integrity check failure.
     // The client will respond with CB_CLIENT_INTEGRITY_FAIL
     case 0x18:
+        int i1;
         break;
 
     // Update the number of purchased character slots in the barrack.

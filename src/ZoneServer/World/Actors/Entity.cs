@@ -6,8 +6,10 @@ using Melia.Shared.World;
 using Melia.Zone.Buffs;
 using Melia.Zone.Network;
 using Melia.Zone.Skills;
+using Melia.Zone.Skills.Combat;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.CombatEntities.Components;
+using Melia.Zone.World.Actors.Monsters;
 using Yggdrasil.Composition;
 
 namespace Melia.Zone.World.Actors
@@ -64,11 +66,6 @@ namespace Melia.Zone.World.Actors
 		bool IsDead { get; }
 
 		/// <summary>
-		/// Returns the entity's component collection.
-		/// </summary>
-		ComponentCollection Components { get; }
-
-		/// <summary>
 		/// Makes entity take damage and kills it if its HP reach 0.
 		/// Returns whether the entity is dead.
 		/// </summary>
@@ -91,11 +88,23 @@ namespace Melia.Zone.World.Actors
 		bool CanAttack(ICombatEntity entity);
 
 		/// <summary>
+		/// Returns true if this entity is able to move.
+		/// </summary>
+		/// <returns></returns>
+		bool CanMove();
+
+		/// <summary>
 		/// Heals the entity's HP and SP by the given amounts.
 		/// </summary>
 		/// <param name="hpAmount"></param>
 		/// <param name="spAmount"></param>
 		void Heal(float hpAmount, float spAmount);
+
+		/// <summary>
+		/// Kills an entity
+		/// </summary>
+		/// <param name="killer"></param>
+		void Kill(ICombatEntity killer);
 	}
 
 	/// <summary>
@@ -130,14 +139,20 @@ namespace Melia.Zone.World.Actors
 		}
 
 		/// <summary>
-		/// Makes the entity turn towards the position.
+		/// Makes the entity turn towards a specific position.
 		/// </summary>
 		/// <param name="entity"></param>
-		/// <param name="otherEntity"></param>
-		public static void TurnTowards(this ICombatEntity entity, Position pos)
+		/// <param name="position"></param>
+		public static void TurnTowards(this ICombatEntity entity, Position position)
 		{
-			entity.Direction = entity.Position.GetDirection(pos);
-			Send.ZC_ROTATE(entity);
+			if (position == Position.Zero)
+				return;
+
+			entity.Direction = entity.Position.GetDirection(position);
+			if (entity is IMonster)
+				Send.ZC_QUICK_ROTATE(entity);
+			else
+				Send.ZC_ROTATE(entity);
 		}
 
 		/// <summary>
@@ -213,6 +228,18 @@ namespace Melia.Zone.World.Actors
 		/// <param name="state"></param>
 		public static void SetAttackState(this ICombatEntity entity, bool inAttackState)
 			=> entity.Components.Get<CombatComponent>()?.SetAttackState(inAttackState);
+
+		/// <summary>
+		/// Starts the buff with the given id. If the buff is already active,
+		/// it gets overbuffed. Returns the created or modified buff.
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="buffId"></param>
+		/// <param name="duration"></param>
+		/// <param name="caster"></param>
+		/// <returns></returns>
+		public static Buff StartBuff(this ICombatEntity entity, BuffId buffId, TimeSpan duration, ICombatEntity caster)
+			=> entity.Components.Get<BuffComponent>()?.Start(buffId, 0, 0, duration, caster);
 
 		/// <summary>
 		/// Starts the buff with the given id. If the buff is already active,

@@ -24,6 +24,15 @@ namespace Melia.Zone.World
 		// Unique handles for buffs
 		private int _buffhandles = 0;
 
+		// Unique handles for attacks
+		private int _attackHandles = 0;
+
+		// Unique handles for skills
+		private int _skillHandles = 0;
+
+		// Unique handles for effects
+		private int _effectHandles = 0;
+
 		private int _genTypes = 1_000_000;
 
 		private readonly Dictionary<int, Map> _mapsId = new Dictionary<int, Map>();
@@ -49,6 +58,29 @@ namespace Melia.Zone.World
 		public DayNightCycle DayNightCycle { get; private set; }
 
 		/// <summary>
+		/// Returns the world's parties, a manager for
+		/// all the parties in the world.
+		/// </summary>
+		public PartyManager Parties { get; } = new PartyManager();
+
+		/// <summary>
+		/// Returns the world's parties, a collection of
+		/// all the parties in the world.
+		/// </summary>
+		public GuildManager Guilds { get; } = new GuildManager();
+
+		/// <summary>
+		/// Returns the world's maps, a collection of 
+		/// all loaded maps.
+		/// </summary>
+		public MapManager Maps { get; } = new MapManager();
+
+		/// <summary>
+		/// Returns the world's NPCs indexed by their dialogue.
+		/// </summary>
+		public Dictionary<string, Npc> NPCs { get; } = new Dictionary<string, Npc>();
+
+		/// <summary>
 		/// Returns a new handle to be used for a character or monster.
 		/// </summary>
 		/// <returns></returns>
@@ -70,12 +102,39 @@ namespace Melia.Zone.World
 		}
 
 		/// <summary>
+		/// Returns a new handle to be used for a casted Attack.
+		/// </summary>
+		/// <returns></returns>
+		public int CreateAttackHandle()
+		{
+			return Interlocked.Increment(ref _attackHandles);
+		}
+
+		/// <summary>
 		/// Returns a new handle to be used for a casted Buff.
 		/// </summary>
 		/// <returns></returns>
 		public int CreateBuffHandle()
 		{
 			return Interlocked.Increment(ref _buffhandles);
+		}
+
+		/// <summary>
+		/// Returns a new handle to be used for an effect added to the map.
+		/// </summary>
+		/// <returns></returns>
+		public int CreateEffectHandle()
+		{
+			return Interlocked.Increment(ref _effectHandles);
+		}
+
+		/// <summary>
+		/// Returns a new handle to be used for a casted Skill.
+		/// </summary>
+		/// <returns></returns>
+		public int CreateSkillHandle()
+		{
+			return Interlocked.Increment(ref _skillHandles);
 		}
 
 		/// <summary>
@@ -357,5 +416,53 @@ namespace Melia.Zone.World
 					map.Broadcast(packet);
 			}
 		}
+
+		/// <summary>
+		/// Returns all online characters that match the given predicate.
+		/// </summary>
+		public Character GetCharacter(Func<Character, bool> predicate)
+		{
+			lock (_mapsLock)
+			{
+				foreach (var map in _mapsId.Values)
+				{
+					var character = map.GetCharacter(predicate);
+
+					if (character != null)
+						return character;
+				}
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Returns a party if found by id or null
+		/// </summary>
+		/// <param name="partyId"></param>
+		/// <returns></returns>
+		public Party GetParty(long partyId)
+			=> this.Parties.GetParty(partyId);
+
+		/// <summary>
+		/// Returns a guild if found by id or null
+		/// </summary>
+		/// <param name="guildId"></param>
+		/// <returns></returns>
+		public Guild GetGuild(long guildId)
+			=> this.Guilds.GetGuild(guildId);
+
+		/// <summary>
+		/// Generates a new id for a dynamic region.
+		/// </summary>
+		/// <returns></returns>
+		public int GenerateDynamicMapId()
+			=> this.Maps.GenerateDynamicMapId();
+
+		/// <summary>
+		/// Adds a map to the world's maps.
+		/// </summary>
+		/// <param name="map"></param>
+		public void AddMap(Map map)
+			=> this.Maps.Add(map);
 	}
 }

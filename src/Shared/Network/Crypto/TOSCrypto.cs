@@ -5,6 +5,7 @@ namespace Melia.Shared.Network.Crypto
 	public partial class TOSCrypto
 	{
 		private Blowfish _BF;
+		private Blowfish _PatchBF;
 		private const int _keyIndex = 11;
 
 		#region Data
@@ -476,6 +477,14 @@ namespace Melia.Shared.Network.Crypto
 			}
 
 			_BF = new Blowfish(schedule, key);
+
+			// For some reason IMC decided to use a custom schedule here of all 0x5F bytes :thinkingface:
+			for (var i = 0; i < schedule.Length; i++)
+			{
+				schedule[i] = 0x5F5F5F5F;
+			}
+
+			_PatchBF = new Blowfish(schedule);
 		}
 
 		public void Decrypt(byte[] packet, int offset, int len)
@@ -501,6 +510,44 @@ namespace Melia.Shared.Network.Crypto
 		private string MixKey()
 		{
 			return _keyTable[_keyIndex];
+		}
+
+		/// <summary>
+		/// Decrypts an encrypted TOS file and returns a byte array for the result.
+		/// </summary>
+		/// <param name="data"></param>
+		public byte[] DecryptFile(byte[] data)
+		{
+			var unencryptedSize = BitConverter.ToInt32(data, 0);
+			var encryptedSize = BitConverter.ToInt32(data, 4);
+
+			_PatchBF.Decipher(data, 8, encryptedSize);
+
+			var buffer = new byte[unencryptedSize];
+			Buffer.BlockCopy(data, 8, buffer, 0, buffer.Length);
+			return buffer;
+		}
+
+		/// <summary>
+		/// Encrypts a decrypted TOS file and returns a byte array for the result.
+		/// </summary>
+		/// <param name="data"></param>
+		public byte[] EncryptFile(byte[] data)
+		{
+			var unencryptedSize = data.Length;
+			var encryptedSize = unencryptedSize;
+			if (encryptedSize % 8 != 0)
+				encryptedSize += 8 - (unencryptedSize % 8);
+
+			var buffer = new byte[encryptedSize + 8];
+
+			Buffer.BlockCopy(BitConverter.GetBytes(unencryptedSize), 0, buffer, 0, 4);
+			Buffer.BlockCopy(BitConverter.GetBytes(encryptedSize), 0, buffer, 4, 4);
+			Buffer.BlockCopy(data, 0, buffer, 8, data.Length);
+
+			_PatchBF.Encipher(buffer, 8, encryptedSize);
+
+			return buffer;
 		}
 	}
 }

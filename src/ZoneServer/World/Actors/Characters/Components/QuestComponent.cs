@@ -1,14 +1,13 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using Melia.Shared.ObjectProperties;
 using Melia.Shared.Scripting;
+using Melia.Shared.Tos.Const;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting;
 using Melia.Zone.World.Quests;
-using Melia.Zone.World.Quests.Rewards;
-using Yggdrasil.Logging;
+using Melia.Zone.World.Quests.Objectives;
 using Yggdrasil.Scheduling;
 using Yggdrasil.Util;
 
@@ -67,7 +66,23 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		{
 			lock (_syncLock)
 			{
-				quest = _quests.FirstOrDefault(a => a.ObjectId == questObjectId);
+				quest = _quests.Find(a => a.ObjectId == questObjectId);
+				return quest != null;
+			}
+		}
+
+		/// <summary>
+		/// Gets quest by id and returns it via out, returns false if the
+		/// quest didn't exist.
+		/// </summary>
+		/// <param name="questId"></param>
+		/// <param name="quest"></param>
+		/// <returns></returns>
+		public bool TryGetById(int questId, out Quest quest)
+		{
+			lock (_syncLock)
+			{
+				quest = _quests.Find(a => a.Data.Id == questId);
 				return quest != null;
 			}
 		}
@@ -129,7 +144,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 				for (var i = 0; i < _quests.Count; i++)
 				{
 					var quest = _quests[i];
-					if (quest.Status != QuestStatus.InProgress)
+					if (quest.Status != QuestStatus.Progress)
 						continue;
 
 					quest.UpdateObjectives(updater);
@@ -141,6 +156,46 @@ namespace Melia.Zone.World.Actors.Characters.Components
 					}
 				}
 			}
+		}
+
+		/// <summary>
+		/// Iterates over the quests' modifiers, runs the given function
+		/// over all modifiers with the given type, and updates the quest
+		/// if any progresses changed.
+		/// </summary>
+		/// <typeparam name="TModifier"></typeparam>
+		/// <param name="updater"></param>
+		public void UpdateModifiers<TModifier>(QuestModifiersUpdateFunc<TModifier> updater) where TModifier : QuestModifier
+		{
+			lock (_syncLock)
+			{
+				for (var i = 0; i < _quests.Count; i++)
+				{
+					var quest = _quests[i];
+					if (quest.Status != QuestStatus.Progress)
+						continue;
+
+					quest.UpdateModifiers(updater);
+
+					if (quest.ChangesOnLastUpdate)
+					{
+						quest.UpdateUnlock();
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Starts quest for the character, returns false if the quest
+		/// couldn't be started.
+		/// </summary>
+		/// <param name="questId"></param>
+		/// <returns></returns>
+		public void Start(string questId)
+		{
+			if (!ZoneServer.Instance.Data.QuestDb.TryFind(questId, out var questData))
+				throw new ArgumentException($"Unknown quest '{questId}'.");
+			this.Start(questData.Id, TimeSpan.Zero);
 		}
 
 		/// <summary>
@@ -185,7 +240,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		{
 			this.InitialChecks(quest);
 
-			quest.Status = QuestStatus.InProgress;
+			quest.Status = QuestStatus.Progress;
 			quest.UpdateUnlock();
 
 			if (quest.StartTime == DateTime.MinValue)
@@ -249,6 +304,41 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		}
 
 		/// <summary>
+		/// Check if all prerequisites are met and the quest isn't started.
+		/// </summary>
+		/// <param name="questId"></param>
+		/// <returns></returns>
+		public bool IsPossible(int questId)
+		{
+			// Can't start a quest if a track is active.
+			if (this.Character.Tracks.ActiveTrack != null)
+				return false;
+
+			lock (_syncLock)
+			{
+				for (var i = 0; i < _quests.Count; i++)
+				{
+					var quest = _quests[i];
+					if (quest.Data.Id != questId)
+						continue;
+					return quest.IsPossible;
+				}
+				if (QuestScript.TryGet(questId, out var questScript))
+				{
+					for (var j = 0; j < questScript.Data.Prerequisites.Count; j++)
+					{
+						var prerequisite = questScript.Data.Prerequisites[j];
+						if (!prerequisite.Met(this.Character))
+							return false;
+					}
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/// <summary>
 		/// Returns true if the character has the quest, is slated to
 		/// receive it soon, or has completed it in the past.
 		/// </summary>
@@ -264,7 +354,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 					if (quest.Data.Id != questId)
 						continue;
 
-					if (quest.Status < QuestStatus.Canceled)
+					if (quest.Status > QuestStatus.Possible)
 						return true;
 				}
 			}
@@ -288,7 +378,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 					if (quest.Data.Id != questId)
 						continue;
 
-					if (quest.Status == QuestStatus.Completed)
+					if (quest.Status == QuestStatus.Complete)
 						return true;
 				}
 			}
@@ -301,7 +391,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// </summary>
 		/// <param name="questId"></param>
 		/// <param name="objectiveIdent"></param>
-		public void Complete(int questId, string objectiveIdent)
+		public void CompleteObjective(int questId, string objectiveIdent)
 		{
 			lock (_syncLock)
 			{
@@ -317,6 +407,8 @@ namespace Melia.Zone.World.Actors.Characters.Components
 					if (!progress.Done)
 					{
 						progress.SetDone();
+						quest.UpdateUnlock();
+						UpdateQuestProgress(questId, progress.Objective.Id);
 						this.UpdateClient_UpdateQuest(quest);
 						continue;
 					}
@@ -336,10 +428,10 @@ namespace Melia.Zone.World.Actors.Characters.Components
 				for (var i = 0; i < _quests.Count; i++)
 				{
 					var quest = _quests[i];
-					quest.CompleteObjectives();
-
-					if (!quest.InProgress || quest.Data.Id != questId)
+					if (quest.Data.Id != questId || !quest.InProgress)
 						continue;
+
+					quest.CompleteObjectives();
 
 					this.Complete(quest);
 				}
@@ -352,7 +444,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		public void Complete(Quest quest)
 		{
-			quest.Status = QuestStatus.Completed;
+			quest.Status = QuestStatus.Complete;
 			quest.CompleteTime = DateTime.Now;
 			quest.CompleteObjectives();
 
@@ -362,6 +454,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			this.GiveRewards(quest);
 
 			this.UpdateClient_RemoveQuest(quest);
+			this.UpdateClient_CompleteQuest(quest);
 		}
 
 		/// <summary>
@@ -370,7 +463,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		public void Cancel(Quest quest)
 		{
-			quest.Status = QuestStatus.Canceled;
+			quest.Status = QuestStatus.Abandoned;
 
 			if (QuestScript.TryGet(quest.Data.Id, out var questScript))
 				questScript.OnCancel(this.Character, quest);
@@ -386,8 +479,60 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		{
 			foreach (var reward in quest.Data.Rewards)
 				reward.Give(this.Character);
+		}
 
-			this.UpdateClient_CompleteQuest(quest);
+		/// <summary>
+		/// Abandon a quest
+		/// </summary>
+		/// <param name="questId"></param>
+		/// <returns></returns>
+		public bool Abandon(int questId)
+		{
+			if (!this.Has(questId) || !this.TryGet(questId, out var quest) || !quest.InProgress)
+				return false;
+
+			this.Cancel(quest);
+
+			return true;
+		}
+
+		/// <summary>
+		/// Restart a quest
+		/// </summary>
+		/// <param name="questId"></param>
+		/// <returns></returns>
+		public bool Restart(int questId, QuestStatus status = QuestStatus.Restarted)
+		{
+			if (!this.IsPossible(questId))
+				return false;
+
+			if (!this.TryGet(questId, out var quest))
+				quest = Quest.Create(questId);
+			quest.Status = status;
+			this.UpdateQuestStatus(questId, quest.Status);
+
+			if (QuestScript.TryGet(quest.Data.Id, out var questScript))
+				questScript.OnStart(this.Character, quest);
+
+			return true;
+		}
+
+		public void UpdateQuestStatus(int questId, QuestStatus status)
+		{
+			lock (_syncLock)
+			{
+				for (var i = 0; i < _quests.Count; i++)
+				{
+					var quest = _quests[i];
+					if (quest.Data.Id != questId)
+						continue;
+
+					quest.Status = status;
+
+					this.UpdateClient_UpdateQuest(quest);
+					break;
+				}
+			}
 		}
 
 		/// <summary>
@@ -404,7 +549,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 				for (var i = 0; i < _quests.Count; i++)
 				{
 					var quest = _quests[i];
-					if (quest.Status != QuestStatus.NotStarted)
+					if (quest.Status != QuestStatus.Possible)
 						continue;
 
 					if (quest.StartTime < now)
@@ -427,7 +572,7 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		public void UpdateClient()
 		{
 			var quests = this.GetList();
-			foreach (var quest in quests.Where(a => a.Status == QuestStatus.InProgress))
+			foreach (var quest in quests.Where(a => a.Status == QuestStatus.Progress))
 			{
 				var questTable = this.QuestToTable(quest);
 
@@ -442,6 +587,33 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		private void UpdateClient_AddQuest(Quest quest)
 		{
+			if (ZoneServer.Instance.Data.QuestDb.TryFind(quest.Data.Id, out var questData))
+			{
+				if (quest.QuestStaticData != null)
+				{
+					var main = this.Character.SessionObjects.Main;
+
+					if (!string.IsNullOrWhiteSpace(quest.QuestStaticData.QStartZone)
+						&& quest.QuestStaticData.QStartZone != main.Properties.GetString(PropertyName.QSTARTZONETYPE))
+					{
+						main.Properties.SetString(PropertyName.QSTARTZONETYPE, quest.QuestStaticData.QStartZone);
+						Send.ZC_OBJECT_PROPERTY(this.Character, main, PropertyName.QSTARTZONETYPE);
+					}
+				}
+				if (quest.SessionObjectStaticData != null)
+				{
+					var questSessionObject = this.Character.SessionObjects.GetOrCreate(quest.SessionObjectStaticData.Id);
+					if (questSessionObject != null)
+					{
+						if (quest.SessionObjectStaticData.QuestData.InfoMaxCount != null)
+							questSessionObject.Properties.SetFloat(PropertyName.QuestInfoValue1, 0f);
+						Send.ZC_SESSION_OBJ_ADD(this.Character, questSessionObject, quest.QuestStaticData.Id);
+					}
+					UpdateClient_UpdateQuest(quest);
+				}
+				return;
+			}
+
 			var questTable = this.QuestToTable(quest);
 
 			var table = new LuaTable();
@@ -460,6 +632,20 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		private void UpdateClient_UpdateQuest(Quest quest)
 		{
+			if (ZoneServer.Instance.Data.QuestDb.TryFind(quest.Data.Id, out var questData) && !string.IsNullOrEmpty(quest.QuestStaticData.QuestProperty))
+			{
+				var main = this.Character.SessionObjects.Main;
+
+				if (!main.Properties.Has(quest.QuestStaticData.QuestProperty))
+				{
+					main.Properties.SetFloat(quest.QuestStaticData.QuestProperty, 1);
+					Send.ZC_OBJECT_PROPERTY(this.Character, main, quest.QuestStaticData.QuestProperty);
+				}
+				main.Properties.SetFloat(quest.QuestStaticData.QuestProperty, (int)quest.Status);
+				Send.ZC_OBJECT_PROPERTY(this.Character, main, quest.QuestStaticData.QuestProperty);
+				return;
+			}
+
 			var objectivesTable = this.ObjectivesToTable(quest);
 
 			var questTable = new LuaTable();
@@ -480,6 +666,13 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		private void UpdateClient_RemoveQuest(Quest quest)
 		{
+			if (ZoneServer.Instance.Data.QuestDb.TryFind(quest.Data.Id, out var questData) && quest.SessionObjectStaticData != null)
+			{
+				this.Character.SessionObjects.Remove(quest.SessionObjectStaticData.Id);
+				Send.ZC_SESSION_OBJ_REMOVE(this.Character, quest.SessionObjectStaticData.Id);
+				return;
+			}
+
 			var lua = $"Melia.Quests.Remove('{quest.ObjectIdStr}')";
 			Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
 		}
@@ -490,6 +683,16 @@ namespace Melia.Zone.World.Actors.Characters.Components
 		/// <param name="quest"></param>
 		private void UpdateClient_CompleteQuest(Quest quest)
 		{
+			if (ZoneServer.Instance.Data.QuestDb.TryFind(quest.Data.Id, out var questData) && !string.IsNullOrEmpty(questData.QuestProperty))
+			{
+				var main = this.Character.SessionObjects.Main;
+				var propertyName = questData.QuestProperty;
+
+				main.Properties.SetFloat(propertyName, (float)QuestStatus.Complete);
+				Send.ZC_OBJECT_PROPERTY(this.Character, main, propertyName);
+				return;
+			}
+
 			var lua = $"Melia.Quests.Remove('{quest.ObjectIdStr}')";
 			Send.ZC_EXEC_CLIENT_SCP(this.Character.Connection, lua);
 		}
@@ -555,6 +758,96 @@ namespace Melia.Zone.World.Actors.Characters.Components
 			}
 
 			return objectivesTable;
+		}
+
+		/// <summary>
+		/// Checks if the quest is completable
+		/// </summary>
+		/// <param name="questId"></param>
+		/// <returns></returns>
+		public bool IsCompletable(int questId)
+		{
+			lock (_syncLock)
+			{
+				for (var i = 0; i < _quests.Count; i++)
+				{
+					var quest = _quests[i];
+
+					if (!quest.InProgress || quest.Data.Id != questId)
+						continue;
+
+					return quest.ObjectivesCompleted;
+				}
+			}
+
+			return false;
+		}
+
+		public QuestStatus GetStatus(int questId)
+		{
+			lock (_syncLock)
+			{
+				for (var i = 0; i < _quests.Count; i++)
+				{
+					var quest = _quests[i];
+
+					if (quest.Data.Id != questId)
+						continue;
+
+					return quest.Status;
+				}
+			}
+			return QuestStatus.Possible;
+		}
+
+		/// <summary>
+		/// Update quest progress
+		/// </summary>
+		/// <param name="questId"></param>
+		/// <param name="objectiveId"></param>
+		public void UpdateQuestProgress(int questId, int objectiveId)
+		{
+			if (this.TryGetById(questId, out var quest))
+			{
+				var character = this.Character;
+				var progress = quest.Progresses[objectiveId];
+				if (quest.QuestStaticData != null)
+				{
+					var mainSessionObject = character.SessionObjects.Get(SessionObjectId.Main);
+					// In case quest doesn't exist, set it's state to started (1)
+					if (!mainSessionObject.Properties.Has(quest.QuestStaticData.QuestProperty))
+					{
+						mainSessionObject.Properties.SetFloat(quest.QuestStaticData.QuestProperty, 1);
+						Send.ZC_OBJECT_PROPERTY(character, mainSessionObject, quest.QuestStaticData.QuestProperty);
+					}
+
+					var questSessionObject = character.SessionObjects.GetOrCreate(quest.SessionObjectStaticData.Id);
+					if (questSessionObject != null)
+					{
+						string propertyName;
+						if (quest.Progresses[objectiveId].Objective is KillObjective)
+							propertyName = $"KillMonster{objectiveId + 1}";
+						else
+							propertyName = $"QuestInfoValue{objectiveId + 1}";
+
+						questSessionObject.Properties.SetFloat(propertyName, quest.ProgressValue(objectiveId));
+						Send.ZC_OBJECT_PROPERTY(character, questSessionObject, propertyName);
+						if (progress.Done)
+						{
+							var goalPropertyName = $"Goal{objectiveId + 1}";
+							questSessionObject.Properties.SetFloat(goalPropertyName, 1);
+							Send.ZC_OBJECT_PROPERTY(character, questSessionObject, goalPropertyName);
+						}
+					}
+				}
+				if (QuestScript.TryGet(quest.Data.Id, out var questScript))
+					questScript.OnProgress(this.Character, quest, progress.Objective.Id, quest.ProgressValue(objectiveId));
+				if (quest.IsCompletable)
+				{
+					quest.Status = QuestStatus.Success;
+					questScript?.OnSuccess(this.Character, quest);
+				}
+			}
 		}
 	}
 }

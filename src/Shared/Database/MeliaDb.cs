@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using Melia.Shared.Tos.Properties;
 using Melia.Shared.ObjectProperties;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Yggdrasil.Logging;
 using Yggdrasil.Security.Hashing;
 using Melia.Shared.Network.Helpers;
@@ -24,7 +24,7 @@ namespace Melia.Shared.Database
 		/// <exception cref="Exception">Thrown if connection couldn't be established.</exception>
 		public void Init(string host, string user, string pass, string db)
 		{
-			_connectionString = string.Format("server={0}; database={1}; uid={2}; password={3}; charset=utf8; pooling=true; min pool size=0; max pool size=100;", host, db, user, pass);
+			_connectionString = string.Format("server={0}; database={1}; uid={2}; password={3}; charset=utf8; pooling=true; min pool size=0; max pool size=100; IgnoreCommandTransaction=true;", host, db, user, pass);
 			this.TestConnection();
 		}
 
@@ -149,6 +149,23 @@ namespace Melia.Shared.Database
 		}
 
 		/// <summary>
+		/// Returns true if a guild with the given name exists.
+		/// </summary>
+		/// <param name="name"></param>
+		/// <returns></returns>
+		public bool GuildNameExists(string name)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT `guildId` FROM `guild` WHERE `name` = @name", conn))
+			{
+				cmd.Parameters.AddWithValue("@name", name);
+
+				using (var reader = cmd.ExecuteReader())
+					return reader.HasRows;
+			}
+		}
+
+		/// <summary>
 		/// Changes team name for account.
 		/// </summary>
 		/// <param name="account"></param>
@@ -173,7 +190,7 @@ namespace Melia.Shared.Database
 		/// <param name="idName"></param>
 		/// <param name="id"></param>
 		/// <param name="properties"></param>
-		protected void LoadProperties(string databaseName, string idName, long id, Properties properties)
+		protected bool LoadProperties(string databaseName, string idName, long id, Properties properties)
 		{
 			using (var conn = this.GetConnection())
 			using (var cmd = new MySqlCommand($"SELECT * FROM `{databaseName}` WHERE `{idName}` = @id", conn))
@@ -226,6 +243,7 @@ namespace Melia.Shared.Database
 							property.Deserialize(valueStr);
 						}
 					}
+					return reader.HasRows;
 				}
 			}
 		}
@@ -267,6 +285,38 @@ namespace Melia.Shared.Database
 				trans.Commit();
 			}
 		}
+		
+		/// <summary>
+		/// Saves properties to the given database, with the id.
+		/// </summary>
+		/// <param name="databaseName"></param>
+		/// <param name="idName"></param>
+		/// <param name="id"></param>
+		/// <param name="properties"></param>
+		protected void SaveProperties(string databaseName, string idName, long id, Properties properties, MySqlConnection conn, MySqlTransaction trans)
+		{
+			using (var cmd = new MySqlCommand($"DELETE FROM `{databaseName}` WHERE `{idName}` = @id", conn))
+			{
+				cmd.Parameters.AddWithValue("@id", id);
+				cmd.ExecuteNonQuery();
+			}
+
+			foreach (var property in properties.GetAll())
+			{
+				var typeStr = property is FloatProperty ? "f" : "s";
+				var valueStr = property.Serialize();
+
+				using (var cmd = new InsertCommand($"INSERT INTO `{databaseName}` {{0}}", conn))
+				{
+					cmd.Set(idName, id);
+					cmd.Set("name", property.Ident);
+					cmd.Set("type", typeStr);
+					cmd.Set("value", valueStr);
+
+					cmd.Execute();
+				}
+			}
+		}
 
 		/// <summary>
 		/// Updates the login state of the given account.
@@ -282,6 +332,22 @@ namespace Melia.Shared.Database
 				cmd.AddParameter("@accountId", accountId);
 				cmd.Set("loginState", (int)state);
 				cmd.Set("loginCharacter", characterDbId);
+
+				cmd.Execute();
+			}
+		}
+
+		/// <summary>
+		/// Updates the last login time for the account.
+		/// </summary>
+		/// <param name="accountId"></param>
+		public void UpdateLastLogin(long accountId)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `accounts` SET {0} WHERE `accountId` = @accountId", conn))
+			{
+				cmd.AddParameter("@accountId", accountId);
+				cmd.Set("lastLogin", DateTime.Now);
 
 				cmd.Execute();
 			}

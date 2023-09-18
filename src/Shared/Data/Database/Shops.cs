@@ -5,16 +5,44 @@ using Yggdrasil.Data.JSON;
 
 namespace Melia.Shared.Data.Database
 {
+	public enum PersonalShopType
+	{
+		// 4 (0 = Buff Shop, 2 = Repair Shop,3 = Gem Roasting, 5 = Food Table, 9 = Portal Shop, 10 = Item Awakening)
+		NPC = -2,
+		Personal = -1,
+		Buff = 1,
+		SpellShop = 0, // Not sure about this value
+		Repair = 2,
+		GemRoasting = 3,
+		FoodTable = 5,
+		Portal = 9,
+		ItemAwakening = 10,
+	}
+
 	[Serializable]
 	public class ShopData
 	{
 		public string Name { get; set; }
 		public bool IsCustom { get; set; }
-		public Dictionary<int, ProductData> Products { get; set; }
+		public PersonalShopType Type { get; set; } = PersonalShopType.NPC;
+		public Dictionary<int, ProductData> Products { get; set; } = new Dictionary<int, ProductData>();
+		public int Level { get; set; }
+		public int EffectId { get; set; } = 7966;
+		public bool IsClosed { get; set; }
 
-		public ShopData()
+		public int SkillIcon
 		{
-			this.Products = new Dictionary<int, ProductData>();
+			get
+			{
+				return this.Type switch
+				{
+					PersonalShopType.Buff => 40805,
+					PersonalShopType.Repair => 50301,
+					PersonalShopType.FoodTable => 50304,
+					PersonalShopType.ItemAwakening => 21007,
+					_ => 0,
+				};
+			}
 		}
 
 		public ProductData GetProduct(int id)
@@ -30,8 +58,10 @@ namespace Melia.Shared.Data.Database
 		public string ShopName { get; set; }
 		public int Id { get; set; }
 		public int ItemId { get; set; }
-		public int Amount { get; set; }
+		public int Cost { get; set; }
 		public float PriceMultiplier { get; set; }
+		public int Amount { get; set; }
+		public int RequiredAmount { get; set; }
 	}
 
 	/// <summary>
@@ -52,7 +82,7 @@ namespace Melia.Shared.Data.Database
 			data.ShopName = entry.ReadString("shopName");
 			data.Id = entry.ReadInt("productId");
 			data.ItemId = entry.ReadInt("itemId");
-			data.Amount = entry.ReadInt("amount");
+			data.Cost = entry.ReadInt("amount");
 			data.PriceMultiplier = entry.ReadFloat("priceMultiplier");
 
 			if (!this.Entries.TryGetValue(data.ShopName, out var shopData))

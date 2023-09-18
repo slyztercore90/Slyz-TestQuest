@@ -29,6 +29,9 @@ namespace Melia.Zone.Scripting.AI
 		/// <returns></returns>
 		protected IEnumerable MoveRandom(int min = 35, int max = 50, bool wait = true)
 		{
+			if (this.Entity.MoveType == MoveType.Holding)
+				yield break;
+
 			min = 100;
 			min = Math.Max(1, min);
 			max = Math.Max(min, max);
@@ -63,6 +66,9 @@ namespace Melia.Zone.Scripting.AI
 		/// <returns></returns>
 		protected IEnumerable MoveTo(Position destination, bool wait = true)
 		{
+			if (!this.Entity.CanMove())
+				yield break;
+
 			var movement = this.Entity.Components.Get<MovementComponent>();
 			var moveTime = movement.MoveTo(destination);
 
@@ -170,17 +176,36 @@ namespace Melia.Zone.Scripting.AI
 		{
 			this.Entity.TurnTowards(target);
 
+			// Check if the AI is still eligible to use the skill.
+			if (!this.CanUseSkill(skill, target))
+			{
+				yield break; // Skill usage is not allowed, exit the routine.
+			}
+
 			if (!ZoneServer.Instance.SkillHandlers.TryGetHandler<ITargetSkillHandler>(skill.Id, out var handler))
 			{
 				Log.Warning($"AiScript: No handler found for skill '{skill.Id}'.");
 				yield return this.Wait(2000);
 				yield break;
 			}
-
+			skill.IncreaseOverheat();
 			handler.Handle(skill, this.Entity, target);
 
+
 			var useTime = skill.Properties.ShootTime;
-			yield return this.Wait(useTime);
+			yield break;
+			//yield return this.Wait(useTime);
+		}
+
+		private bool CanUseSkill(Skill skill, ICombatEntity target)
+		{
+			if (this.Entity.IsDead || target.IsDead || skill.IsOnCooldown)
+				return false;
+
+			if (this.Entity.IsBuffActive(BuffId.Stun) || this.Entity.IsBuffActive(BuffId.Common_Silence))
+				return false;
+
+			return true;
 		}
 
 		/// <summary>
@@ -201,7 +226,7 @@ namespace Melia.Zone.Scripting.AI
 		/// <param name="minDistance">The minimum distance to the target the AI attempts to stay in.</param>
 		/// <param name="matchSpeed">If true, the entity's speed will be changed to match the target's.</param>
 		/// <returns></returns>
-		protected IEnumerable Follow(ICombatEntity followTarget, float minDistance = 50, bool matchSpeed = false)
+		protected IEnumerable Follow(ICombatEntity followTarget, float minDistance = 75, bool matchSpeed = false)
 		{
 			var movement = this.Entity.Components.Get<MovementComponent>();
 			var targetWasInRange = false;
@@ -256,7 +281,7 @@ namespace Melia.Zone.Scripting.AI
 				{
 					movement.Stop();
 
-					this.Entity.Position = followTarget.Position;
+					this.Entity.Position = followTarget.Position.GetRandomInRange2D(15, (int)minDistance - 1);
 					Send.ZC_SET_POS(this.Entity);
 				}
 
@@ -276,7 +301,7 @@ namespace Melia.Zone.Scripting.AI
 
 				if (catchUp)
 				{
-					var closePos = this.Entity.Position.GetRelative(followTarget.Position, 50);
+					var closePos = followTarget.Position.GetRandomInRange2D(15, (int)minDistance - 1);
 					yield return this.MoveTo(closePos, false);
 				}
 				else if (movement.IsMoving)

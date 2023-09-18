@@ -1,9 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Melia.Shared.Network.Helpers;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Scripting;
+using Melia.Shared.Tos.Const;
 using Melia.Zone.World;
+using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Maps;
 
 namespace Melia.Zone.Database
@@ -13,6 +16,8 @@ namespace Melia.Zone.Database
 	/// </summary>
 	public class Account : IAccount
 	{
+		private readonly object _moneyLock = new object();
+
 		/// <summary>
 		/// List of chat macros associated with the account.
 		/// </summary>
@@ -24,9 +29,24 @@ namespace Melia.Zone.Database
 		private readonly Dictionary<int, RevealedMap> _revealedMaps;
 
 		/// <summary>
+		/// A reference to the account's assister cabinet.
+		/// </summary>
+		public AssisterCabinetComponent AssisterCabinet { get; set; }
+
+		/// <summary>
+		/// Track Popo Points (PCBANG_Points)
+		/// </summary>
+		public int PopoPoints { get; set; } = 0;
+
+		/// <summary>
 		/// Account id
 		/// </summary>
 		public long Id { get; set; }
+
+		/// <summary>
+		/// Account's Object Id
+		/// </summary>
+		public long ObjectId => this.Id;
 
 		/// <summary>
 		/// Account name
@@ -37,6 +57,11 @@ namespace Melia.Zone.Database
 		/// Account's team name
 		/// </summary>
 		public string TeamName { get; set; }
+
+		/// <summary>
+		/// Account type
+		/// </summary>
+		public AccountType Type { get; set; } = AccountType.Normal;
 
 		/// <summary>
 		/// The account's authority level, used to determine if a character
@@ -176,6 +201,65 @@ namespace Melia.Zone.Database
 		public static Account LoadFromDb(string accountName)
 		{
 			return ZoneServer.Instance.Database.GetAccount(accountName);
+		}
+
+		/// <summary>
+		/// Returns whether the account has enough combined medals to
+		/// afford a purchase with the given cost.
+		/// </summary>
+		/// <param name="cost"></param>
+		/// <returns></returns>
+		public bool CanAffordPurchase(int cost)
+		{
+			lock (_moneyLock)
+				return cost <= this.Medals + this.GiftMedals + this.PremiumMedals;
+		}
+
+		/// <summary>
+		/// Processes a charge attempt on the account.
+		/// </summary>
+		/// <param name="cost">Amount of medals to remove.</param>
+		/// <returns>Returns 'true' on a successful charge.</returns>
+		/// <exception cref="ArgumentException">
+		/// Thrown if cost is negative.
+		/// </exception>
+		public bool Charge(int cost)
+		{
+			if (cost < 0)
+				throw new ArgumentException("Cost must be a positive value.");
+
+			lock (_moneyLock)
+			{
+				var medals = this.Medals;
+				var giftMedals = this.GiftMedals;
+				var premiumMedals = this.PremiumMedals;
+
+				// Take only medals if possible
+				if (cost <= medals)
+				{
+					this.Medals -= cost;
+					return true;
+				}
+
+				// Take only medals and gift medals if possible
+				if (cost <= medals + giftMedals)
+				{
+					this.Medals = 0;
+					this.GiftMedals -= (cost - medals);
+					return true;
+				}
+
+				// Take it all
+				if (cost <= medals + giftMedals + premiumMedals)
+				{
+					this.Medals = 0;
+					this.GiftMedals = 0;
+					this.PremiumMedals -= (cost - medals - giftMedals);
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		/// <summary>

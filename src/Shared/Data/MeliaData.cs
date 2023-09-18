@@ -7,42 +7,50 @@ namespace Melia.Shared.Data
 	/// </summary>
 	public class MeliaData
 	{
-		public AbilityDb AbilityDb = new AbilityDb();
-		public AbilityTreeDb AbilityTreeDb = new AbilityTreeDb();
-		public AccountOptionDb AccountOptionDb = new AccountOptionDb();
-		public AchievementDb AchievementDb = new AchievementDb();
-		public AchievementPointDb AchievementPointDb = new AchievementPointDb();
-		public BarrackDb BarrackDb = new BarrackDb();
-		public BuffDb BuffDb = new BuffDb();
-		public ChatMacroDb ChatMacroDb = new ChatMacroDb();
-		public CooldownDb CooldownDb = new CooldownDb();
-		public CustomCommandDb CustomCommandDb = new CustomCommandDb();
-		public DialogDb DialogDb = new DialogDb();
-		public DialogTxDb DialogTxDb = new DialogTxDb();
-		public ExpDb ExpDb = new ExpDb();
-		public FactionDb FactionDb = new FactionDb();
-		public FeatureDb FeatureDb = new FeatureDb();
-		public GroundDb GroundDb = new GroundDb();
-		public HairTypeDb HairTypeDb = new HairTypeDb();
-		public HelpDb HelpDb = new HelpDb();
-		public InvBaseIdDb InvBaseIdDb = new InvBaseIdDb();
-		public ItemDb ItemDb = new ItemDb();
-		public ItemMonsterDb ItemMonsterDb = new ItemMonsterDb();
-		public JobDb JobDb = new JobDb();
-		public MapDb MapDb = new MapDb();
-		public MonsterDb MonsterDb = new MonsterDb();
-		public NormalTxDb NormalTxDb = new NormalTxDb();
-		public PacketStringDb PacketStringDb = new PacketStringDb();
-		public PropertiesDb PropertiesDb = new PropertiesDb();
-		public RecipeDb RecipeDb = new RecipeDb();
-		public ResurrectionPointDb ResurrectionPointDb = new ResurrectionPointDb();
-		public ServerDb ServerDb;
-		public SessionObjectDb SessionObjectDb = new SessionObjectDb();
-		public ShopDb ShopDb = new ShopDb();
-		public SkillDb SkillDb = new SkillDb();
-		public SkillTreeDb SkillTreeDb = new SkillTreeDb();
-		public StanceConditionDb StanceConditionDb = new StanceConditionDb();
-		public SystemMessageDb SystemMessageDb = new SystemMessageDb();
+		public AbilityDb AbilityDb { get; set; } = new AbilityDb();
+		public AbilityTreeDb AbilityTreeDb { get; set; } = new AbilityTreeDb();
+		public AccountOptionDb AccountOptionDb { get; set; } = new AccountOptionDb();
+		public AchievementDb AchievementDb { get; set; } = new AchievementDb();
+		public AchievementPointDb AchievementPointDb { get; set; } = new AchievementPointDb();
+		public BarrackDb BarrackDb { get; set; } = new BarrackDb();
+		public BuffDb BuffDb { get; set; } = new BuffDb();
+		public CabinetDb CabinetDb { get; set; } = new CabinetDb();
+		public ChatMacroDb ChatMacroDb { get; set; } = new ChatMacroDb();
+		public CollectionDb CollectionDb { get; set; } = new CollectionDb();
+		public CooldownDb CooldownDb { get; set; } = new CooldownDb();
+		public CustomCommandDb CustomCommandDb { get; set; } = new CustomCommandDb();
+		public DialogDb DialogDb { get; set; } = new DialogDb();
+		public DialogTxDb DialogTxDb { get; set; } = new DialogTxDb();
+		public ExpDb ExpDb { get; set; } = new ExpDb();
+		public FactionDb FactionDb { get; set; } = new FactionDb();
+		public FeatureDb FeatureDb { get; set; } = new FeatureDb();
+		public FurnitureDb FurnitureDb { get; set; } = new FurnitureDb();
+		public GroundDb GroundDb { get; set; } = new GroundDb();
+		public HairTypeDb HairTypeDb { get; set; } = new HairTypeDb();
+		public HelpDb HelpDb { get; set; } = new HelpDb();
+		public InstanceDungeonDb InstanceDungeonDb { get; set; } = new InstanceDungeonDb();
+		public InvBaseIdDb InvBaseIdDb { get; set; } = new InvBaseIdDb();
+		public ItemDb ItemDb { get; set; } = new ItemDb();
+		public ItemMonsterDb ItemMonsterDb { get; set; } = new ItemMonsterDb();
+		public JobDb JobDb { get; set; } = new JobDb();
+		public MapDb MapDb { get; set; } = new MapDb();
+		public MonsterDb MonsterDb { get; set; } = new MonsterDb();
+		public NormalTxDb NormalTxDb { get; set; } = new NormalTxDb();
+		public PacketStringDb PacketStringDb { get; set; } = new PacketStringDb();
+		public PropertiesDb PropertiesDb { get; set; } = new PropertiesDb();
+		public QuestDb QuestDb { get; set; } = new QuestDb();
+		public RecipeDb RecipeDb { get; set; } = new RecipeDb();
+		public ResurrectionPointDb ResurrectionPointDb { get; set; } = new ResurrectionPointDb();
+		public SelectItemDb SelectItemDb { get; set; } = new SelectItemDb();
+		public ServerDb ServerDb { get; set; }
+		public SessionObjectDb SessionObjectDb { get; set; } = new SessionObjectDb();
+		public ShopDb ShopDb { get; set; } = new ShopDb();
+		public SkillDb SkillDb { get; set; } = new SkillDb();
+		public SkillTreeDb SkillTreeDb { get; set; } = new SkillTreeDb();
+		public StanceConditionDb StanceConditionDb { get; set; } = new StanceConditionDb();
+		public SystemMessageDb SystemMessageDb { get; set; } = new SystemMessageDb();
+		public TradeShopDb TradeShopDb { get; set; }
+		public WarpDb WarpDb { get; set; } = new WarpDb();
 
 		public MeliaData()
 		{
@@ -50,6 +58,7 @@ namespace Melia.Shared.Data
 			// the map list from the server db to determine which maps
 			// the zone servers serve.
 			this.ServerDb = new ServerDb(this.MapDb);
+			this.TradeShopDb = new TradeShopDb(this.ItemDb);
 		}
 	}
 }

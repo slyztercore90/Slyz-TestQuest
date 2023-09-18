@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
+using Melia.Shared.Data.Database;
 using Melia.Shared.ObjectProperties;
 using Melia.Zone.Scripting;
 
@@ -56,9 +57,29 @@ namespace Melia.Zone.World.Quests
 		public QuestData Data { get; }
 
 		/// <summary>
+		/// Returns the quest's static data.
+		/// </summary>
+		public QuestStaticData QuestStaticData { get; private set; }
+
+		/// <summary>
+		/// Returns the quest's session object data.
+		/// </summary>
+		public SessionObjectData SessionObjectStaticData { get; private set; }
+
+		/// <summary>
 		/// Returns a list with the quest's objectives' progresses.
 		/// </summary>
 		public ReadOnlyCollection<QuestProgress> Progresses => _progresses.AsReadOnly();
+
+		/// <summary>
+		/// Returns progress value of the quest's objectives with a shared objective id.
+		/// </summary>
+		public int ProgressValue(int objectiveId) => Progresses.Sum(a => a.Objective.Id == objectiveId ? a.Count : 0);
+
+		/// <summary>
+		/// Returns progress count of the quest's objectives with a shared objective id.
+		/// </summary>
+		public int ProgressCount(int objectiveId) => Progresses.Sum(a => a.Objective.Id == objectiveId ? 1 : 0);
 
 		/// <summary>
 		/// Returns true if all of the quest's objectives were completed.
@@ -68,7 +89,17 @@ namespace Melia.Zone.World.Quests
 		/// <summary>
 		/// Returns true if the quest is currently in progress.
 		/// </summary>
-		public bool InProgress => this.Status == QuestStatus.InProgress;
+		public bool InProgress => this.Status >= QuestStatus.Progress && this.Status < QuestStatus.Complete;
+
+		/// <summary>
+		/// Returns true if the quest is possible.
+		/// </summary>
+		public bool IsPossible => this.Status > QuestStatus.Impossible && this.Status < QuestStatus.Progress;
+
+		/// <summary>
+		/// Returns true if the quest is able to be completed.
+		/// </summary>
+		public bool IsCompletable => this.ObjectivesCompleted && this.Status < QuestStatus.Complete;
 
 		/// <summary>
 		/// Gets or sets whether any objectives' progresses changed during
@@ -86,6 +117,17 @@ namespace Melia.Zone.World.Quests
 
 			this.InitProgresses();
 			this.InitialUnlock();
+
+			Load();
+		}
+
+		/// <summary>
+		/// Load Static Data from Database
+		/// </summary>
+		private void Load()
+		{
+			this.QuestStaticData = ZoneServer.Instance.Data.QuestDb.Find(this.Data.Id);
+			this.SessionObjectStaticData = ZoneServer.Instance.Data.SessionObjectDb.Find(this.QuestStaticData.QuestSSN);
 		}
 
 		/// <summary>
@@ -199,6 +241,43 @@ namespace Melia.Zone.World.Quests
 		}
 
 		/// <summary>
+		/// Iterates over the quest's modifiers and runs the given function
+		/// on all modifiers with the given type. If any progresses changed,
+		/// the ChangesOnLastUpdate property will be true.
+		/// </summary>
+		/// <typeparam name="TModifier"></typeparam>
+		/// <param name="updater"></param>
+		public void UpdateModifiers<TModifier>(QuestModifiersUpdateFunc<TModifier> updater) where TModifier : QuestModifier
+		{
+			var quest = this;
+			var anythingChanged = false;
+
+			for (var j = 0; j < quest.Progresses.Count; j++)
+			{
+				var progress = quest.Progresses[j];
+				if (!progress.Unlocked)
+					continue;
+
+				var count = progress.Count;
+				var done = progress.Done;
+				var unlocked = progress.Unlocked;
+
+				for (var i = 0; i < quest.Data.Modifiers.Count; i++)
+				{
+					var modifier = quest.Data.Modifiers[i];
+					if (modifier is not TModifier tModifier)
+						continue;
+					updater(this, tModifier, progress);
+				}
+
+				if (progress.Count != count || progress.Done != done || progress.Unlocked != unlocked)
+					anythingChanged = true;
+			}
+
+			this.ChangesOnLastUpdate = anythingChanged;
+		}
+
+		/// <summary>
 		/// Marks all of the quest's objectives as done.
 		/// </summary>
 		public void CompleteObjectives()
@@ -215,7 +294,16 @@ namespace Melia.Zone.World.Quests
 	/// <param name="quest"></param>
 	/// <param name="objective"></param>
 	/// <param name="progress"></param>
-	public delegate void QuestObjectivesUpdateFunc<TObjective>(Quest quest, TObjective objective, QuestProgress progress) where TObjective : QuestObjective;
+	public delegate void QuestObjectivesUpdateFunc<in TObjective>(Quest quest, TObjective objective, QuestProgress progress) where TObjective : QuestObjective;
+
+	/// <summary>
+	/// A function used to update a quest's modifiers.
+	/// </summary>
+	/// <typeparam name="TModifier"></typeparam>
+	/// <param name="quest"></param>
+	/// <param name="modifier"></param>
+	/// <param name="progress"></param>
+	public delegate void QuestModifiersUpdateFunc<in TModifier>(Quest quest, TModifier modifier, QuestProgress progress) where TModifier : QuestModifier;
 
 	/// <summary>
 	/// Specifies a quest's current status.
@@ -223,24 +311,55 @@ namespace Melia.Zone.World.Quests
 	public enum QuestStatus
 	{
 		/// <summary>
-		/// The quest hasn't been started yet and the character has yet
-		/// to actually receive it.
+		/// When quest is reset due to rank reset.
 		/// </summary>
-		NotStarted,
+		RankReset = -10000,
 
 		/// <summary>
-		/// The quest is currently in progress.
+		/// The "system" cancelled the quest
 		/// </summary>
-		InProgress,
+		SystemCancel = -1000,
 
 		/// <summary>
-		/// The quest was completed successfully.
+		/// The quest hasn't been started yet and the character can't
+		/// receive it.
 		/// </summary>
-		Completed,
+		Impossible = -200,
+
+		/// <summary>
+		/// The quest was failed.
+		/// </summary>
+		Failed = -100,
 
 		/// <summary>
 		/// The quest was given up.
 		/// </summary>
-		Canceled,
+		Abandoned = -10,
+
+		/// <summary>
+		/// The quest hasn't been started yet and the character has yet
+		/// to actually receive it.
+		/// </summary>
+		Possible = 0,
+
+		/// <summary>
+		/// The quest has been restarted after being abandoned
+		/// </summary>
+		Restarted = 1,
+
+		/// <summary>
+		/// The quest is currently in progress.
+		/// </summary>
+		Progress = 100,
+
+		/// <summary>
+		/// The quest objectives are met.
+		/// </summary>
+		Success = 200,
+
+		/// <summary>
+		/// The quest was completed successfully.
+		/// </summary>
+		Complete = 300,
 	}
 }

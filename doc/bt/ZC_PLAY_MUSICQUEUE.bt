@@ -16,5 +16,6 @@
 ServerHeaderFixed header;
 
 int handle;
-int packetString; // 340014 / 810114
+int packetString; // 340014 / 810114 / 4069
 short s1; // 0
+byte b1; // 0

@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Melia.Shared.Database;
 using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Const.Web;
 using Melia.Shared.Tos.Properties;
 using Melia.Shared.World;
 using Melia.Zone.Buffs;
@@ -14,10 +15,13 @@ using Melia.Zone.World;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Actors.CombatEntities.Components;
+using Melia.Zone.World.Actors.Monsters;
+using Melia.Zone.World.Groups;
+using Melia.Zone.World.Houses;
 using Melia.Zone.World.Items;
 using Melia.Zone.World.Maps;
 using Melia.Zone.World.Quests;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Yggdrasil.Logging;
 using Yggdrasil.Util;
 
@@ -45,6 +49,7 @@ namespace Melia.Zone.Database
 					return false;
 			}
 
+			this.SaveProperties("account_properties", "accountId", account.Id, account.Properties);
 			this.SaveVariables(account.Variables.Perm, "vars_accounts", "accountId", account.Id);
 			this.SaveProperties("account_properties", "accountId", account.Id, account.Properties);
 			this.SaveChatMacros(account);
@@ -76,6 +81,7 @@ namespace Melia.Zone.Database
 					account.Name = reader.GetStringSafe("name");
 					account.TeamName = reader.GetStringSafe("teamName");
 					account.Authority = reader.GetInt32("authority");
+					account.Type = (AccountType)reader.GetByte("type");
 					account.Settings.Parse(reader.GetStringSafe("settings"));
 					account.Medals = reader.GetInt32("medals");
 					account.GiftMedals = reader.GetInt32("giftMedals");
@@ -84,6 +90,7 @@ namespace Melia.Zone.Database
 				}
 			}
 
+			this.LoadProperties("account_properties", "accountId", account.Id, account.Properties);
 			this.LoadVars(account.Variables.Perm, "vars_accounts", "accountId", account.Id);
 			this.LoadProperties("account_properties", "accountId", account.Id, account.Properties);
 			this.LoadChatMacros(account);
@@ -121,7 +128,7 @@ namespace Melia.Zone.Database
 						return null;
 
 					character.DbId = reader.GetInt64("characterId");
-					character.AccountId = accountId;
+					character.AccountDbId = accountId;
 					character.Name = reader.GetStringSafe("name");
 					character.TeamName = reader.GetStringSafe("teamName");
 					character.JobId = (JobId)reader.GetInt16("job");
@@ -149,12 +156,17 @@ namespace Melia.Zone.Database
 					var x = reader.GetFloat("x");
 					var y = reader.GetFloat("y");
 					var z = reader.GetFloat("z");
+					var dir = reader.GetFloat("dir");
 					character.Position = new Position(x, y, z);
-					character.Direction = new Direction(0);
+					character.Direction = new Direction(dir);
+
+					character.PartyId = reader.GetInt64("partyId");
+					character.GuildId = reader.GetInt64("guildId");
 				}
 			}
 
 			this.LoadCharacterItems(character);
+			this.LoadCharacterWarehouseItems(character);
 			this.LoadVars(character.Variables.Perm, "vars_characters", "characterId", character.DbId);
 			this.LoadSessionObjects(character);
 			this.LoadJobs(character);
@@ -164,6 +176,13 @@ namespace Melia.Zone.Database
 			this.LoadCooldowns(character);
 			this.LoadQuests(character);
 			this.LoadProperties("character_properties", "characterId", character.DbId, character.Properties);
+			this.LoadProperties("etc_properties", "characterId", character.DbId, character.EtcProperties);
+			this.LoadCompanions(character);
+			this.LoadParty(character);
+			this.LoadGuild(character);
+			//this.LoadQuests(character);
+			this.LoadHelp(character);
+			//this.LoadAchievements(character);
 
 			// Initialize the properties to trigger calculated properties
 			// and to set some properties in case the character is new and
@@ -182,6 +201,173 @@ namespace Melia.Zone.Database
 			character.UpdateStance();
 
 			return character;
+		}
+
+		/// <summary>
+		/// Load Achievements from the database.
+		/// </summary>
+		/// <param name="character"></param>
+		private void LoadAchievements(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT * FROM `achievements` WHERE `characterId` = @characterId", conn))
+			{
+				cmd.Parameters.AddWithValue("@characterId", character.DbId);
+
+				using (var reader = cmd.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						var achievementId = reader.GetInt32("achievementId");
+
+						if (!character.Achievements.HasAchievement(achievementId))
+							character.Achievements.AddAchievement(achievementId, true);
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Saves character's achievements to the database.
+		/// </summary>
+		/// <param name="character"></param>
+		private void SaveAchievements(Character character)
+		{
+			var jobs = character.Jobs.GetList();
+
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new MySqlCommand("DELETE FROM `achievements` WHERE `characterId` = @characterId", conn, trans))
+				{
+					cmd.Parameters.AddWithValue("@characterId", character.DbId);
+					cmd.ExecuteNonQuery();
+				}
+
+				foreach (var job in jobs)
+				{
+					using (var cmd = new InsertCommand("INSERT INTO `achievements` {0}", conn, trans))
+					{
+						cmd.Set("characterId", character.DbId);
+						cmd.Set("achievementId", job.Id);
+
+						cmd.Execute();
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Load Achievements from the database.
+		/// </summary>
+		/// <param name="character"></param>
+		private void LoadAchievementPoints(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT * FROM `achievement_points` WHERE `characterId` = @characterId", conn))
+			{
+				cmd.Parameters.AddWithValue("@characterId", character.DbId);
+
+				using (var reader = cmd.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						var pointId = reader.GetInt32("pointId");
+						var points = reader.GetInt32("points");
+
+						character.Achievements.AddAchievementPoints(pointId, points);
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Saves character's achievement points to the database.
+		/// </summary>
+		/// <param name="character"></param>
+		private void SaveAchievementPoints(Character character)
+		{
+			var pointIds = character.Achievements.GetPointIds();
+
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new MySqlCommand("DELETE FROM `achievement_points` WHERE `characterId` = @characterId", conn, trans))
+				{
+					cmd.Parameters.AddWithValue("@characterId", character.DbId);
+					cmd.ExecuteNonQuery();
+				}
+
+				foreach (var pointId in pointIds)
+				{
+					using (var cmd = new InsertCommand("INSERT INTO `achievement_points` {0}", conn, trans))
+					{
+						cmd.Set("characterId", character.DbId);
+						cmd.Set("pointId", pointId);
+						cmd.Set("points", character.Achievements.GetPoints(pointId));
+
+						cmd.Execute();
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Load Help (Tutorials) from the database.
+		/// </summary>
+		/// <param name="character"></param>
+		private void LoadHelp(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT * FROM `help` WHERE `characterId` = @characterId", conn))
+			{
+				cmd.Parameters.AddWithValue("@characterId", character.DbId);
+
+				using (var reader = cmd.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						var helpId = reader.GetInt32("helpId");
+						var shown = reader.GetByte("shown");
+
+						if (!character.Help.ContainsKey(helpId))
+							character.Help.Add(helpId, shown == 1);
+					}
+				}
+			}
+			// Load Default Help
+			var defaultHelp = ZoneServer.Instance.Data.HelpDb.Entries.Values.Where(a => a.BasicHelp && a.DbSave);
+			if (character.Help.Count == 0 || defaultHelp.Count() != character.Help.Count)
+			{
+				foreach (var help in defaultHelp)
+				{
+					if (!character.Help.ContainsKey(help.Id))
+						character.Help.Add(help.Id, false);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Save Help (Tutorials) to database.
+		/// </summary>
+		/// <param name="characterId"></param>
+		/// <param name="helpId"></param>
+		/// <param name="isShown"></param>
+		public void SaveHelp(long characterId, int helpId, bool isShown)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new InsertCommand("INSERT INTO `help` {0}", conn))
+			{
+				cmd.Set("characterId", characterId);
+				cmd.Set("helpId", helpId);
+				cmd.Set("shown", isShown ? 1 : 0);
+
+				cmd.Execute();
+			}
 		}
 
 		/// <summary>
@@ -336,14 +522,14 @@ namespace Melia.Zone.Database
 			using (var conn = this.GetConnection())
 			using (var trans = conn.BeginTransaction())
 			{
+				using (var cmd = new MySqlCommand("DELETE FROM `session_objects_properties` WHERE `characterId` = @characterId", conn, trans))
+				{
+					cmd.Parameters.AddWithValue("@characterId", character.DbId);
+					cmd.ExecuteNonQuery();
+				}
+
 				foreach (var sessionObject in sessionObjects)
 				{
-					using (var cmd = new MySqlCommand("DELETE FROM `session_objects_properties` WHERE `characterId` = @characterId AND `sessionObjectId` = @sessionObjectId", conn, trans))
-					{
-						cmd.Parameters.AddWithValue("@characterId", character.DbId);
-						cmd.Parameters.AddWithValue("@sessionObjectId", sessionObject.Id);
-						cmd.ExecuteNonQuery();
-					}
 
 					var properties = sessionObject.Properties.GetAll();
 					foreach (var property in properties)
@@ -357,7 +543,7 @@ namespace Melia.Zone.Database
 							cmd.Set("sessionObjectId", sessionObject.Id);
 							cmd.Set("name", property.Ident);
 							cmd.Set("type", typeStr);
-							cmd.Set("value", property.Serialize());
+							cmd.Set("value", valueStr);
 
 							cmd.Execute();
 						}
@@ -390,26 +576,35 @@ namespace Melia.Zone.Database
 				cmd.Set("x", character.Position.X);
 				cmd.Set("y", character.Position.Y);
 				cmd.Set("z", character.Position.Z);
+				cmd.Set("dir", character.Direction.DegreeAngle);
 				cmd.Set("exp", character.Exp);
 				cmd.Set("maxExp", character.MaxExp);
 				cmd.Set("totalExp", character.TotalExp);
 				cmd.Set("equipVisibility", character.VisibleEquip);
 				cmd.Set("stamina", character.Properties.Stamina);
 				cmd.Set("silver", character.Inventory.CountItem(ItemId.Silver));
+				if (character.Connection.Party != null)
+					cmd.Set("partyId", character.Connection.Party?.DbId ?? 0);
+				if (character.Connection.Guild != null)
+					cmd.Set("guildId", character.Connection.Guild?.DbId ?? 0);
 
 				cmd.Execute();
 			}
 
 			this.SaveCharacterItems(character);
+			this.SaveCharacterWarehouseItems(character);
 			this.SaveVariables(character.Variables.Perm, "vars_characters", "characterId", character.DbId);
 			this.SaveSessionObjects(character);
 			this.SaveProperties("character_properties", "characterId", character.DbId, character.Properties);
+			this.SaveProperties("etc_properties", "characterId", character.DbId, character.EtcProperties);
 			this.SaveJobs(character);
 			this.SaveSkills(character);
 			this.SaveAbilities(character);
 			this.SaveBuffs(character);
 			this.SaveCooldowns(character);
 			this.SaveQuests(character);
+			if (character.HasCompanions)
+				this.SaveCompanions(character);
 
 			return false;
 		}
@@ -533,6 +728,7 @@ namespace Melia.Zone.Database
 				{
 					while (reader.Read())
 					{
+						var itemUniqueId = reader.GetInt64("itemUniqueId");
 						var itemId = reader.GetInt32("itemId");
 						var amount = reader.GetInt32("amount");
 						var equipSlot = (EquipSlot)reader.GetByte("equipSlot");
@@ -544,12 +740,55 @@ namespace Melia.Zone.Database
 							continue;
 						}
 
-						var item = new Item(itemId, amount);
+						var item = new Item(itemUniqueId, itemId, amount);
+						if (!this.LoadProperties("item_properties", "itemId", item.DbId, item.Properties))
+						{
+							item.Durability = (int)item.Properties.GetFloat(PropertyName.MaxDur);
+						}
 
 						if (!Enum.IsDefined(typeof(EquipSlot), equipSlot))
 							character.Inventory.AddSilent(item);
 						else
 							character.Inventory.SetEquipSilent(equipSlot, item);
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Load character's warehouse items.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		private void LoadCharacterWarehouseItems(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var mc = new MySqlCommand("SELECT `i`.*, `inv`.`sort` FROM `warehouse` AS `inv` INNER JOIN `items` AS `i` ON `inv`.`itemId` = `i`.`itemUniqueId` WHERE `characterId` = @characterId ORDER BY `sort` ASC", conn))
+			{
+				mc.Parameters.AddWithValue("@characterId", character.DbId);
+
+				using (var reader = mc.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						var itemUniqueId = reader.GetInt64("itemUniqueId");
+						var itemId = reader.GetInt32("itemId");
+						var amount = reader.GetInt32("amount");
+
+						// Check item, in case its data was removed
+						if (!ZoneServer.Instance.Data.ItemDb.Contains(itemId))
+						{
+							Log.Warning("ZoneDb.LoadCharacterItems: Item '{0}' not found, removing it from inventory.", itemId);
+							continue;
+						}
+
+						var item = new Item(itemUniqueId, itemId, amount);
+						if (!this.LoadProperties("item_properties", "itemId", item.DbId, item.Properties))
+						{
+							item.Durability = (int)item.Properties.GetFloat(PropertyName.MaxDur);
+						}
+
+						character.Inventory.AddSilent(item, InventoryType.Warehouse);
 					}
 				}
 			}
@@ -629,6 +868,62 @@ namespace Melia.Zone.Database
 
 						cmd.Execute();
 					}
+
+					this.SaveProperties("item_properties", "itemId", newId, item.Value.Properties, conn, trans);
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Returns warehouse items for given character.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		public void SaveCharacterWarehouseItems(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var mc = new MySqlCommand("DELETE FROM `warehouse` WHERE `characterId` = @characterId", conn, trans))
+				{
+					mc.Parameters.AddWithValue("@characterId", character.DbId);
+					mc.ExecuteNonQuery();
+				}
+
+				var items = character.Inventory.GetWarehouseItems();
+				for (var i = 0; i < items.Count; i++)
+				{
+					var item = items[i];
+					var newId = 0L;
+
+					// Save the actual items into the items table and the
+					// inventory-exclusive values into the inventory table,
+					// while linking to the items.
+					// TODO: Add generic item load and save methods, for
+					//   other item collections to use, such as warehouse.
+
+					using (var cmd = new InsertCommand("INSERT INTO `items` {0}", conn, trans))
+					{
+						cmd.Set("itemId", item.Id);
+						cmd.Set("amount", item.Amount);
+
+						cmd.Execute();
+
+						newId = cmd.LastId;
+					}
+
+					using (var cmd = new InsertCommand("INSERT INTO `warehouse` {0}", conn, trans))
+					{
+						cmd.Set("characterId", character.DbId);
+						cmd.Set("itemId", newId);
+						cmd.Set("sort", i);
+
+						cmd.Execute();
+					}
+
+					this.SaveProperties("item_properties", "itemId", newId, item.Properties, conn, trans);
 				}
 
 				trans.Commit();
@@ -900,6 +1195,29 @@ namespace Melia.Zone.Database
 		}
 
 		/// <summary>
+		/// Loads assisters for the account.
+		/// </summary>
+		/// <param name="account"></param>
+		private void LoadAssisters(Account account)
+		{
+			using (var conn = this.GetConnection())
+			using (var mc = new MySqlCommand("SELECT * FROM `assisters` WHERE `accountId` = @accountId", conn))
+			{
+				mc.Parameters.AddWithValue("@accountId", account.Id);
+
+				using (var reader = mc.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						var card = new AssisterCard(reader.GetInt64("assisterId"), reader.GetString("name"), reader.GetInt16("slot"));
+
+						account.AssisterCabinet.Add(card);
+					}
+				}
+			}
+		}
+
+		/// <summary>
 		/// Persists the account's revealed maps to the database.
 		/// </summary>
 		/// <param name="account"></param>
@@ -932,7 +1250,69 @@ namespace Melia.Zone.Database
 		}
 
 		/// <summary>
-		/// Saves character's buffs.
+		/// Persists the account's assisters to the database.
+		/// </summary>
+		/// <param name="account"></param>
+		private void SaveAssisters(Account account)
+		{
+			if (account.AssisterCabinet == null)
+				return;
+
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var mc = new MySqlCommand("DELETE FROM `assisters` WHERE `accountId` = @accountId", conn, trans))
+				{
+					mc.Parameters.AddWithValue("@accountId", account.Id);
+					mc.ExecuteNonQuery();
+				}
+
+				foreach (var assister in account.AssisterCabinet.GetAssisters())
+				{
+					using (var cmd = new InsertCommand("INSERT INTO `assisters` {0}", conn, trans))
+					{
+						cmd.Set("assisterId", assister.ObjectId);
+						cmd.Set("accountId", account.Id);
+						cmd.Set("name", assister.Name);
+						cmd.Set("slot", assister.Slot);
+						cmd.Set("exp", assister.Experience);
+
+						cmd.Execute();
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Inserts assister in database.
+		/// </summary>
+		/// <param name="accountId"></param>
+		/// <param name="assister"></param>
+		/// <returns></returns>
+		public void CreateAssister(long accountId, AssisterCard assister)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new InsertCommand("INSERT INTO `assisters` {0}", conn, trans))
+				{
+					cmd.Set("accountId", accountId);
+					cmd.Set("name", assister.Name);
+					cmd.Set("slot", assister.Slot);
+					cmd.Set("exp", assister.Experience);
+
+					cmd.Execute();
+					assister.ObjectId = cmd.LastId;
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Inserts companion in database.
 		/// </summary>
 		/// <param name="character"></param>
 		private void SaveBuffs(Character character)
@@ -1203,6 +1583,750 @@ namespace Melia.Zone.Database
 						}
 					}
 				}
+			}
+		}
+
+		/// <summary>
+		/// Inserts companion in database.
+		/// </summary>
+		/// <param name="accountId"></param>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		public void CreateCompanion(long accountId, long characterId, Companion companion)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new InsertCommand("INSERT INTO `companions` {0}", conn, trans))
+				{
+					companion.AdoptTime = DateTime.Now;
+
+					cmd.Set("accountId", accountId);
+					cmd.Set("characterId", characterId);
+					cmd.Set("name", companion.Name);
+					cmd.Set("monsterId", companion.Id);
+					cmd.Set("stamina", companion.Stamina);
+					cmd.Set("exp", companion.Experience);
+					cmd.Set("adoptTime", companion.AdoptTime);
+					cmd.Set("active", companion.IsActivated ? 1 : 0);
+
+					cmd.Execute();
+					companion.DbId = cmd.LastId;
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Inserts party in database.
+		/// </summary>
+		/// <param name="party"></param>
+		/// <returns></returns>
+		public void CreateParty(Party party)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new InsertCommand("INSERT INTO `party` {0}", conn, trans))
+				{
+					party.DateCreated = DateTime.Now;
+
+					cmd.Set("name", party.Name);
+					cmd.Set("leaderId", party.LeaderDbId);
+					cmd.Set("note", party.Note);
+					cmd.Set("questSharing", (int)party.QuestSharing);
+					cmd.Set("expDistribution", (int)party.ExpDistribution);
+					cmd.Set("itemDistribution", (int)party.ItemDistribution);
+					cmd.Set("dateCreated", party.DateCreated);
+
+					cmd.Execute();
+					party.DbId = cmd.LastId;
+				}
+
+				foreach (var member in party.GetMembers())
+				{
+					using (var cmd = new UpdateCommand("UPDATE `characters` SET {0} WHERE `characterId` = @characterId", conn))
+					{
+						cmd.AddParameter("@characterId", member.DbId);
+						cmd.Set("partyId", party.DbId);
+
+						cmd.Execute();
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Loads party from database.
+		/// </summary>
+		/// <returns></returns>
+		public void LoadParty(Character character)
+		{
+			if (character.PartyId <= 0)
+				return;
+			var party = ZoneServer.Instance.World.GetParty(character.PartyId);
+			if (party == null)
+			{
+				using (var conn = this.GetConnection())
+				{
+					using (var mc = new MySqlCommand("SELECT * FROM `party` WHERE `partyId` = @partyId", conn))
+					{
+						mc.Parameters.AddWithValue("@partyId", character.PartyId);
+
+						using (var reader = mc.ExecuteReader())
+						{
+							while (reader.Read())
+							{
+								party = new Party(reader.GetInt64("partyId"), reader.GetInt64("leaderId"), reader.GetString("name"), reader.GetDateTime("dateCreated"), reader.GetString("note"),
+									(PartyItemDistribution)reader.GetByte("itemDistribution"), (PartyExpDistribution)reader.GetByte("expDistribution"), (PartyQuestSharing)reader.GetByte("questSharing"));
+
+								this.LoadPartyMembers(character, party);
+
+								ZoneServer.Instance.World.Parties.Add(party);
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				var member = party.GetMember(character.ObjectId);
+				if (member != null)
+					member.IsOnline = true;
+			}
+		}
+
+		private void LoadPartyMembers(Character loadCharacter, Party party)
+		{
+			using (var conn = this.GetConnection())
+			{
+				using (var mc = new MySqlCommand("SELECT * FROM `characters` WHERE `partyId` = @partyId", conn))
+				{
+					mc.Parameters.AddWithValue("@partyId", party.DbId);
+					using (var reader = mc.ExecuteReader())
+					{
+						while (reader.Read())
+						{
+							var character = ZoneServer.Instance.World.GetCharacter(c => c.DbId == reader.GetInt64("characterId"));
+							if (character == null)
+							{
+								var member = new PartyMember
+								{
+									DbId = reader.GetInt64("characterId"),
+									AccountId = reader.GetInt64("accountId"),
+									Name = reader.GetStringSafe("name"),
+									TeamName = reader.GetStringSafe("teamName"),
+									VisualJobId = (JobId)reader.GetInt16("job"),
+									Gender = (Gender)reader.GetByte("gender"),
+									Hair = reader.GetInt32("hair"),
+									MapId = reader.GetInt32("zone"),
+								};
+								var x = reader.GetFloat("x");
+								var y = reader.GetFloat("y");
+								var z = reader.GetFloat("z");
+								member.Position = new Position(x, y, z);
+								member.IsOnline = loadCharacter.DbId == member.DbId;
+								party.AddMember(member);
+							}
+							else
+								party.AddMember(character, true);
+						}
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Returns given companion, or null if it doesn't exist.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		public Companion GetCompanion(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var mc = new MySqlCommand("SELECT * FROM `companions` WHERE `characterId` = @characterId", conn))
+			{
+				mc.Parameters.AddWithValue("@characterId", character.DbId);
+
+				using (var reader = mc.ExecuteReader())
+				{
+					if (!reader.Read())
+						return null;
+
+					var companion = new Companion(character, reader.GetInt32("monsterId"), MonsterType.Friendly);
+					companion.DbId = reader.GetInt64("companionId");
+					companion.Name = reader.GetStringSafe("name");
+					companion.Stamina = reader.GetInt32("stamina");
+					companion.Experience = reader.GetInt32("exp");
+					companion.IsActivated = reader.GetByte("active") == 1;
+
+					companion.Position = Position.Zero;
+					companion.Direction = new Direction(0);
+
+					return companion;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Loads character's companion from the database.
+		/// </summary>
+		/// <param name="character"></param>
+		private void LoadCompanions(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var mc = new MySqlCommand("SELECT * FROM `companions` WHERE `characterId` = @characterId", conn))
+			{
+				mc.Parameters.AddWithValue("@characterId", character.DbId);
+
+				using (var reader = mc.ExecuteReader())
+				{
+					if (!reader.Read())
+						return;
+
+					var companion = new Companion(character, reader.GetInt32("monsterId"), MonsterType.Friendly);
+					companion.DbId = reader.GetInt64("companionId");
+					companion.Name = reader.GetStringSafe("name");
+					companion.Stamina = reader.GetInt32("stamina");
+					companion.Experience = reader.GetInt64("exp");
+					companion.IsActivated = reader.GetByte("active") == 1;
+
+					companion.Position = Position.Zero;
+					companion.Direction = new Direction(0);
+
+					character.AddCompanion(companion, true);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Persists the character's companions to the database.
+		/// </summary>
+		/// <param name="character"></param>
+		private void SaveCompanions(Character character)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				foreach (var companion in character.GetCompanions())
+				{
+					using (var cmd = new UpdateCommand("UPDATE `companions` SET {0} WHERE `companionId` = @companionId", conn))
+					{
+						cmd.AddParameter("@companionId", companion.Id);
+						cmd.Set("accountId", character.AccountDbId);
+						cmd.Set("characterId", character.DbId);
+						cmd.Set("name", companion.Name);
+						cmd.Set("stamina", companion.Stamina);
+						cmd.Set("exp", companion.Experience);
+						cmd.Set("active", companion.IsActivated ? 1 : 0);
+
+						cmd.Execute();
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+		public void DeleteParty(Party party)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new MySqlCommand("DELETE FROM `party` WHERE `partyId` = @partyId", conn, trans))
+				{
+					cmd.Parameters.AddWithValue("@partyId", party.DbId);
+					cmd.ExecuteNonQuery();
+				}
+
+
+				foreach (var member in party.GetMembers())
+				{
+					using (var cmd = new UpdateCommand("UPDATE `characters` SET {0} WHERE `characterId` = @characterId", conn, trans))
+					{
+						cmd.AddParameter("@characterId", member.DbId);
+						cmd.Set("partyId", 0);
+						cmd.Execute();
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Inserts guild in database.
+		/// </summary>
+		/// <param name="guild"></param>
+		/// <returns></returns>
+		public void CreateGuild(Guild guild)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new InsertCommand("INSERT INTO `guild` {0}", conn, trans))
+				{
+					guild.DateCreated = DateTime.Now;
+
+					cmd.Set("name", guild.Name);
+					cmd.Set("leaderId", guild.LeaderDbId);
+					cmd.Set("dateCreated", guild.DateCreated);
+					//cmd.Set("level", guild.Level);
+
+					cmd.Execute();
+					guild.DbId = cmd.LastId;
+				}
+
+				foreach (var member in guild.GetMembers())
+				{
+					using (var cmd = new UpdateCommand("UPDATE `characters` SET {0} WHERE `characterId` = @characterId", conn))
+					{
+						cmd.AddParameter("@characterId", member.DbId);
+						cmd.Set("guildId", guild.DbId);
+
+						cmd.Execute();
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Loads party from database.
+		/// </summary>
+		/// <returns></returns>
+		public void LoadGuild(Character character)
+		{
+			if (character.GuildId <= 0)
+				return;
+			var guild = ZoneServer.Instance.World.GetGuild(character.GuildId);
+			if (guild == null)
+			{
+				using (var conn = this.GetConnection())
+				{
+					using (var mc = new MySqlCommand("SELECT * FROM `guild` WHERE `guildId` = @guildId", conn))
+					{
+						mc.Parameters.AddWithValue("@guildId", character.GuildId);
+
+						using (var reader = mc.ExecuteReader())
+						{
+							while (reader.Read())
+							{
+								guild = new Guild();
+								guild.DbId = reader.GetInt64("guildId");
+								guild.Name = reader.GetString("name");
+								guild.LeaderDbId = reader.GetInt64("leaderId");
+								guild.DateCreated = reader.GetDateTime("dateCreated");
+
+								this.LoadGuildMembers(character, guild);
+
+								ZoneServer.Instance.World.Guilds.Add(guild);
+							}
+
+						}
+					}
+				}
+			}
+			else
+			{
+				var member = guild.GetMember(character.ObjectId);
+				if (member != null)
+					member.IsOnline = true;
+			}
+
+		}
+
+		private void LoadGuildMembers(Character loadCharacter, Guild guild)
+		{
+			using (var conn = this.GetConnection())
+			{
+				using (var mc = new MySqlCommand("SELECT * FROM `characters` WHERE `guildId` = @guildId", conn))
+				{
+					mc.Parameters.AddWithValue("@guildId", guild.DbId);
+					using (var reader = mc.ExecuteReader())
+					{
+						while (reader.Read())
+						{
+							var character = ZoneServer.Instance.World.GetCharacter(c => c.DbId == reader.GetInt64("characterId"));
+							if (character == null)
+							{
+								var member = new Character
+								{
+									DbId = reader.GetInt64("characterId"),
+									AccountDbId = reader.GetInt64("accountId"),
+									Name = reader.GetStringSafe("name"),
+									TeamName = reader.GetStringSafe("teamName"),
+									Gender = (Gender)reader.GetByte("gender"),
+									Hair = reader.GetInt32("hair"),
+									MapId = reader.GetInt32("zone"),
+								};
+								var x = reader.GetFloat("x");
+								var y = reader.GetFloat("y");
+								var z = reader.GetFloat("z");
+								member.Position = new Position(x, y, z);
+								if (member.DbId == character.DbId)
+									member.IsOnline = true;
+								guild.AddMember(member);
+							}
+							else
+								guild.AddMember(character, true);
+						}
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Saves house to database.
+		/// </summary>
+		/// <param name="house"></param>
+		public void SaveHouse(PersonalHouse house)
+		{
+			if (house == null)
+				return;
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new MySqlCommand("DELETE FROM `houses` WHERE `houseId` = @houseId", conn, trans))
+				{
+					cmd.Parameters.AddWithValue("@houseId", house.Id);
+					cmd.ExecuteNonQuery();
+				}
+
+				using (var cmd = new InsertCommand("INSERT INTO `houses` {0}", conn, trans))
+				{
+					cmd.Set("houseId", house.Id);
+					cmd.Set("name", house.Name);
+					cmd.Set("ownerId", house.OwnerId);
+					cmd.Set("ownerName", house.OwnerName);
+					cmd.Set("mapId", house.MapId);
+					cmd.Set("lastEnterTime", house.LastEnterTime);
+
+					cmd.Execute();
+				}
+
+				foreach (var prop in house.Props)
+				{
+					using (var cmd = new InsertCommand("INSERT INTO `house_props` {0}", conn, trans))
+					{
+						cmd.Set("houseId", house.Id);
+						cmd.Set("monsterId", prop.MonsterId);
+						cmd.Set("furnitureId", prop.FurnitureId);
+						cmd.Set("x", prop.Position.X);
+						cmd.Set("y", prop.Position.Y);
+						cmd.Set("z", prop.Position.Z);
+						cmd.Set("dir", prop.Direction.ToCardinalDirection());
+
+						cmd.Execute();
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Save an item listed on the market.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="item"></param>
+		/// <param name="itemPrice"></param>
+		/// <param name="saleLength"></param>
+		public void SaveMarketItem(Character character, Item item, long itemPrice, int saleLength)
+		{
+			if (character == null || item == null)
+				return;
+			if (!item.IsSaved)
+				item.DbId = this.SaveItem(item);
+
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new InsertCommand("INSERT INTO `market_items` {0}", conn, trans))
+				{
+					var registerDate = DateTime.Now;
+					var expireDate = registerDate.AddDays(saleLength);
+					cmd.Set("itemUniqueId", item.Id);
+					cmd.Set("sellerId", character.DbId);
+					cmd.Set("price", itemPrice);
+					cmd.Set("dateRegistered", registerDate);
+					cmd.Set("dateExpired", expireDate);
+					cmd.Set("status", MarketItemStatus.Listed);
+					cmd.Execute();
+					//market.Id = cmd.LastId;
+				}
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Save Item
+		/// </summary>
+		/// <param name="item"></param>
+		private long SaveItem(Item item)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new InsertCommand("INSERT INTO `items` {0}", conn))
+			{
+				cmd.Set("itemId", item.Id);
+				cmd.Set("amount", item.Amount);
+
+				cmd.Execute();
+
+				return cmd.LastId;
+			}
+		}
+
+		/// <summary>
+		/// Cancel an item listed on the market.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="marketWorldId"></param>
+		/// <returns></returns>
+		public bool CancelMarketItem(Character character, long marketWorldId)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `market_items` SET {0} WHERE `characterId` = @characterId AND `marketItemUniqueId` = @marketId", conn))
+			{
+				var date = DateTime.Now;
+				cmd.AddParameter("@characterId", character.DbId);
+				cmd.AddParameter("@marketId", marketWorldId);
+				cmd.Set("dateExpired", date);
+				cmd.Set("status", MarketItemStatus.Cancelled);
+				if (cmd.Execute() == 0)
+					return false;
+			}
+
+			return true;
+		}
+		/// <summary>
+		/// Get Market Items for a specific character
+		/// </summary>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		public List<ItemList> GetMarketItems(Character character, bool isExpiredOrCancelledOrBought = true)
+		{
+			var result = new List<ItemList>();
+			if (character == null)
+				return result;
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT `market_items`.*, `items`.`itemId`, `items`.`amount` FROM `market_items` INNER JOIN `items` ON `market_items`.`itemUniqueId` = `items`.`itemUniqueId` WHERE `sellerId` = @characterId OR `buyerId` = @characterId", conn))
+			{
+				cmd.Parameters.AddWithValue("@characterId", character.DbId);
+				using (var reader = cmd.ExecuteReader())
+				{
+					if (!reader.Read())
+						return result;
+					var item = new ItemList(reader.GetInt32("itemId"));
+					item.ItemGuid = reader.GetInt64("itemUniqueId");
+					item.MarketGuid = reader.GetInt64("marketItemUniqueId");
+					item.RegTime = reader.GetDateTimeSafe("dateRegistered");
+					item.EndTime = reader.GetDateTimeSafe("dateExpired");
+					item.SellPrice = reader.GetInt32("price");
+					item.SellerId = reader.GetInt64("sellerId");
+					item.BuyerId = reader.GetInt64("buyerId");
+					item.Status = (MarketItemStatus)reader.GetByte("status");
+					item.IsMine = true;
+					item.IsPrivate = true;
+					if (isExpiredOrCancelledOrBought)
+					{
+						if (item.IsSold || item.IsExpired || item.IsCancelled || item.BuyerId == character.DbId)
+							result.Add(item);
+					}
+					else
+						result.Add(item);
+				}
+			}
+			return result;
+		}
+		/// <summary>
+		/// Get Market Item from Database
+		/// </summary>
+		/// <param name="marketWorldId"></param>
+		/// <param name="item"></param>
+		/// <returns></returns>
+		public bool GetMarketItem(long marketWorldId, out ItemList item)
+		{
+			item = default;
+			using (var conn = GetConnection())
+			using (var cmd = new MySqlCommand("SELECT `market_items`.*, `items`.`itemId`, `items`.`amount` FROM `market_items` INNER JOIN `items` ON `market_items`.`itemUniqueId` = `items`.`itemUniqueId` WHERE `marketitemUniqueId` = @marketitemUniqueId", conn))
+			{
+				cmd.Parameters.AddWithValue("@marketitemUniqueId", marketWorldId);
+				using (var reader = cmd.ExecuteReader())
+				{
+					if (!reader.Read())
+						return false;
+					item = new ItemList(reader.GetInt32("itemId"));
+					item.MarketGuid = marketWorldId;
+					item.ItemGuid = reader.GetInt64("itemUniqueId");
+					item.Count = reader.GetInt32("amount");
+					item.RegTime = reader.GetDateTimeSafe("dateRegistered");
+					item.EndTime = reader.GetDateTimeSafe("dateExpired");
+					item.SellPrice = reader.GetInt32("price");
+					item.SellerId = reader.GetInt64("sellerId");
+					item.BuyerId = reader.GetInt64("buyerId");
+					item.Status = (MarketItemStatus)reader.GetByte("status");
+					item.IsMine = false;
+					item.IsPrivate = false;
+				}
+			}
+			return item != null;
+		}
+		/// <summary>
+		/// Get Market Item from Database
+		/// for a specific character.
+		/// </summary>
+		/// <param name="itemWorldId"></param>
+		/// <param name="item"></param>
+		/// <returns></returns>
+		public bool GetMarketItem(long characterId, long itemWorldId, out ItemList item)
+		{
+			item = default;
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT `market_items`.*, `items`.`itemId`, `items`.`amount` FROM `market_items` INNER JOIN `items` ON `market_items`.`itemUniqueId` = `items`.`itemUniqueId` WHERE `sellerId` = @characterId AND `market_items`.`itemUniqueId` = @itemUniqueId", conn))
+			{
+				cmd.Parameters.AddWithValue("@characterId", characterId);
+				cmd.Parameters.AddWithValue("@itemUniqueId", itemWorldId);
+				using (var reader = cmd.ExecuteReader())
+				{
+					if (!reader.Read())
+						return false;
+					item = new ItemList(reader.GetInt32("itemId"));
+					item.ItemGuid = itemWorldId;
+					item.MarketGuid = reader.GetInt64("marketitemUniqueId");
+					item.Count = reader.GetInt32("amount");
+					item.RegTime = reader.GetDateTimeSafe("dateRegistered");
+					item.EndTime = reader.GetDateTimeSafe("dateExpired");
+					item.SellPrice = reader.GetInt32("price");
+					item.Status = (MarketItemStatus)reader.GetByte("status");
+					item.SellerId = reader.GetInt64("sellerId");
+					item.BuyerId = reader.GetInt64("buyerId");
+					item.IsMine = true;
+					item.IsPrivate = true;
+				}
+			}
+			return item != null;
+		}
+		/// <summary>
+		/// Delete market item
+		/// </summary>
+		/// <param name="characterId"></param>
+		/// <param name="itemWorldId"></param>
+		public void DeleteMarketItem(long characterId, long itemWorldId)
+		{
+			using (var conn = GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new MySqlCommand("DELETE FROM `market_items` WHERE `sellerId` = @characterId AND `itemUniqueId` = @itemUniqueId", conn))
+				{
+					cmd.Parameters.AddWithValue("@characterId", characterId);
+					cmd.Parameters.AddWithValue("@itemUniqueId", itemWorldId);
+					cmd.ExecuteNonQuery();
+				}
+				trans.Commit();
+			}
+		}
+
+		/// <summary>
+		/// Update a market item buyer after purchase
+		/// </summary>
+		/// <param name="marketWorldId"></param>
+		/// <param name="characterId"></param>
+		/// <returns></returns>
+		public bool UpdateMarketItemBuyer(long marketWorldId, long characterId)
+		{
+
+			using (var conn = GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `market_items` SET {0} WHERE `marketItemUniqueId` = @marketItemUniqueId", conn))
+			{
+				cmd.AddParameter("@marketItemUniqueId", marketWorldId);
+				cmd.Set("buyerId", characterId);
+				cmd.Set("status", MarketItemStatus.Sold);
+
+				return cmd.Execute() == 1;
+			}
+		}
+
+		/// <summary>
+		/// Update a market item buyer after purchase
+		/// </summary>
+		/// <param name="marketWorldId"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool UpdateMarketItemStatus(long marketWorldId, MarketItemStatus status)
+		{
+
+			using (var conn = GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `market_items` SET {0} WHERE `marketItemUniqueId` = @marketItemUniqueId", conn))
+			{
+				cmd.AddParameter("@marketItemUniqueId", marketWorldId);
+				cmd.Set("status", (byte)status);
+
+				return cmd.Execute() == 1;
+			}
+		}
+
+		/// <summary>
+		/// Modify an item's amount.
+		/// </summary>
+		/// <param name="itemUniqueId"></param>
+		/// <param name="amount"></param>
+		/// <returns></returns>
+		public bool ModifyItemAmount(long itemUniqueId, int amount)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `items` SET {0} WHERE `itemUniqueId` = @itemUniqueId", conn))
+			{
+				cmd.AddParameter("@itemUniqueId", itemUniqueId);
+				cmd.Set("amount", amount);
+
+				return cmd.Execute() == 1;
+			}
+		}
+
+		/// <summary>
+		/// Returns global job count
+		/// </summary>
+		/// <returns></returns>
+		public Dictionary<int, int> GetGlobalJobCount()
+		{
+			var jobDictionary = new Dictionary<int, int>();
+
+			using (var conn = this.GetConnection())
+			using (var cmd = new MySqlCommand("SELECT `jobId`, count(*) as `jobCount` FROM `jobs` GROUP BY `jobId` ORDER BY `jobCount` DESC", conn))
+			{
+				using (var reader = cmd.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						jobDictionary.Add(reader.GetInt32("jobId"), reader.GetInt32("jobCount"));
+					}
+				}
+			}
+
+			return jobDictionary;
+		}
+
+		/// <summary>
+		/// Saves session key.
+		/// </summary>
+		/// <param name="characterId"></param>
+		/// <param name="key"></param>
+		/// <returns></returns>
+		public bool SaveSessionKey(long characterId, string key)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `characters` SET {0} WHERE `characterId` = @characterId", conn))
+			{
+
+				cmd.AddParameter("@characterId", characterId);
+				cmd.Set("sessionKey", key);
+
+				return cmd.Execute() == 1;
 			}
 		}
 	}

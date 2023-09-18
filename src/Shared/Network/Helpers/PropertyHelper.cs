@@ -39,6 +39,35 @@ namespace Melia.Shared.Network.Helpers
 		}
 
 		/// <summary>
+		/// Adds properties to packet, with key and value. Does not write
+		/// the collective size of the properties.
+		/// </summary>
+		/// <param name="packet"></param>
+		/// <param name="nameSpace"></param>
+		/// <param name="property"></param>
+		/// <exception cref="ArgumentException"></exception>
+		public static void AddProperty(this Packet packet, string nameSpace, IProperty property)
+		{
+			var propertyId = PropertyTable.GetId(nameSpace, property.Ident);
+
+			packet.PutInt(propertyId);
+
+			switch (property)
+			{
+				case FloatProperty floatProperty:
+					packet.PutFloat(floatProperty.Value);
+					break;
+
+				case StringProperty stringProperty:
+					packet.PutLpString(stringProperty.Value);
+					break;
+
+				default:
+					throw new ArgumentException($"Unknown property type: {property.GetType().Name}");
+			}
+		}
+
+		/// <summary>
 		/// Returns the size in bytes the properties would take up in
 		/// a packet.
 		/// </summary>

@@ -65,6 +65,11 @@ namespace Melia.Zone.World.Quests
 		/// met to receive the quest automatically.
 		/// </summary>
 		public List<QuestPrerequisite> Prerequisites { get; } = new List<QuestPrerequisite>();
+
+		/// <summary>
+		/// Returns a list of the quest's modifiers.
+		/// </summary>
+		public List<QuestModifier> Modifiers { get; } = new List<QuestModifier>();
 	}
 
 	/// <summary>

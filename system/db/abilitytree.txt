@@ -294,7 +294,6 @@
 { category: "NakMuay", classId: 702, abilityId: 119011, jobId: 1019, className: "NakMuay11", maxLevel: 30, priceTimeScript: 'HIDDENABIL_PRICE_COND_REINFORCE', unlockScript: { name: "UNLOCK_ABIL_OTHERABILITY", argStr: "NakMuay4", argNum: 65 } },
 { category: "NakMuay", classId: 602, abilityId: 119012, jobId: 1019, className: "NakMuay12", maxLevel: 1, priceTimeScript: 'HIDDENABIL_PRICE_COND_JOBLEVEL', unlockScript: { name: "UNLOCK_ABIL_JOB_LEVEL", argStr: "Char1_20", argNum: 45 } },
 { category: "NakMuay", classId: 601, abilityId: 119013, jobId: 1019, className: "NakMuay13", maxLevel: 1, priceTimeScript: 'HIDDENABIL_PRICE_COND_JOBLEVEL', unlockScript: { name: "UNLOCK_ABIL_JOB_LEVEL", argStr: "Char1_20", argNum: 45 } },
-{ category: "NakMuay", classId: 1, abilityId: 119014, jobId: 1019, className: "NakMuay14", maxLevel: 5, priceTimeScript: 'ABIL_COMMON_PRICE_300LV', unlockScript: { name: "UNLOCK_BASE_LEVEL", argStr: "", argNum: 300 } },
 
 // Retiarii
 //---------------------------------------------------------------------------
@@ -1709,7 +1708,6 @@
 { category: "Sheriff", classId: 804, abilityId: 505013, jobId: 5014, className: "Sheriff13", maxLevel: 30, priceTimeScript: 'HIDDENABIL_PRICE_COND_REINFORCE', unlockScript: { name: "UNLOCK_ABIL_OTHERABILITY", argStr: "Sheriff4", argNum: 65 } },
 { category: "Sheriff", classId: 1, abilityId: 505014, jobId: 5014, className: "Sheriff14", maxLevel: 1, priceTimeScript: 'ABIL_REINFORCE_PRICE', unlockScript: { name: "UNLOCK_BASE_LEVEL", argStr: "", argNum: 300 } },
 { category: "Sheriff", classId: 701, abilityId: 505015, jobId: 5014, className: "Sheriff15", maxLevel: 1, priceTimeScript: 'HIDDENABIL_PRICE_COND_JOBLEVEL', unlockScript: { name: "UNLOCK_ABIL_JOB_LEVEL", argStr: "Char5_14", argNum: 45 } },
-{ category: "Sheriff", classId: 301, abilityId: 505016, jobId: 5014, className: "Sheriff16", maxLevel: 1, priceTimeScript: 'ABIL_COMMON_PRICE_300LV', unlockScript: { name: "UNLOCK_BASE_LEVEL", argStr: "", argNum: 300 } },
 
 // Rangda
 //---------------------------------------------------------------------------

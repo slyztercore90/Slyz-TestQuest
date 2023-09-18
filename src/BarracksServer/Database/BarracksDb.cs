@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Remoting.Messaging;
-using System.Text;
 using Melia.Shared.Database;
-using Melia.Shared.ObjectProperties;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Yggdrasil.Logging;
 using Yggdrasil.Security.Hashing;
 using Yggdrasil.Util;
@@ -78,7 +75,7 @@ namespace Melia.Barracks.Database
 			using (var conn = this.GetConnection())
 			using (var cmd = new UpdateCommand("UPDATE `accounts` SET {0} WHERE `accountId` = @accountId", conn))
 			{
-				cmd.AddParameter("@accountId", account.Id);
+				cmd.AddParameter("@accountId", account.DbId);
 				cmd.Set("teamName", account.TeamName);
 				cmd.Set("password", account.Password);
 				cmd.Set("medals", account.Medals);
@@ -112,7 +109,7 @@ namespace Melia.Barracks.Database
 						return null;
 
 					var account = new Account();
-					account.Id = reader.GetInt64("accountId");
+					account.DbId = reader.GetInt64("accountId");
 					account.Name = reader.GetStringSafe("name");
 					account.TeamName = reader.GetStringSafe("teamName");
 					account.Password = reader.GetStringSafe("password");
@@ -121,10 +118,11 @@ namespace Melia.Barracks.Database
 					account.PremiumMedals = reader.GetInt32("premiumMedals");
 					account.AdditionalSlotCount = reader.GetInt32("additionalSlotCount");
 					account.TeamExp = reader.GetInt32("teamExp");
+					account.Type = (AccountType)reader.GetByte("type");
 					account.SelectedBarrack = reader.GetInt32("barracksThema");
 					account.SelectedCharacterSlot = reader.GetInt32("selectedSlot");
 
-					var themas = reader.GetStringSafe("themas");
+					var themas = reader.GetString("themas");
 					account.Themas.Clear();
 					account.Themas.UnionWith(themas.Split(' ').Select(int.Parse));
 
@@ -183,7 +181,7 @@ namespace Melia.Barracks.Database
 					cmd.Set("slot", character.Index);
 
 					cmd.Execute();
-					character.Id = cmd.LastId;
+					character.DbId = cmd.LastId;
 				}
 
 				// Equip
@@ -204,7 +202,7 @@ namespace Melia.Barracks.Database
 
 					using (var cmd = new InsertCommand("INSERT INTO `inventory` {0}", conn))
 					{
-						cmd.Set("characterId", character.Id);
+						cmd.Set("characterId", character.DbId);
 						cmd.Set("itemId", newId);
 						cmd.Set("sort", 0);
 						cmd.Set("equipSlot", (byte)item.Slot);
@@ -216,7 +214,7 @@ namespace Melia.Barracks.Database
 				// Job
 				using (var cmd = new InsertCommand("INSERT INTO `jobs` {0}", conn, trans))
 				{
-					cmd.Set("characterId", character.Id);
+					cmd.Set("characterId", character.DbId);
 					cmd.Set("jobId", character.JobId);
 
 					cmd.Execute();
@@ -252,7 +250,7 @@ namespace Melia.Barracks.Database
 			using (var conn = this.GetConnection())
 			using (var cmd = new UpdateCommand("UPDATE `characters` SET {0} WHERE `characterId` = @characterId", conn))
 			{
-				cmd.AddParameter("@characterId", character.Id);
+				cmd.AddParameter("@characterId", character.DbId);
 				cmd.Set("teamName", character.TeamName);
 				cmd.Set("zone", character.MapId);
 				cmd.Set("bx", character.BarracksPosition.X);
@@ -286,8 +284,8 @@ namespace Melia.Barracks.Database
 						while (reader.Read())
 						{
 							var character = new Character();
-							character.Id = reader.GetInt64("characterId");
-							character.AccountId = accountId;
+							character.DbId = reader.GetInt64("characterId");
+							character.AccountDbId = accountId;
 							character.Name = reader.GetStringSafe("name");
 							character.JobId = (JobId)reader.GetInt16("job");
 							character.Gender = (Gender)reader.GetByte("gender");
@@ -322,7 +320,7 @@ namespace Melia.Barracks.Database
 					// Items
 					using (var mc = new MySqlCommand("SELECT `i`.*, `inv`.`sort`, `inv`.`equipSlot` FROM `inventory` AS `inv` INNER JOIN `items` AS `i` ON `inv`.`itemId` = `i`.`itemUniqueId` WHERE `characterId` = @characterId AND `equipSlot` != 127", conn))
 					{
-						mc.Parameters.AddWithValue("@characterId", character.Id);
+						mc.Parameters.AddWithValue("@characterId", character.DbId);
 
 						using (var reader = mc.ExecuteReader())
 						{
@@ -339,7 +337,7 @@ namespace Melia.Barracks.Database
 					// Jobs
 					using (var mc = new MySqlCommand("SELECT `jobId` FROM `jobs` WHERE `characterId` = @characterId", conn))
 					{
-						mc.Parameters.AddWithValue("@characterId", character.Id);
+						mc.Parameters.AddWithValue("@characterId", character.DbId);
 
 						using (var reader = mc.ExecuteReader())
 						{
@@ -354,6 +352,46 @@ namespace Melia.Barracks.Database
 
 					if (character.Jobs.Count == 0)
 						character.Jobs.Add(character.JobId);
+				}
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Returns all characters on given account.
+		/// </summary>
+		/// <param name="accountId"></param>
+		/// <returns></returns>
+		public List<Companion> GetCompanions(long accountId)
+		{
+			var result = new List<Companion>();
+
+			using (var conn = this.GetConnection())
+			{
+				using (var mc = new MySqlCommand("SELECT * FROM `companions` WHERE `accountId` = @accountId ORDER BY `slot`", conn))
+				{
+					mc.Parameters.AddWithValue("@accountId", accountId);
+
+					using (var reader = mc.ExecuteReader())
+					{
+						while (reader.Read())
+						{
+							var characterId = reader.IsDBNull(2) ? 0 : reader.GetInt64("characterId");
+							var companion = new Companion(reader.GetInt64("companionId"), reader.GetInt64("accountId"), characterId);
+							companion.MonsterId = reader.GetInt32("monsterId");
+							companion.Name = reader.GetStringSafe("name");
+							companion.Index = (byte)reader.GetInt32("slot");
+							companion.BarracksLayer = reader.GetInt32("barrackLayer");
+
+							var bx = reader.GetFloat("bx");
+							var by = reader.GetFloat("by");
+							var bz = reader.GetFloat("bz");
+							companion.BarracksPosition = new Position(bx, by, bz);
+
+							result.Add(companion);
+						}
+					}
 				}
 			}
 
@@ -385,9 +423,9 @@ namespace Melia.Barracks.Database
 		/// <param name="password"></param>
 		public void SetAccountPassword(string accountName, string password)
 		{
-			var passwordBytes = Encoding.UTF8.GetBytes(password);
-			var passwordHashed = MD5.Encode(passwordBytes);
-			var hashedPassword = Hex.ToString(passwordHashed, HexStringOptions.None);
+			var salt = BCrypt.GenerateSalt();
+			var hashedPassword = MD5.Encode(password);
+			hashedPassword = BCrypt.HashPassword(hashedPassword, salt);
 
 			using (var conn = this.GetConnection())
 			using (var mc = new MySqlCommand("UPDATE `accounts` SET `password` = @password WHERE `name` = @accountName", conn))
@@ -396,6 +434,221 @@ namespace Melia.Barracks.Database
 				mc.Parameters.AddWithValue("@password", hashedPassword);
 
 				mc.ExecuteNonQuery();
+			}
+		}
+
+		/// <summary>
+		/// Set the current character associated with a companion
+		/// </summary>
+		/// <param name="companionId"></param>
+		/// <param name="characterId"></param>
+		public void SetCompanionCharacter(long companionId, long characterId)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new UpdateCommand("UPDATE `companions` SET {0} WHERE `companionId` = @companionId", conn, trans))
+				{
+					cmd.AddParameter("@companionId", companionId);
+					if (characterId > 0)
+						cmd.Set("characterId", characterId);
+					else
+						cmd.Set("characterId", null);
+
+					cmd.Execute();
+				}
+			}
+		}
+
+		/// <summary>
+		/// Delete's a companion.
+		/// </summary>
+		/// <param name="companionId"></param>
+		/// <returns></returns>
+		public bool DeleteCompanion(long companionId)
+		{
+			using (var conn = this.GetConnection())
+			using (var mc = new MySqlCommand("DELETE FROM `companions` WHERE `companionId` = @companionId", conn))
+			{
+				mc.Parameters.AddWithValue("@companionId", companionId);
+
+				return mc.ExecuteNonQuery() > 0;
+			}
+		}
+
+		/// <summary>
+		/// Saves companion information.
+		/// </summary>
+		/// <param name="companion"></param>
+		/// <returns></returns>
+		public void SaveCompanion(Companion companion)
+		{
+			using (var conn = this.GetConnection())
+			using (var cmd = new UpdateCommand("UPDATE `companions` SET {0} WHERE `companionId` = @companionId", conn))
+			{
+				cmd.AddParameter("@companionId", companion.DbId);
+				if (companion.CharacterDbId > 0)
+					cmd.Set("characterId", companion.CharacterDbId);
+				else
+					cmd.Set("characterId", null);
+				cmd.Set("bx", companion.BarracksPosition.X);
+				cmd.Set("by", companion.BarracksPosition.Y);
+				cmd.Set("bz", companion.BarracksPosition.Z);
+				cmd.Set("barrackLayer", companion.BarracksLayer);
+				cmd.Set("slot", companion.Index);
+
+				cmd.Execute();
+			}
+		}
+
+		/// <summary>
+		/// Loads mail for the account.
+		/// </summary>
+		/// <param name="account"></param>
+		public void LoadMailbox(Account account)
+		{
+			using (var conn = this.GetConnection())
+			using (var mc = new MySqlCommand("SELECT * FROM `mail` WHERE `accountId` = @accountId", conn))
+			{
+				mc.Parameters.AddWithValue("@accountId", account.DbId);
+
+				using (var reader = mc.ExecuteReader())
+				{
+					while (reader.Read())
+					{
+						var state = (MailboxMessageState)reader.GetByte("status");
+						if (state == MailboxMessageState.Delete)
+							continue;
+
+						var expiration = reader.GetDateTimeSafe("expirationDate");
+						if (expiration < DateTime.Now)
+							continue;
+
+						var mail = new MailMessage
+						{
+							Id = reader.GetInt64("mailId"),
+							State = state,
+							Sender = reader.GetStringSafe("sender"),
+							Subject = reader.GetStringSafe("subject"),
+							Message = reader.GetStringSafe("message"),
+							StartDate = reader.GetDateTimeSafe("startDate"),
+							ExpirationDate = expiration,
+							CreatedDate = reader.GetDateTimeSafe("createdDate"),
+						};
+
+						account.Mailbox.AddMail(mail);
+					}
+				}
+			}
+
+			foreach (var mail in account.Mailbox.GetMail())
+			{
+				foreach (var item in this.LoadMailItems(mail.Id))
+					mail.AddItem(item);
+			}
+		}
+
+		/// <summary>
+		/// Loads mail items for a specific mail.
+		/// </summary>
+		/// <param name="mailId"></param>
+		/// <returns></returns>
+		public List<MailItem> LoadMailItems(long mailId)
+		{
+			var items = new List<MailItem>();
+			using (var conn = this.GetConnection())
+			{
+				using (var mc = new MySqlCommand("SELECT * FROM `mail_items` WHERE `mailId` = @mailId", conn))
+				{
+					mc.Parameters.AddWithValue("@mailId", mailId);
+
+					using (var reader = mc.ExecuteReader())
+					{
+						while (reader.Read())
+						{
+							var mailItem = new MailItem
+							{
+								DbId = (int)reader.GetInt64("mailItemId"),
+								ItemDbId = reader.GetInt64("itemId"),
+								Id = reader.GetInt32("id"),
+								Amount = reader.GetInt32("amount"),
+								IsReceived = reader.GetByte("status") == 1,
+							};
+							items.Add(mailItem);
+						}
+					}
+				}
+			}
+			return items;
+		}
+
+		/// <summary>
+		/// Persists the account's mail to the database.
+		/// </summary>
+		/// <param name="account"></param>
+		public void SaveMail(Account account)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				foreach (var mail in account.Mailbox.GetMail())
+				{
+					using (var cmd = new UpdateCommand("UPDATE `mail` SET {0} WHERE `mailId` = @mailId", conn, trans))
+					{
+						cmd.AddParameter("@mailId", mail.Id);
+						cmd.Set("accountId", account.DbId);
+						cmd.Set("sender", mail.Sender);
+						cmd.Set("subject", mail.Subject);
+						cmd.Set("message", mail.Message);
+						cmd.Set("status", (byte)mail.State);
+						cmd.Set("startDate", mail.StartDate);
+						cmd.Set("expirationDate", mail.ExpirationDate);
+						cmd.Set("createdDate", mail.CreatedDate);
+
+						cmd.Execute();
+					}
+
+					foreach (var item in mail.GetItems())
+					{
+						using (var cmd = new UpdateCommand("UPDATE `mail_items` SET {0} WHERE `mailItemId` = @mailItemId", conn, trans))
+						{
+							cmd.AddParameter("@mailItemId", item.DbId);
+							cmd.Set("mailId", mail.Id);
+							cmd.Set("itemId", item.ItemDbId);
+							cmd.Set("id", item.Id);
+							cmd.Set("amount", item.Amount);
+							cmd.Set("status", item.IsReceived);
+							cmd.Execute();
+						}
+					}
+				}
+
+				trans.Commit();
+			}
+		}
+
+
+		/// <summary>
+		/// Adds an item to the character's inventory.
+		/// </summary>
+		/// <param name="characterId"></param>
+		/// <param name="itemId"></param>
+		public void SaveItem(long characterId, long itemId)
+		{
+			using (var conn = this.GetConnection())
+			using (var trans = conn.BeginTransaction())
+			{
+				using (var cmd = new InsertCommand("INSERT INTO `inventory` {0}", conn))
+				{
+					cmd.Set("characterId", characterId);
+					cmd.Set("itemId", itemId);
+					cmd.Set("sort", 0);
+					cmd.Set("equipSlot", 0x7F);
+
+					cmd.Execute();
+				}
+
+				trans.Commit();
 			}
 		}
 	}

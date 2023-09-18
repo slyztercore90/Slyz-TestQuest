@@ -2,7 +2,6 @@
 using g3;
 using Melia.Shared.Data.Database;
 using Melia.Shared.World;
-using Yggdrasil.Geometry;
 using Yggdrasil.Util;
 
 namespace Melia.Zone.World.Maps
@@ -12,12 +11,15 @@ namespace Melia.Zone.World.Maps
 	/// </summary>
 	public class Ground
 	{
-		private const float RayOriginHeight = 20000;
+		private const float RayOriginHeight = 20480;
 
 		private GroundData _data;
 		private DMesh3 _mesh;
 		private DMeshAABBTree3 _spatial;
 		private Polygon2d[] _cells;
+
+		public int SizeX => _data.Width;
+		public int SizeZ => _data.Height;
 
 		/// <summary>
 		/// Loads the ground data.

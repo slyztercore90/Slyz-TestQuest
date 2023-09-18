@@ -29,6 +29,7 @@ namespace Melia.Shared.Data.Database
 	{
 		private readonly List<BaseExpData> _exp = new List<BaseExpData>();
 		private readonly List<ClassExpData> _classExp = new List<ClassExpData>();
+		private readonly List<BaseExpData> _guildExp = new List<BaseExpData>();
 
 		/// <summary>
 		/// Returns exp required to reach the next level after the
@@ -111,6 +112,45 @@ namespace Melia.Shared.Data.Database
 		{
 			return _exp.Where(a => a.Exp > 0).Max(a => a.Level);
 		}
+		
+		/// <summary>
+		/// Returns exp required to reach the next guild level after the
+		/// given one.
+		/// </summary>
+		/// <remarks>
+		/// Returns 0 if there's no data for the given guild level,
+		/// i.e. if it's the last one or goes beyond.
+		/// </remarks>
+		/// <param name="level"></param>
+		/// <returns></returns>
+		/// <exception cref="ArgumentException">Thrown if level is invalid (< 1).</exception>
+		public long GetNextGuildExp(int level)
+		{
+			if (level < 1)
+				throw new ArgumentException("Invalid level (too low).");
+
+			if (level > _guildExp.Count)
+				return 0;
+
+			var index = level - 1;
+			var exp = _guildExp[index];
+
+			return exp.Exp;
+		}
+
+		/// <summary>
+		/// Returns the EXP required to reach the given guild level.
+		/// </summary>
+		/// <param name="level"></param>
+		/// <returns></returns>
+		public long GetTotalGuildExp(int level)
+		{
+			var result = 0L;
+			for (var i = 1; i < level; ++i)
+				result += this.GetNextGuildExp(i);
+
+			return result;
+		}
 
 		/// <summary>
 		/// Reads given entry and adds it to the database.
@@ -126,6 +166,8 @@ namespace Melia.Shared.Data.Database
 				this.ReadExpEntry(entry);
 			else if (entry.ContainsKey("classExp"))
 				this.ReadClassExpEntry(entry);
+			else if (entry.ContainsKey("guildExp"))
+				this.ReadGuildExpEntry(entry);
 			else
 				throw new DatabaseErrorException("Unknown exp type.");
 		}
@@ -170,6 +212,25 @@ namespace Melia.Shared.Data.Database
 		}
 
 		/// <summary>
+		/// Reads given Guild EXP entry.
+		/// </summary>
+		/// <param name="guildExpEntry"></param>
+		protected void ReadGuildExpEntry(JObject guildExpEntry)
+		{
+			foreach (JObject entry in guildExpEntry["guildExp"])
+			{
+				entry.AssertNotMissing("level", "exp");
+
+				var data = new BaseExpData();
+
+				data.Level = entry.ReadInt("level");
+				data.Exp = entry.ReadLong("exp");
+
+				_guildExp.Add(data);
+			}
+		}
+
+		/// <summary>
 		/// Called after loading, adds data to Entries so the servers
 		/// can show that something was loaded.
 		/// </summary>
@@ -177,6 +238,7 @@ namespace Melia.Shared.Data.Database
 		{
 			this.Entries.AddRange(_exp.Cast<object>());
 			this.Entries.AddRange(_classExp);
+			this.Entries.AddRange(_guildExp);
 		}
 	}
 }

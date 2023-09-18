@@ -4,12 +4,18 @@
 // Handles "Custom Command" requests from the client.
 //---------------------------------------------------------------------------
 
+using System;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.World;
 using Melia.Zone;
+using Melia.Zone.Buffs;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting;
+using Melia.Zone.Scripting.Dialogues;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
+using Melia.Zone.World.Actors.Monsters;
+using Yggdrasil.Geometry.Shapes;
 using Yggdrasil.Logging;
 
 public class CustomCommandFunctionsScript : GeneralScript
@@ -120,7 +126,7 @@ public class CustomCommandFunctionsScript : GeneralScript
 		var newJob = new Job(character, jobId, skillPoints: 1);
 
 		Send.ZC_PC(character, PcUpdateType.Job, (int)newJob.Id, newJob.Level);
-		Send.ZC_NORMAL.PlayEffect(character, "F_pc_class_change");
+		character.PlayEffect("F_pc_class_change", 3);
 
 		character.JobId = jobId;
 		character.Jobs.Add(newJob);
@@ -129,6 +135,67 @@ public class CustomCommandFunctionsScript : GeneralScript
 		// change happened? Should this code be cleaned up to
 		// use one simple function to accomplish all this? TBD.
 		ZoneServer.Instance.ServerEvents.OnPlayerAdvancedJob(character);
+
+		return CustomCommandResult.Okay;
+	}
+
+	[ScriptableFunction("SCR_PUT_CAMPFIRE")]
+	public CustomCommandResult SCR_PUT_CAMPFIRE(Character character, int numArg1, int numArg2, int numArg3)
+	{
+		if (character != null && character.Inventory.Remove(ItemId.Misc_CampfireKit) == InventoryResult.Success)
+		{
+			var monster = new Mob(46011, MonsterType.NPC);
+			monster.Position = new Position(numArg1, character.Position.Y, numArg3);
+			monster.Direction = new Direction();
+			monster.Faction = FactionType.Neutral;
+
+			character.Map.AddMonster(monster);
+			//Send.ZC_NORMAL.AttachEffect(monster, AnimationName.Fire, 1, HeightOffset.BOT, 0, 0, 0, 2.470764f);
+			Send.ZC_NORMAL.AttachEffect(monster, AnimationName.Fire, 1, HeightOffset.BOT);
+
+			// To do check if you're sitting near it?
+			if (character.IsSitting)
+				character.Buffs.AddOrUpdate(new Buff(BuffId.campfire_Buff, 0, 0, TimeSpan.Zero, character, monster));
+			else
+				character.Buffs.Remove(BuffId.campfire_Buff);
+
+		}
+
+		return CustomCommandResult.Okay;
+	}
+
+	[ScriptableFunction("SCR_PET_ACTIVATE")]
+	public CustomCommandResult SCR_PET_ACTIVATE(Character character, int numArg1, int numArg2, int numArg3)
+	{
+		if (character.HasCompanions)
+		{
+			var companions = character.GetCompanions();
+			var companion = companions[0];
+			if (numArg2 == 3014)
+				companion = companions[1];
+
+			companion.SetCompanionState(!companion.IsActivated);
+		}
+
+		return CustomCommandResult.Okay;
+	}
+
+	[ScriptableFunction("SCR_GUILDEVENT_JOIN")]
+	public CustomCommandResult SCR_GUILDEVENT_JOIN(Character character, int numArg1, int numArg2, int numArg3)
+	{
+		Send.ZC_ADDON_MSG(character, AddonMessage.GUILD_EVENT_RECRUITING_IN);
+		Send.ZC_TO_CLIENT.MessageParameter(character, AddonMessage.GUILD_EVENT_RECRUITING_ADD, character.Connection.Account.Id.ToString());
+
+		return CustomCommandResult.Okay;
+	}
+
+
+	[ScriptableFunction("SCR_PERSONAL_HOUSING_PAGE_SHOP")]
+	public CustomCommandResult SCR_PERSONAL_HOUSING_PAGE_SHOP(Character character, int numArg1, int numArg2, int numArg3)
+	{
+		var dialog = new Dialog(character, null);
+
+		dialog.OpenShop("Personal_Housing");
 
 		return CustomCommandResult.Okay;
 	}

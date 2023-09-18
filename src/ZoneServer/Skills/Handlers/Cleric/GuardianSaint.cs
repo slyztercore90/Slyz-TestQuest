@@ -10,7 +10,7 @@ using Melia.Zone.World.Actors.CombatEntities.Components;
 namespace Melia.Zone.Skills.Handlers.Cleric
 {
 	/// <summary>
-	/// Handler for the Cleric skill Cure.
+	/// Handler for the Cleric skill Guardian Saint.
 	/// </summary>
 	[SkillHandler(SkillId.Cleric_PatronSaint)]
 	public class GuardianSaint : IGroundSkillHandler

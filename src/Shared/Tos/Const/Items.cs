@@ -341,6 +341,7 @@ namespace Melia.Shared.Tos.Const
 		Earring, // EARRING
 		Belt, // BELT
 		Shoulder, // SHOULDER
+		Last,
 	}
 
 	public enum InventoryItemRemoveMsg : byte
@@ -357,10 +358,14 @@ namespace Melia.Shared.Tos.Const
 	{
 		Inventory = 0,
 		Warehouse = 1,
+		Sold = 3,
+		Account = 6,
+		Guild = 7,
 	}
 
 	public enum InventoryAddType : byte
 	{
+		New = 0,
 		Buy = 1,
 		Sell = 2,
 		PickUp = 3, // ?
@@ -408,8 +413,11 @@ namespace Melia.Shared.Tos.Const
 	/// </summary>
 	public static class ItemId
 	{
+		public const int Megaphone = 645001;
+		public const int Talt = 645268;
 		public const int Silver = 900011;
 		public const int Gold = 900012;
+		public const int Misc_Soil = 645621;
 	}
 
 	/// <summary>

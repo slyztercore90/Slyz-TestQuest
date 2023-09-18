@@ -12,8 +12,11 @@ using Melia.Shared.Data.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Network.Inter.Messages;
 using Melia.Web.Controllers;
+using Melia.Web.Database;
 using Melia.Web.Logging;
 using Melia.Web.Modules;
+using Melia.Web.Serializer;
+using Melia.Web.World;
 using Yggdrasil.Logging;
 using Yggdrasil.Network.Communication;
 using Yggdrasil.Util;
@@ -25,7 +28,24 @@ namespace Melia.Web
 	{
 		public readonly static WebServer Instance = new WebServer();
 
-		private EmbedIO.WebServer _server;
+		private EmbedIO.WebServer _webServer;
+		private EmbedIO.WebServer _guildServer;
+		private EmbedIO.WebServer _marketServer;
+
+		/// <summary>
+		/// The server's market manager.
+		/// </summary>
+		public MarketManager Market { get; set; } = new MarketManager();
+
+		/// <summary>
+		/// The server's guild manager.
+		/// </summary>
+		public GuildManager Guild { get; set; } = new GuildManager();
+
+		/// <summary>
+		/// The server's database.
+		/// </summary>
+		public WebDb Database { get; } = new WebDb();
 
 		/// <summary>
 		/// Returns the server's inter-server communicator.
@@ -48,10 +68,13 @@ namespace Melia.Web
 			this.LoadConf(this.Conf);
 			this.LoadData(ServerType.Web);
 			this.LoadServerList(this.Data.ServerDb, ServerType.Web, groupId, serverId);
+			this.InitDatabase(this.Database, this.Conf);
 			this.CheckDependencies();
 
 			this.StartCommunicator();
 			this.StartWebServer();
+			this.StartGuildWebServer();
+			this.StartMarketWebServer();
 
 			ConsoleUtil.RunningTitle();
 
@@ -92,6 +115,7 @@ namespace Melia.Web
 
 			Log.Info("PHP not found. Downloading now...");
 
+#pragma warning disable SYSLIB0014 // Type or member is obsolete
 			using (var wc = new WebClient())
 			{
 				var tempFileName = Path.GetTempFileName();
@@ -130,6 +154,7 @@ namespace Melia.Web
 					catch { }
 				}
 			}
+#pragma warning restore SYSLIB0014 // Type or member is obsolete
 		}
 
 		/// <summary>
@@ -158,7 +183,7 @@ namespace Melia.Web
 
 			try
 			{
-				this.Communicator.Connect("Coordinator", barracksServerInfo.Ip, barracksServerInfo.InterPort);
+				this.Communicator.Connect("Coordinator", barracksServerInfo.InterIp, barracksServerInfo.InterPort);
 
 				this.Communicator.Subscribe("Coordinator", "ServerUpdates");
 				this.Communicator.Subscribe("Coordinator", "AllServers");
@@ -220,7 +245,7 @@ namespace Melia.Web
 
 				EndPointManager.UseIpv6 = false;
 
-				_server = new EmbedIO.WebServer(url);
+				_webServer = new EmbedIO.WebServer(url);
 
 				// The PHP module handles all requests to PHP scripts,
 				// including defaulting to index.php and prioritizing
@@ -229,14 +254,14 @@ namespace Melia.Web
 				// TODO: Look into handling PHP scripts from a FileModule,
 				//   adding a pre-processor.
 
-				_server.WithWebApi("/toslive/patch/", m => m.WithController<TosPatchController>());
-				_server.WithWebApi("/api/", m => m.WithController<ApiController>());
+				_webServer.WithWebApi("/toslive/patch/", m => m.WithController<TosPatchController>());
+				_webServer.WithWebApi("/api/", m => m.WithController<ApiController>());
 
-				_server.WithModule(new PhpModule("/"));
+				_webServer.WithModule(new PhpModule("/"));
 
 				if (Directory.Exists("user/web/"))
 				{
-					_server.WithStaticFolder("/", "user/web/", false, fm =>
+					_webServer.WithStaticFolder("/", "user/web/", false, fm =>
 					{
 						fm.DefaultDocument = "index.htm";
 						fm.OnMappingFailed = FileRequestHandler.PassThrough;
@@ -246,15 +271,15 @@ namespace Melia.Web
 
 				if (Directory.Exists("system/web/"))
 				{
-					_server.WithStaticFolder("/", "system/web/", false, fm =>
+					_webServer.WithStaticFolder("/", "system/web/", false, fm =>
 					{
 						fm.DefaultDocument = "index.htm";
 					});
 				}
 
-				_server.RunAsync();
+				_webServer.RunAsync();
 
-				if (_server.State == WebServerState.Stopped)
+				if (_webServer.State == WebServerState.Stopped)
 				{
 					Log.Error("Failed to start web server, make sure there's only one instance running.");
 					ConsoleUtil.Exit(1);
@@ -268,6 +293,111 @@ namespace Melia.Web
 				//Log.Info("  StaticConfigURL: {0}", url + "toslive/patch/");
 
 				Log.Status("Server now running on '{0}'", url);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to start web server: {0}", ex);
+				ConsoleUtil.Exit(1);
+			}
+		}
+
+		/// <summary>
+		/// Starts guild web server.
+		/// </summary>
+		private void StartGuildWebServer()
+		{
+			try
+			{
+				this.Guild.Load();
+
+				var url = string.Format("http://*:{0}/", this.Conf.Web.GuildPort);
+
+				Swan.Logging.Logger.NoLogging();
+				Swan.Logging.Logger.RegisterLogger(new YggdrasilLogger(this.Conf.Log.Filter));
+
+				EndPointManager.UseIpv6 = false;
+
+				var options = new WebServerOptions()
+						.WithMode(HttpListenerMode.EmbedIO)
+						//.WithCertificate(cert1)
+						.WithUrlPrefix(url);
+				_guildServer = new EmbedIO.WebServer(options);
+
+				var webFolder = "system/web/";
+				if (Directory.Exists("user/web/"))
+					webFolder = "user/web/";
+
+
+				_guildServer
+					//.WithBearerToken("/", "0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJjbGF")
+					.WithWebApi("/", m => m.WithController<TosGuildController>())
+					.WithStaticFolder("/", webFolder, false, fm =>
+					{
+						fm.DefaultDocument = "index.htm";
+						fm.OnMappingFailed = FileRequestHandler.PassThrough;
+						fm.OnDirectoryNotListable = FileRequestHandler.PassThrough;
+					});
+				_guildServer.RunAsync();
+
+				if (_guildServer.State == WebServerState.Stopped)
+				{
+					Log.Error("Failed to start guild server, make sure there's only one instance running.");
+					ConsoleUtil.Exit(1);
+				}
+
+				Log.Status("Guild Server now running on '{0}'", url);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to start web server: {0}", ex);
+				ConsoleUtil.Exit(1);
+			}
+		}
+
+		/// <summary>
+		/// Starts market web server.
+		/// </summary>
+		private void StartMarketWebServer()
+		{
+			try
+			{
+				this.Market.Load();
+
+				var url = string.Format("http://*:{0}/", this.Conf.Web.MarketPort);
+
+				Swan.Logging.Logger.NoLogging();
+				Swan.Logging.Logger.RegisterLogger(new YggdrasilLogger(this.Conf.Log.Filter));
+
+				EndPointManager.UseIpv6 = false;
+
+				var options = new WebServerOptions()
+						.WithMode(HttpListenerMode.EmbedIO)
+						//.WithCertificate(cert1)
+						.WithUrlPrefix(url);
+				_marketServer = new EmbedIO.WebServer(options);
+
+				var webFolder = "system/web/";
+				if (Directory.Exists("user/web/"))
+					webFolder = "user/web/";
+
+				_marketServer
+					//.WithBearerToken("/", "0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9eyJjbGF")
+					.WithWebApi("/", CustomResponseSerializer.None(false), m => m.WithController<TosMarketController>())
+					.WithStaticFolder("/", webFolder, false, fm =>
+					{
+						fm.DefaultDocument = "index.htm";
+						fm.OnMappingFailed = FileRequestHandler.PassThrough;
+						fm.OnDirectoryNotListable = FileRequestHandler.PassThrough;
+					});
+				_marketServer.RunAsync();
+
+				if (_marketServer.State == WebServerState.Stopped)
+				{
+					Log.Error("Failed to start market server, make sure there's only one instance running.");
+					ConsoleUtil.Exit(1);
+				}
+
+				Log.Status("Market Server now running on '{0}'", url);
 			}
 			catch (Exception ex)
 			{

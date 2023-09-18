@@ -131,10 +131,10 @@ public class CustomNpcStylist : GeneralScript
 	}
 
 	private HairTypeData GetHairType(Gender gender, int index)
-		=> ZoneServer.Instance.Data.HairTypeDb.Entries.FirstOrDefault(a => a.Gender == gender && a.Index == index);
+		=> ZoneServer.Instance.Data.HairTypeDb.Entries.Values.FirstOrDefault(a => a.Gender == gender && a.Index == index);
 
 	private HairTypeData GetHairType(Gender gender, string className)
-		=> ZoneServer.Instance.Data.HairTypeDb.Entries.FirstOrDefault(a => a.Gender == gender && a.ClassName == className);
+		=> ZoneServer.Instance.Data.HairTypeDb.Entries.Values.FirstOrDefault(a => a.Gender == gender && a.ClassName == className);
 
 	private HairTypeData GetNextStyle(Gender gender, HairTypeData curType)
 	{
@@ -166,7 +166,7 @@ public class CustomNpcStylist : GeneralScript
 	{
 		var result = (HairTypeData)null;
 
-		foreach (var hairType in ZoneServer.Instance.Data.HairTypeDb.Entries)
+		foreach (var hairType in ZoneServer.Instance.Data.HairTypeDb.Entries.Values)
 		{
 			if (hairType.Gender == gender && hairType.ClassName == curType.ClassName)
 			{
@@ -188,7 +188,7 @@ public class CustomNpcStylist : GeneralScript
 	{
 		var result = (HairTypeData)null;
 
-		foreach (var hairType in ZoneServer.Instance.Data.HairTypeDb.Entries)
+		foreach (var hairType in ZoneServer.Instance.Data.HairTypeDb.Entries.Values)
 		{
 			if (hairType.Gender == gender && hairType.ClassName == curType.ClassName)
 			{
@@ -202,8 +202,8 @@ public class CustomNpcStylist : GeneralScript
 		return result;
 	}
 
-	private readonly string[] MaleStyles = ZoneServer.Instance.Data.HairTypeDb.Entries.Where(a => a.Gender == Gender.Male).OrderBy(a => a.Index).Select(a => a.ClassName).Distinct().ToArray();
-	private readonly string[] FemaleStyles = ZoneServer.Instance.Data.HairTypeDb.Entries.Where(a => a.Gender == Gender.Female).OrderBy(a => a.Index).Select(a => a.ClassName).Distinct().ToArray();
+	private readonly string[] MaleStyles = ZoneServer.Instance.Data.HairTypeDb.Entries.Values.Where(a => a.Gender == Gender.Male).OrderBy(a => a.Index).Select(a => a.ClassName).Distinct().ToArray();
+	private readonly string[] FemaleStyles = ZoneServer.Instance.Data.HairTypeDb.Entries.Values.Where(a => a.Gender == Gender.Female).OrderBy(a => a.Index).Select(a => a.ClassName).Distinct().ToArray();
 
 	private enum StyleChangeType
 	{

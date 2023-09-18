@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Melia.Shared.Configuration.Files;
+using Melia.Shared.Data.Database;
 using Melia.Shared.L10N;
 using Melia.Shared.Tos.Const;
 using Melia.Shared.World;
@@ -10,9 +13,13 @@ using Melia.Zone.Commands;
 using Melia.Zone.Network;
 using Melia.Zone.Scripting.Dialogues;
 using Melia.Zone.World.Actors.Characters;
+using Melia.Zone.World.Actors.Components;
 using Melia.Zone.World.Actors.Monsters;
+using Melia.Zone.World.Maps;
+using Melia.Zone.World.Spawning;
 using Yggdrasil.Geometry;
 using Yggdrasil.Geometry.Shapes;
+using Yggdrasil.Logging;
 using Yggdrasil.Util;
 
 namespace Melia.Zone.Scripting
@@ -75,6 +82,103 @@ namespace Melia.Zone.Scripting
 		/// <returns></returns>
 		public static string LNF(string key, string keyPlural, int n, params object[] args)
 			=> string.Format(Localization.GetPlural(key, keyPlural, n), args);
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="genType"></param>
+		/// <param name="monsterId"></param>
+		/// <param name="map"></param>
+		/// <param name="x"></param>
+		/// <param name="y"></param>
+		/// <param name="z"></param>
+		/// <param name="direction"></param>
+		/// <param name="faction"></param>
+		/// <param name="tendency"></param>
+		/// <returns></returns>
+		/// <exception cref="ArgumentException"></exception>
+		/// Shortcuts.AddMonster(0, 400001, "", "f_siauliai_west", -1231.022, 260.8354, -547.764, 16.875, "");
+		public static Mob AddMonster(int genType, int monsterId, string name, string map, double x, double y, double z, double direction, string faction = "Monster", string tendency = "")
+		{
+			if (!ZoneServer.Instance.Data.MonsterDb.TryFind(monsterId, out var monsterData))
+			{
+				Log.Warning("AddMonster: Failed monster not found with id: {0}", monsterId);
+				throw new ArgumentException($"AddMonster: Monster '{monsterId}'  not found.");
+			}
+
+			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
+			{
+				Log.Warning("AddMonster: Failed map not found with className: {0}", map);
+				throw new ArgumentException($"Map '{map}' not found.");
+			}
+
+			var monster = new Mob(monsterData.Id, faction == "Our_Forces" ? MonsterType.Friendly : MonsterType.Mob);
+			monster.Name = name;
+			monster.GenType = genType;
+			monster.Position = new Position((float)x, (float)y, (float)z);
+			monster.Direction = new Direction(direction);
+			if (Enum.TryParse(typeof(FactionType), faction, true, out var factionType))
+				monster.Faction = (FactionType)factionType;
+
+			mapObj.AddMonster(monster);
+
+			return monster;
+		}
+
+		public static Npc AddNpc(int genType, int monsterId, string name, string map, double x, double y, double z, double direction, string dialogFuncName = "", string enterFuncName = "", string leaveFuncName = "", int status = -1, double range = 100)
+		{
+			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
+				throw new ArgumentException($"Map '{map}' not found.");
+
+			var pos = new Position((float)x, (float)y, (float)z);
+
+			// Wrap name in localization code if applicable
+			if (Dialog.IsLocalizationKey(name))
+			{
+				name = Dialog.WrapLocalizationKey(name);
+			}
+			// Insert line breaks in tagged NPC names that don't have one
+			else if (name.StartsWith("[") && !name.Contains("{nl}"))
+			{
+				var endIndex = name.LastIndexOf("] ");
+				if (endIndex != -1)
+				{
+					// Remove space and insert new line instead.
+					name = name.Remove(endIndex + 1, 1);
+					name = name.Insert(endIndex + 1, "{nl}");
+				}
+			}
+
+			var location = new Location(mapObj.Id, pos);
+			var dir = new Direction(direction);
+
+			ZoneServer.Instance.DialogFunctions.TryGet(dialogFuncName, out var dialog);
+			ZoneServer.Instance.TriggerFunctions.TryGet(enterFuncName, out var enter);
+			ZoneServer.Instance.TriggerFunctions.TryGet(leaveFuncName, out var leave);
+
+			var uniqueId = Interlocked.Increment(ref UniqueNpcNameId);
+			var uniqueName = $"__NPC{uniqueId}__";
+			var monster = new Npc(monsterId, name, location, dir, genType);
+			monster.UniqueName = uniqueName;
+			if (dialog != null)
+			{
+				monster.SetClickTrigger(dialogFuncName, dialog);
+				var uniqueDialogName = $"{dialogFuncName}_{mapObj.Data.ClassName}";
+				// Account for multiple npcs using the same dialogue.
+				if (!ZoneServer.Instance.World.NPCs.ContainsKey(uniqueDialogName))
+					ZoneServer.Instance.World.NPCs.Add(uniqueDialogName, monster);
+			}
+			if (enter != null || leave != null)
+				monster.SetTriggerArea(Spot(monster.Position.X, monster.Position.Z, range));
+			if (enter != null)
+				monster.SetEnterTrigger(enterFuncName, enter);
+			if (leave != null)
+				monster.SetLeaveTrigger(leaveFuncName, leave);
+
+			mapObj.AddMonster(monster);
+
+			return monster;
+		}
 
 		/// <summary>
 		/// Adds new NPC to the world.
@@ -151,6 +255,73 @@ namespace Melia.Zone.Scripting
 		}
 
 		/// <summary>
+		/// Adds new NPC to the world.
+		/// </summary>
+		/// <param name="monsterId"></param>
+		/// <param name="name"></param>
+		/// <param name="map"></param>
+		/// <param name="x"></param>
+		/// <param name="z"></param>
+		/// <param name="direction"></param>
+		/// <param name="dialogFuncName"></param>
+		/// <exception cref="ArgumentException"></exception>
+		public static Npc AddNpc(int monsterId, string name, string map, double x, double z, double direction, string dialogFuncName, string enterFuncName = "", string leaveFuncName = "", double range = 100)
+		{
+			if (!ZoneServer.Instance.World.TryGetMap(map, out var mapObj))
+				throw new ArgumentException($"Map '{map}' not found.");
+
+			var pos = new Position((float)x, 0, (float)z);
+			if (mapObj.Ground.TryGetHeightAt(pos, out var height))
+				pos.Y = height;
+
+			// Wrap name in localization code if applicable
+			if (Dialog.IsLocalizationKey(name))
+			{
+				name = Dialog.WrapLocalizationKey(name);
+			}
+			// Insert line breaks in tagged NPC names that don't have one
+			else if (name.StartsWith("[") && !name.Contains("{nl}"))
+			{
+				var endIndex = name.LastIndexOf("] ");
+				if (endIndex != -1)
+				{
+					// Remove space and insert new line instead.
+					name = name.Remove(endIndex + 1, 1);
+					name = name.Insert(endIndex + 1, "{nl}");
+				}
+			}
+
+			var location = new Location(mapObj.Id, pos);
+			var dir = new Direction(direction);
+			ZoneServer.Instance.DialogFunctions.TryGet(dialogFuncName, out var dialog);
+			ZoneServer.Instance.TriggerFunctions.TryGet(enterFuncName, out var enter);
+			ZoneServer.Instance.TriggerFunctions.TryGet(leaveFuncName, out var leave);
+
+			var uniqueId = Interlocked.Increment(ref UniqueNpcNameId);
+			var uniqueName = $"__NPC{uniqueId}__";
+			var monster = new Npc(monsterId, name, location, dir);
+			monster.UniqueName = uniqueName;
+			if (dialog != null)
+			{
+				monster.SetClickTrigger(dialogFuncName, dialog);
+				var uniqueDialogName = $"{dialogFuncName}_{mapObj.Data.ClassName}";
+				// Account for multiple npcs using the same dialogue.
+				if (!ZoneServer.Instance.World.NPCs.ContainsKey(uniqueDialogName))
+					ZoneServer.Instance.World.NPCs.Add(uniqueDialogName, monster);
+			}
+			if (enter != null || leave != null)
+				monster.SetTriggerArea(Spot(monster.Position.X, monster.Position.Z, range));
+			if (enter != null)
+				monster.SetEnterTrigger(enterFuncName, enter);
+			if (leave != null)
+				monster.SetLeaveTrigger(leaveFuncName, leave);
+
+			mapObj.AddMonster(monster);
+
+			return monster;
+		}
+
+		/// <summary>
 		/// Creates a warp.
 		/// </summary>
 		/// <param name="warpName"></param>
@@ -210,7 +381,7 @@ namespace Melia.Zone.Scripting
 			var points = new List<Vector2F>();
 			for (var i = 0; i < coordinates.Length;)
 			{
-				var point = new Vector2F((float)coordinates[i++], (float)coordinates[i++]);
+				var point = new Vector2F((int)coordinates[i++], (int)coordinates[i++]);
 				points.Add(point);
 			}
 
@@ -227,7 +398,7 @@ namespace Melia.Zone.Scripting
 		public static IShapeF Spot(double x, double y, double radius = 0)
 		{
 			var center = new Vector2F((float)x, (float)y);
-			return new CircleF(center, (int)radius);
+			return new CircleF(center, (float)radius);
 		}
 
 		/// <summary>
@@ -248,7 +419,7 @@ namespace Melia.Zone.Scripting
 			var center = new Vector2F((float)x, (float)y);
 			var size = new Vector2F((float)width, (float)(height != 0 ? height : width));
 
-			return RectangleF.Centered(center, size);
+			return Yggdrasil.Geometry.Shapes.RectangleF.Centered(center, size);
 		}
 
 		/// <summary>
@@ -416,6 +587,17 @@ namespace Melia.Zone.Scripting
 		{
 			ZoneServer.Instance.ChatCommands.Add(command, usage, description, func);
 			ZoneServer.Instance.Conf.Commands.CommandLevels[command] = new CommandAuthLevels(auth, targetAuth);
+		}
+
+		/// <summary>
+		/// Returns a random element from the array.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="values"></param>
+		/// <returns></returns>
+		public static T RandomElement<T>(params T[] values)
+		{
+			return values[RandomProvider.Next(values.Length)];
 		}
 	}
 

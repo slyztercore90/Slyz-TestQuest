@@ -9,8 +9,12 @@ using Melia.Shared.L10N;
 using Melia.Shared.Network;
 using Melia.Shared.Network.Inter.Messages;
 using Melia.Shared.Tos.Const;
+using Melia.Shared.Tos.Properties;
+using Melia.Shared.Util;
 using Melia.Shared.World;
 using Melia.Zone.Network;
+using Melia.Zone.Scripting;
+using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Actors.CombatEntities.Components;
@@ -40,6 +44,28 @@ namespace Melia.Zone.Commands
 			// Client Commands
 			this.Add("requpdateequip", "", "", this.HandleReqUpdateEquip);
 			this.Add("buyabilpoint", "<amount>", "", this.HandleBuyAbilPoint);
+			this.Add("guildexpup", "", "", this.HandleGuildExpUp);
+			this.Add("intewarp", "<warp id> 0", "", this.HandleInteWarp);
+			this.Add("mic", "", "", this.HandleShout);
+			this.Add("memberinfoForAct", "<team name>", "", this.HandleMemberInfoForAct);
+			this.Add("partyname", "0 0 <account id> <party name>", "", this.HandlePartyName);
+			this.Add("partymake", "<partyName>", "", this.HandlePartyMake);
+			this.Add("partyDirectInvite", "<team name>", "", this.HandlePartyInvite);
+			this.Add("partyban", "0 <team name>", "", this.HandlePartyBan);
+			//this.Add("readcollection", "id", "", this.HandleReadCollection);
+			this.Add("retquest", "<quest id>", "", this.HandleReturnToQuestGiver);
+
+			//this.Add("outguildcheck", "", "", this.HandleLeaveGuildCheck);
+			//this.Add("outguildbyweb", "", "", this.HandleLeaveGuildByWeb);
+
+			this.Add("hairgacha", "", "", this.HandleHairGacha);
+			this.Add("petstat", "", "", this.HandlePetStat);
+			this.Add("pethire", "", "", this.HandlePetHire);
+
+			// Skills
+			//this.Add("sageSavePos", "", "", this.HandleSageSavePosition);
+			//this.Add("sageDelPos", "", "", this.HandleSageDeletePosition);
+			//this.Add("sageOpenPortal", "", "", this.HandleSageOpenPortal);
 
 			// Custom Client Commands
 			this.Add("buyshop", "", "", this.HandleBuyShop);
@@ -62,6 +88,7 @@ namespace Melia.Zone.Commands
 			this.Add("spawn", "<monster id|class name> [amount=1] ['ai'=BasicMonster] ['tendency'=peaceful]", "Spawns monster.", this.HandleSpawn);
 			this.Add("madhatter", "", "Spawns all headgears.", this.HandleGetAllHats);
 			this.Add("levelup", "<levels>", "Increases character's level.", this.HandleLevelUp);
+			this.Add("classup", "<levels>", "Increases character's class level.", this.HandleClassLevelUp);
 			this.Add("speed", "<speed>", "Modifies character's speed.", this.HandleSpeed);
 			this.Add("iteminfo", "<name>", "Displays information about an item.", this.HandleItemInfo);
 			this.Add("monsterinfo", "<name>", "Displays information about a monster.", this.HandleMonsterInfo);
@@ -79,6 +106,8 @@ namespace Melia.Zone.Commands
 			this.Add("statpoints", "<amount>", "Modifies character's stat points.", this.HandleStatPoints);
 			this.Add("broadcast", "<message>", "Broadcasts text message to all players.", this.HandleBroadcast);
 			this.Add("kick", "<team name>", "Kicks the player with the given team name if they're online.", this.HandleKick);
+			this.Add("runscp", "<script> <handle>", "Official GM Command for various purpose.", this.HandleRunScript);
+			this.Add("killmon", "<handle>", "Official GM Command for various purpose.", this.HandleKillMonster);
 
 			// Dev
 			this.Add("test", "", "", this.HandleTest);
@@ -94,6 +123,7 @@ namespace Melia.Zone.Commands
 			this.AddAlias("iteminfo", "ii");
 			this.AddAlias("monsterinfo", "mi");
 			this.AddAlias("reloadscripts", "rs");
+			this.AddAlias("jump", "setpos");
 		}
 
 		/// <summary>
@@ -108,7 +138,234 @@ namespace Melia.Zone.Commands
 		/// <returns></returns>
 		private CommandResult HandleTest(Character sender, Character target, string message, string command, Arguments args)
 		{
-			Log.Debug("test!!");
+			if (args.Count > 0)
+			{
+				Log.Debug("Testing {0}", args.Get(0));
+				switch (args.Get(0))
+				{
+					case "7":
+					{
+						var effectId1 = 6836;
+						var effectId2 = 15113;
+						var effectSize1 = 0.5f;
+						var effectSize2 = 0.5f;
+						var f1 = 60f;
+						var f2 = 0f;
+						var f3 = 0.6f;
+						var f4 = 200f;
+						var f5 = 2f;
+						var f6 = 0f;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out effectId1);
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out effectSize1);
+						if (args.Count > 3)
+							int.TryParse(args.Get(3), out effectId2);
+						if (args.Count > 4)
+							float.TryParse(args.Get(4), out effectSize2);
+						if (args.Count > 5)
+							float.TryParse(args.Get(5), out f1);
+						if (args.Count > 6)
+							float.TryParse(args.Get(6), out f2);
+						if (args.Count > 7)
+							float.TryParse(args.Get(7), out f3);
+						if (args.Count > 8)
+							float.TryParse(args.Get(8), out f4);
+						if (args.Count > 9)
+							float.TryParse(args.Get(9), out f5);
+						if (args.Count > 10)
+							float.TryParse(args.Get(10), out f6);
+						Send.ZC_NORMAL.SkillFallingProjectile(sender, "Elementalist_Hail", effectId1, effectSize1, effectId2, effectSize2, sender.Position.GetRandomInRange2D(20, 40), f1, TimeSpan.FromSeconds(f2), f3, f4, f5, f6);
+						break;
+					}
+					case "e3":
+					{
+						var i1 = 0;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out i1);
+						var argStr = "";
+						if (args.Count > 2)
+							argStr = args.Get(2);
+
+						Send.ZC_NORMAL.PlayTextEffect(sender, sender, AnimationName.ShowCriticalDamage, i1, argStr);
+						break;
+					}
+					case "d8":
+					{
+						var monsterIds = new int[] { 400981, 400981, 400981, 400981, 400981, 400981, 400981, 400981, 400981, 400981 };
+						var animationExpansionDuration = 0.25f;
+						var animationRadius = 20f;
+						var animationRotationSpeed = 15f;
+						var i1 = 9;
+						if (args.Count > 1)
+							float.TryParse(args.Get(1), out animationExpansionDuration);
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out animationRadius);
+						if (args.Count > 3)
+							float.TryParse(args.Get(3), out animationRotationSpeed);
+						if (args.Count > 4)
+							int.TryParse(args.Get(4), out i1);
+						Send.ZC_NORMAL.PlayCorpsePartsRing(sender, 1, animationExpansionDuration, animationRadius, animationRotationSpeed, i1, monsterIds);
+						break;
+					}
+					case "da":
+						Send.ZC_NORMAL.RemoveEffect(sender, 1);
+						break;
+					case "db":
+					{
+						byte b1 = 1;
+						byte b2 = 0;
+						var i3 = 1;
+						var i4 = 2;
+						if (args.Count > 1)
+							byte.TryParse(args.Get(1), out b1);
+						if (args.Count > 2)
+							byte.TryParse(args.Get(2), out b2);
+						if (args.Count > 3)
+							int.TryParse(args.Get(3), out i3);
+						if (args.Count > 4)
+							int.TryParse(args.Get(4), out i4);
+						Send.ZC_NORMAL.Skill_DB(sender, 1, b1, 400981, b2, i3, i4);
+						break;
+					}
+					case "dc":
+					{
+						var particleSpread = 30f;
+						var startDelay = 0.6f;
+						var particleSpeed = 0.2407438f;
+						var f4 = 2f;
+						var animationDuration = 1f;
+						var i1 = 1;
+						var i2 = 13277;
+						if (args.Count > 1)
+							float.TryParse(args.Get(1), out particleSpread);
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out startDelay);
+						if (args.Count > 3)
+							float.TryParse(args.Get(3), out particleSpeed);
+						if (args.Count > 4)
+							float.TryParse(args.Get(4), out f4);
+						if (args.Count > 5)
+							float.TryParse(args.Get(5), out animationDuration);
+						if (args.Count > 6)
+							int.TryParse(args.Get(6), out i1);
+						if (args.Count > 7)
+							int.TryParse(args.Get(7), out i2);
+						Send.ZC_NORMAL.PlayThrowCorpseParts(sender, i1, sender.Position.GetRandomInRange2D(30, 30), particleSpread, startDelay, particleSpeed, f4, animationDuration, i2);
+						break;
+					}
+					case "path":
+					{
+						if (!sender.Variables.Temp.Has("startPathX"))
+						{
+							sender.Variables.Temp.SetFloat("startPathX", sender.Position.X);
+							sender.Variables.Temp.SetFloat("startPathZ", sender.Position.Y);
+						}
+						else if (!sender.Variables.Temp.Has("endPathX"))
+						{
+							sender.Variables.Temp.SetFloat("endPathX", sender.Position.X);
+							sender.Variables.Temp.SetFloat("endPathZ", sender.Position.Y);
+						}
+						else
+						{
+							var monster = new Mob(400001, MonsterType.Mob);
+
+							Position pos = sender.Position;
+							Direction dir = sender.Direction;
+
+							monster.Position = pos;
+							monster.Direction = dir;
+							monster.Tendency = TendencyType.Peaceful;
+							var movement = new MovementComponent(monster);
+							movement.SetPath(new Position(sender.Variables.Temp.GetFloat("startPathX"), 0, sender.Variables.Temp.GetFloat("startPathZ"))
+								, new Position(sender.Variables.Temp.GetFloat("endPathX"), 0, sender.Variables.Temp.GetFloat("endPathZ")));
+							monster.Components.Add(movement);
+
+							monster.Components.Add(new AiComponent(monster, "BasicMonster"));
+
+							sender.Map.AddMonster(monster);
+						}
+						break;
+					}
+					case "addbuff":
+					{
+						var buffId = (int)BuffId.SoPowerful;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out buffId);
+						sender.Buffs.Start((BuffId)buffId);
+						break;
+					}
+					case "removebuff":
+					{
+						var buffId = (int)BuffId.SoPowerful;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out buffId);
+						sender.Buffs.Remove((BuffId)buffId);
+						break;
+					}
+					case "exprop":
+						Send.ZC_SEND_PC_EXPROP(sender);
+						break;
+					case "1B":
+					{
+						byte b1 = 1;
+						if (args.Count > 1)
+							byte.TryParse(args.Get(1), out b1);
+						var i1 = 2268;
+						if (args.Count > 2)
+							int.TryParse(args.Get(2), out i1);
+						Send.ZC_NORMAL.Unknown_1B(sender, b1, i1);
+						break;
+					}
+					case "5F":
+					{
+						var i1 = 72110;
+						if (args.Count > 1)
+							int.TryParse(args.Get(1), out i1);
+						var f1 = 0.99f;
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out f1);
+						Send.ZC_NORMAL.Skill_5F(sender, i1, f1);
+						break;
+					}
+					case "125":
+					{
+						var f1 = 30f;
+						var f2 = 0.6f;
+						if (args.Count > 1)
+							float.TryParse(args.Get(1), out f1);
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out f2);
+						var packetId = "I_laser005_blue#Dummy_effect_electrocute";
+						if (args.Count > 3)
+							packetId = args.Get(3);
+						Send.ZC_NORMAL.Skill_125(sender, packetId, f1, f2, (sender.Handle, ZoneServer.Instance.World.CreateSkillHandle()));
+						break;
+					}
+					case "emoticon":
+					{
+						var packetId = "I_emo_immobilize";
+						if (args.Count > 1)
+							packetId = args.Get(1);
+						var duration = 1f;
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out duration);
+						Send.ZC_EMOTICON(sender, packetId, TimeSpan.FromSeconds(duration));
+						break;
+					}
+					case "showemoticon":
+					{
+						var packetId = "I_emo_immobilize";
+						if (args.Count > 1)
+							packetId = args.Get(1);
+						var duration = 1f;
+						if (args.Count > 2)
+							float.TryParse(args.Get(2), out duration);
+						Send.ZC_SHOW_EMOTICON(sender, packetId, TimeSpan.FromSeconds(duration));
+						break;
+					}
+				}
+			}
 
 			return CommandResult.Okay;
 		}
@@ -138,15 +395,16 @@ namespace Melia.Zone.Commands
 		/// <param name="sender"></param>
 		/// <param name="target"></param>
 		/// <param name="message"></param>
-		/// <param name="commandName"></param>
+		/// <param name="command"></param>
 		/// <param name="args"></param>
 		/// <returns></returns>
-		private CommandResult HandleTime(Character sender, Character target, string message, string commandName, Arguments args)
+		private CommandResult HandleTime(Character sender, Character target, string message, string command, Arguments args)
 		{
 			var now = GameTime.Now;
 
 			target.ServerMessage(Localization.Get("Server Time: {0:yyyy-MM-dd HH:mm}"), now.DateTime);
 			target.ServerMessage(Localization.Get("Game Time: {0:y-M-dd HH:mm}"), now);
+			target.ServerMessage(Localization.Get("Time of Day: {0}"), now.TimeOfDay);
 
 			return CommandResult.Okay;
 		}
@@ -572,8 +830,12 @@ namespace Melia.Zone.Commands
 
 				if (!string.IsNullOrWhiteSpace(aiName))
 					monster.Components.Add(new AiComponent(monster, aiName));
+				else
+					monster.Components.Add(new AiComponent(monster, "BasicMonster"));
 
 				target.Map.AddMonster(monster);
+				monster.StartBuff(BuffId.Born, TimeSpan.FromSeconds(4));
+				target.AddonMessage(AddonMessage.BOSS_BATTLE_START, monster.Handle.ToString(), monster.Id);
 			}
 
 			sender.ServerMessage(Localization.Get("Monsters were spawned."));
@@ -747,6 +1009,38 @@ namespace Melia.Zone.Commands
 			{
 				target.ServerMessage(Localization.Get("Your level was changed by {0}."), sender.TeamName);
 				sender.ServerMessage(Localization.Get("The target's level was changed."));
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Levels up target.
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleClassLevelUp(Character sender, Character target, string message, string command, Arguments args)
+		{
+			var levels = 1;
+			if (args.Count >= 1 && (!int.TryParse(args.Get(0), out levels) || levels < 1))
+				return CommandResult.InvalidArgument;
+
+			if (target.Job.Level == target.Job.MaxLevel)
+				return CommandResult.Okay;
+			target.ClassUp(Math.Min(levels, target.Job.MaxLevel - target.Job.Level));
+
+			if (sender == target)
+			{
+				sender.ServerMessage(Localization.Get("Your class level was changed."));
+			}
+			else
+			{
+				target.ServerMessage(Localization.Get("Your class was changed by {0}."), sender.TeamName);
+				sender.ServerMessage(Localization.Get("The target's class level was changed."));
 			}
 
 			return CommandResult.Okay;
@@ -1548,7 +1842,7 @@ namespace Melia.Zone.Commands
 		{
 			if (target.Components.Has<AiComponent>())
 			{
-				Send.ZC_NORMAL.Cutscene(target, false, false, false);
+				Send.ZC_NORMAL.SetupCutscene(target, false, false, false);
 
 				target.Components.Remove<MovementComponent>();
 				target.Components.Remove<AiComponent>();
@@ -1572,7 +1866,7 @@ namespace Melia.Zone.Commands
 				// Characters need to be in "cutscene mode" for the server
 				// to move them, otherwise they'll just ignore the move
 				// packets.
-				Send.ZC_NORMAL.Cutscene(target, true, false, false);
+				Send.ZC_NORMAL.SetupCutscene(target, true, false, false);
 
 				target.Components.Add(new MovementComponent(target));
 				target.Components.Add(new AiComponent(target, aiName));
@@ -1589,10 +1883,10 @@ namespace Melia.Zone.Commands
 		/// <param name="sender"></param>
 		/// <param name="target"></param>
 		/// <param name="message"></param>
-		/// <param name="commandName"></param>
+		/// <param name="command"></param>
 		/// <param name="args"></param>
 		/// <returns></returns>
-		private CommandResult HandleUpdateData(Character sender, Character target, string message, string commandName, Arguments args)
+		private CommandResult HandleUpdateData(Character sender, Character target, string message, string command, Arguments args)
 		{
 			// Instructs the client to iterate over all its items (including
 			// auto-generated ones), retrieve their monster ids, and send
@@ -1633,10 +1927,10 @@ namespace Melia.Zone.Commands
 		/// <param name="sender"></param>
 		/// <param name="target"></param>
 		/// <param name="message"></param>
-		/// <param name="commandName"></param>
+		/// <param name="command"></param>
 		/// <param name="args"></param>
 		/// <returns></returns>
-		private CommandResult HandleUpdateDataCom(Character sender, Character target, string message, string commandName, Arguments args)
+		private CommandResult HandleUpdateDataCom(Character sender, Character target, string message, string command, Arguments args)
 		{
 			if (args.Count == 0)
 				return CommandResult.InvalidArgument;
@@ -1717,15 +2011,73 @@ namespace Melia.Zone.Commands
 		}
 
 		/// <summary>
+		/// Handle Official Run Script command
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleRunScript(Character sender, Character target, string message, string command, Arguments args)
+		{
+			if (args.Count < 2)
+				return CommandResult.InvalidArgument;
+			switch (args.Get(0))
+			{
+				case "TEST_SERVPOS":
+					if (int.TryParse(args.Get(1), out var handle))
+					{
+						var monster = sender.Map.GetMonster(handle);
+						if (monster != null)
+							sender.MsgBox("X:{0} Y:{1} Z:{2}", monster.Position.X, monster.Position.Y, monster.Position.Z);
+					}
+					break;
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Handle Official GM Kill Monster command
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleKillMonster(Character sender, Character target, string message, string command, Arguments args)
+		{
+			if (args.Count < 1)
+				return CommandResult.InvalidArgument;
+
+			if (int.TryParse(args.Get(0), out var handle))
+			{
+				var entity = sender.Map.GetCombatEntity(handle);
+				if (entity == null)
+				{
+					var monster = sender.Map.GetMonster(handle);
+					if (monster != null)
+						sender.MsgBox($"Unable to kill {((IMonsterAppearance)monster).Name}");
+				}
+				else
+					entity.Kill(null);
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
 		/// Enables or disables features.
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="target"></param>
 		/// <param name="message"></param>
-		/// <param name="commandName"></param>
+		/// <param name="command"></param>
 		/// <param name="args"></param>
 		/// <returns></returns>
-		private CommandResult HandleFeature(Character sender, Character target, string message, string commandName, Arguments args)
+		private CommandResult HandleFeature(Character sender, Character target, string message, string command, Arguments args)
 		{
 			if (args.Count != 2)
 				return CommandResult.InvalidArgument;
@@ -1755,10 +2107,10 @@ namespace Melia.Zone.Commands
 		/// <param name="sender"></param>
 		/// <param name="target"></param>
 		/// <param name="message"></param>
-		/// <param name="commandName"></param>
+		/// <param name="command"></param>
 		/// <param name="args"></param>
 		/// <returns></returns>
-		private CommandResult HandleBroadcast(Character sender, Character target, string message, string commandName, Arguments args)
+		private CommandResult HandleBroadcast(Character sender, Character target, string message, string command, Arguments args)
 		{
 			if (args.Count == 0)
 				return CommandResult.InvalidArgument;
@@ -1778,10 +2130,10 @@ namespace Melia.Zone.Commands
 		/// <param name="sender"></param>
 		/// <param name="target"></param>
 		/// <param name="message"></param>
-		/// <param name="commandName"></param>
+		/// <param name="command"></param>
 		/// <param name="args"></param>
 		/// <returns></returns>
-		private CommandResult HandleKick(Character sender, Character target, string message, string commandName, Arguments args)
+		private CommandResult HandleKick(Character sender, Character target, string message, string command, Arguments args)
 		{
 			if (args.Count == 0)
 				return CommandResult.InvalidArgument;
@@ -1813,7 +2165,8 @@ namespace Melia.Zone.Commands
 		/// <summary>
 		/// Official slash command, purpose unknown.
 		/// </summary>
-		/// <param name="character"></param>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
 		/// <param name="message"></param>
 		/// <param name="command"></param>
 		/// <param name="args"></param>
@@ -1834,6 +2187,7 @@ namespace Melia.Zone.Commands
 		/// Official slash command, exchanges silver for ability points.
 		/// </summary>
 		/// <param name="sender"></param>
+		/// <param name="target"></param>
 		/// <param name="message"></param>
 		/// <param name="command"></param>
 		/// <param name="args"></param>
@@ -1870,6 +2224,468 @@ namespace Melia.Zone.Commands
 		}
 
 		/// <summary>
+		/// Official slash command, increase guild exp up.
+		/// </summary>
+		/// <example>
+		/// /guildexpup 527456344001753 9
+		/// </example>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleGuildExpUp(Character sender, Character target, string message, string command, Arguments args)
+		{
+			var guild = sender.Connection.Guild;
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+			if (args.Count != 2 || !long.TryParse(args.Get(0), out var characterId) || !int.TryParse(args.Get(1), out var amount) || sender.ObjectId != characterId || guild == null)
+			{
+				Log.Debug("HandleGuildExpUp: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			if (sender.Inventory.CountItem(ItemId.Talt) >= amount)
+			{
+				var itemData = ZoneServer.Instance.Data.ItemDb.Find(ItemId.Talt);
+				if (sender.RemoveItem(ItemId.Talt, amount) >= amount)
+				{
+					sender.SystemMessage("GuildExpUpSuccessByItem");
+					sender.SystemMessage("GetGuildContribution", new MsgParameter("value", amount.ToString()));
+					guild.Properties.Modify(PropertyName.Exp, itemData.Script.NumArg1 * amount);
+					Send.ZC_NORMAL.PartyPropertyUpdate(guild, guild.Properties.GetSelect(PropertyName.Exp));
+					sender.GuildMemberProperties?.Modify(PropertyName.Contribution, amount);
+					Send.ZC_NORMAL.PartyMemberPropertyUpdate(guild, sender, sender.GuildMemberProperties.GetSelect(PropertyName.Contribution));
+				}
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to get a Member Info For Act?
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleInteWarp(Character sender, Character target, string message, string command, Arguments args)
+		{
+			if (args.Count < 2)
+			{
+				Log.Debug("HandleInteWarp: No warp id '{0}'.", sender.Username);
+				return CommandResult.Okay;
+			}
+
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+
+			if (args.Count != 2)
+			{
+				Log.Debug("HandleInteWarp: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			if (int.TryParse(args.Get(0), out var warpId))
+			{
+				int.TryParse(args.Get(1), out var unk1);
+				if (unk1 == 0)
+				{
+					if (ZoneServer.Instance.Data.WarpDb.TryFind(warpId, out var warpData) && ZoneServer.Instance.World.NPCs.TryGetValue(warpData.ClassName, out var npc))
+					{
+						var mapId = npc.Map.Id;
+						var newPosition = npc.Position.GetRelative(npc.Direction, 50);
+						var newDirection = -npc.Direction;
+
+						sender.SetDirection(newDirection);
+						sender.Warp(mapId, newPosition);
+					}
+				}
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to get a Member Info For Act?
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleMemberInfoForAct(Character sender, Character target, string message, string command, Arguments args)
+		{
+			if (args.Count < 1)
+			{
+				Log.Debug("HandleMemberInfoForAct: No team name given by user '{0}'.", sender.Username);
+				return CommandResult.Okay;
+			}
+
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+
+			if (args.Count != 1)
+			{
+				Log.Debug("HandleMemberInfoForAct: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			var targetCharacter = ZoneServer.Instance.World.GetCharacterByTeamName(args.Get(0));
+			if (targetCharacter != null && (targetCharacter.Connection.Party != null || targetCharacter.Connection.Guild != null))
+			{
+				Send.ZC_NORMAL.ShowParty(targetCharacter.Connection, targetCharacter);
+				Send.ZC_TO_SOMEWHERE_CLIENT(targetCharacter);
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to change a party name
+		/// </summary>
+		/// <example>
+		/// /partyname 0 0 1 Fun Party
+		/// </example>
+		/// <param name="character"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandlePartyName(Character sender, Character target, string message, string command, Arguments args)
+		{
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+			if (args.Count < 4)
+			{
+				Log.Debug("HandlePartyName: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			var party = sender.Connection.Party;
+
+			if (party != null && party.Owner.ObjectId == sender.ObjectId)
+			{
+				var partyName = message.Substring(message.IndexOf(args.Get(2)) + args.Get(2).Length + 1);
+				// Client has an internal limit, additional safety check
+				if (partyName.Length > 2 && partyName.Length < 16)
+					sender.Connection.Party.ChangeName(partyName);
+			}
+
+			return CommandResult.Okay;
+		}
+
+
+		/// <summary>
+		/// Official slash command to invite to a party
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandlePartyMake(Character sender, Character target, string message, string command, Arguments args)
+		{
+			if (args.Count < 0)
+			{
+				Log.Debug("HandlePartyMake: No team name given by user '{0}'.", sender.Username);
+				return CommandResult.Okay;
+			}
+
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+
+			if (args.Count != 1)
+			{
+				Log.Debug("HandlePartyMake: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			// To Do - Handle Party Name Check
+			//ZoneServer.Instance.World.GetParty() ?
+			if (sender.Connection.Party == null)
+			{
+				var party = ZoneServer.Instance.World.Parties.Create(sender);
+				party.SetProperty(PropertyName.CreateTime, DateTimeUtils.ToSDateTime(party.DateCreated));
+				party.SetProperty(PropertyName.ExpGainType, party.ExpDistribution.ToString());
+				party.SetProperty(PropertyName.LastMemberAddedTime, party.DateCreated.Ticks.ToString());
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to invite a character to a party
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandlePartyInvite(Character sender, Character target, string message, string command, Arguments args)
+		{
+			if (args.Count < 1)
+			{
+				Log.Debug("HandlePartyInvite: No team name given by user '{0}'.", sender.Username);
+				return CommandResult.Okay;
+			}
+
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+
+			if (args.Count != 1)
+			{
+				Log.Debug("HandlePartyInvite: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			var targetCharacter = ZoneServer.Instance.World.GetCharacterByTeamName(args.Get(0));
+			if (targetCharacter != null)
+				Send.ZC_NORMAL.PartyInvite(targetCharacter, sender, PartyType.Party);
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to expel a member from a party
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandlePartyBan(Character sender, Character target, string message, string command, Arguments args)
+		{
+			if (args.Count < 1)
+			{
+				Log.Debug("HandlePartyBan: No team name given by user '{0}'.", sender.Username);
+				return CommandResult.Okay;
+			}
+
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+
+			if (args.Count != 2)
+			{
+				Log.Debug("HandlePartyBan: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			var teamName = args.Get(0);
+			var party = sender.Connection.Party;
+
+			party?.Expel(sender, teamName);
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to warp to quest giver.
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleReturnToQuestGiver(Character sender, Character target, string message, string command, Arguments args)
+		{
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+			if (args.Count != 1)
+			{
+				Log.Debug("HandleReturnToQuestGiver: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			if (int.TryParse(args.Get(0), out var questId) && ZoneServer.Instance.Data.QuestDb.TryFind(questId, out var quest))
+			{
+				if (!sender.Quests.IsActive(questId) ||
+					string.IsNullOrEmpty(quest.EndNPC)
+					|| !ZoneServer.Instance.World.NPCs.TryGetValue($"{quest.EndNPC}_{sender.Map.Data.ClassName}", out var npc))
+				{
+					return CommandResult.Okay;
+				}
+
+				var mapId = npc.Map.Id;
+				var newPosition = npc.Position.GetRelative(npc.Direction, 20);
+				var newDirection = -npc.Direction;
+
+				sender.SetDirection(newDirection);
+				// Official server adds 20 position units to npc's Y gen position.
+				sender.Warp(mapId, newPosition + new Position(0, 20, 0));
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to use gacha
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleHairGacha(Character sender, Character target, string message, string command, Arguments args)
+		{
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+			if (args.Count < 1)
+
+			{
+				Log.Debug("HandleHairGacha: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			//if (IsPlayingPairAnimation(pc) == 0)
+			//	RunScript('SCR_USE_GHACHA_TPCUBE', pc, arg1);
+			if (!ScriptableFunctions.Item.TryGet("SCR_USE_GHACHA_TPCUBE", out var script))
+			{
+				Log.Debug("HandleHairGacha: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			if (sender.HasItem(args.Get(0), 1))
+			{
+				var randomItem = ZoneServer.Instance.Data.ItemDb.Entries.ToArray().Random();
+				sender.Inventory.Add(new Item(randomItem.Value.Id), InventoryAddType.NotNew, InventoryType.Inventory, 99999);
+				Send.ZC_ENABLE_CONTROL(sender.Connection, "ITEM_GACHA_TP", false);
+				Send.ZC_LOCK_KEY(sender, "ITEM_GACHA_TP", true);
+				sender.TimedEvents.Add(TimeSpan.FromSeconds(5), TimeSpan.Zero, 0, "gacha", caller =>
+				{
+					Send.ZC_ENABLE_CONTROL(sender.Connection, "ITEM_GACHA_TP", true);
+					Send.ZC_LOCK_KEY(sender, "ITEM_GACHA_TP", false);
+					Send.ZC_ADDON_MSG(sender, "HAIR_GACHA_POPUP", 1003, randomItem.Value.ClassName);
+				});
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to hire a pet
+		/// </summary>
+		/// <example>/pethire 3 Pet</example>
+		/// <param name="sender"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandlePetHire(Character sender, Character target, string message, string command, Arguments args)
+		{
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+			if (args.Count < 2)
+			{
+				Log.Debug("HandlePetHire: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			if (!sender.HasCompanions)
+				return CommandResult.Okay;
+
+			if (!int.TryParse(args.Get(0), out var petShopId))
+				return CommandResult.InvalidArgument;
+
+			var companion = new Companion(sender, petShopId, MonsterType.Friendly);
+			if (args.Count > 1)
+				companion.Name = args.Get(1);
+
+			sender.CreateCompanion(companion);
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command to raise pet stats
+		/// </summary>
+		/// <example>/petstat 528525790635969 MHP 1</example>
+		/// <param name="character"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandlePetStat(Character sender, Character target, string message, string command, Arguments args)
+		{
+			// Since this command is sent via UI interactions, we'll not
+			// use any automated command result messages, but we'll leave
+			// debug messages for now, in case of unexpected values.
+			if (args.Count < 2)
+			{
+				Log.Debug("HandlePetStat: Invalid call by user '{0}': {1}", sender.Username, command);
+				return CommandResult.Okay;
+			}
+
+			if (!sender.HasCompanions)
+				return CommandResult.Okay;
+
+			if (long.TryParse(args.Get(0), out var companionObjectId))
+			{
+				var companion = sender.GetCompanion(companionObjectId);
+				var propertyName = "Monster_Stat_" + args.Get(1);
+
+				if (companion != null && PropertyTable.Exists("Monster", propertyName)
+					&& int.TryParse(args.Get(2), out var modifierValue))
+				{
+					var baseCost = propertyName == PropertyName.Stat_DEF ? 600 : 300;
+					var totalCost = 0;
+					var currentValue = companion.Properties.GetFloat(propertyName) - 1;
+
+					for (var i = currentValue; i < (currentValue + modifierValue); i++)
+						totalCost += (int)Math.Floor(baseCost * Math.Pow(1.08, i));
+
+					if (sender.Inventory.CountItem(ItemId.Silver) >= totalCost)
+					{
+						sender.Inventory.Remove(ItemId.Silver, totalCost);
+						companion.Properties.Modify(propertyName, modifierValue);
+						Send.ZC_OBJECT_PROPERTY(sender.Connection, companion);
+					}
+				}
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
+		/// Official slash command, for shouting.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="target"></param>
+		/// <param name="message"></param>
+		/// <param name="command"></param>
+		/// <param name="args"></param>
+		/// <returns></returns>
+		private CommandResult HandleShout(Character sender, Character target, string message, string command, Arguments args)
+		{
+			// Command is sent when the inventory is opened, purpose unknown,
+			// officials don't seem to send anything back.
+
+			if (sender.Inventory.Remove(ItemId.Megaphone, 1) == InventoryResult.Success)
+			{
+				// TODO: Send shout packets to Chat (Social) Server?
+			}
+
+			return CommandResult.Okay;
+		}
+
+		/// <summary>
 		/// Opens buy-in shop creation window or creates shop based on
 		/// arguments.
 		/// </summary>
@@ -1896,7 +2712,7 @@ namespace Melia.Zone.Commands
 			var title = args.Get(0);
 			var items = new List<Tuple<int, int, int>>();
 
-			for (var i = 2; i < args.Count; ++i)
+			for (var i = 1; i < args.Count; ++i)
 			{
 				var split = args.Get(i).Split(',');
 
@@ -1909,21 +2725,31 @@ namespace Melia.Zone.Commands
 				items.Add(new Tuple<int, int, int>(id, amount, price));
 			}
 
+			if (!ZoneServer.Instance.Data.PacketStringDb.TryFind("PersonalShop", out var packetString))
+			{
+				Log.Debug("HandleBuyShop: Unable to find packet string for PersonalShop by user '{0}'.", sender.Username);
+				return CommandResult.Okay;
+			}
+
 			// Create auto seller packet from arguments and have the
 			// channel handle it as if the client had sent it.
 			var packet = new Packet(Op.CZ_REGISTER_AUTOSELLER);
+			packet.PutShort(0); // Sending 0 Size
 			packet.PutString(title, 64);
 			packet.PutInt(items.Count);
-			packet.PutInt(270065); // PersonalShop
-			packet.PutInt(0);
+			packet.PutInt(packetString.Id); // PersonalShop
 
+			var j = 0;
 			foreach (var item in items)
 			{
 				packet.PutInt(item.Item1);
+				packet.PutInt(j++);
 				packet.PutInt(item.Item2);
 				packet.PutInt(item.Item3);
-				packet.PutEmptyBin(264);
+				packet.PutInt(0);
+				packet.PutEmptyBin(260);
 			}
+			packet.Rewind();
 
 			ZoneServer.Instance.PacketHandler.Handle(sender.Connection, packet);
 

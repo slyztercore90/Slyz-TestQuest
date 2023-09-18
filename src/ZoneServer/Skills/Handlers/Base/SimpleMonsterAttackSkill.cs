@@ -8,7 +8,6 @@ using Melia.Zone.Network;
 using Melia.Zone.Skills.Combat;
 using Melia.Zone.Skills.SplashAreas;
 using Melia.Zone.World.Actors;
-using Yggdrasil.Util;
 using static Melia.Zone.Skills.SkillUseFunctions;
 
 namespace Melia.Zone.Skills.Handlers.Base
@@ -41,7 +40,7 @@ namespace Melia.Zone.Skills.Handlers.Base
 			var hitDelay = this.GetHitDelay(skill);
 			var skillHitDelay = skill.Properties.HitDelay;
 
-			Send.ZC_SKILL_MELEE_GROUND(caster, skill, designatedTarget.Position, null);
+			Send.ZC_SKILL_MELEE_GROUND(caster, skill, designatedTarget.Position);
 
 			// Some skills are running on a timer, such as Onion_Attack1.
 			// These skills get initiated, but the hit info is only sent
@@ -49,7 +48,7 @@ namespace Melia.Zone.Skills.Handlers.Base
 			// target to move out of harms way before the skill hits,
 			// such as with the poison cloud in the Kepa attack skill.
 
-			Debug.ShowShape(caster.Map, splashArea, edgePoints: false, duration: damageDelay + TimeSpan.FromSeconds(3));
+			Debug.ShowShape(caster.Map, splashArea, edgePoints: false, duration: damageDelay);
 
 			if (hitDelay > TimeSpan.Zero)
 				await Task.Delay(hitDelay);

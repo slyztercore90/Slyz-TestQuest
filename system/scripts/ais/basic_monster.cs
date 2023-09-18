@@ -1,13 +1,18 @@
 ﻿using System.Collections;
+using Melia.Shared.World;
 using Melia.Zone.Scripting;
 using Melia.Zone.Scripting.AI;
 using Melia.Zone.World.Actors;
+using Melia.Zone.World.Actors.Monsters;
+using Yggdrasil.Logging;
+using Yggrasil.Ai.BehaviorTree.Leafs;
 
 [Ai("BasicMonster")]
 public class BasicMonsterAiScript : AiScript
 {
 	private const int MaxChaseDistance = 300;
 	private const int MaxMasterDistance = 200;
+	private const int MaxRoamDistance = 300;
 
 	ICombatEntity target;
 
@@ -16,6 +21,7 @@ public class BasicMonsterAiScript : AiScript
 		During("Idle", CheckEnemies);
 		During("Attack", CheckTarget);
 		During("Attack", CheckMaster);
+		During("ReturnHome", CheckLocation);
 	}
 
 	protected override void Root()
@@ -30,6 +36,7 @@ public class BasicMonsterAiScript : AiScript
 		var master = GetMaster();
 		if (master != null)
 		{
+			yield return Animation("IDLE");
 			yield return Follow(master);
 			yield break;
 		}
@@ -121,5 +128,23 @@ public class BasicMonsterAiScript : AiScript
 			RemoveAllHate();
 			StartRoutine("StopAndIdle", StopAndIdle());
 		}
+	}
+
+	private void CheckLocation()
+	{
+		if (this.Entity is IMonster monster && monster.SpawnLocation.Position.Get2DDistance(monster.Position) > MaxRoamDistance)
+			StartRoutine("ReturnHome", ReturnHome());
+		else
+			StartRoutine("Idle", Idle());
+	}
+
+	protected IEnumerable ReturnHome()
+	{
+		if (this.Entity is IMonster monster && monster.SpawnLocation != null)
+		{
+			Log.Debug("Returning Home: {0}", this.Entity.Handle);
+			yield return MoveTo(monster.SpawnLocation.Position.GetRandomInRange2D(15, 30));
+		}
+		StartRoutine("Idle", Idle());
 	}
 }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace Melia.Shared.Database
 {
@@ -72,7 +72,7 @@ namespace Melia.Shared.Database
 	/// using (var conn = db.Instance.Connection)
 	/// using (var cmd = new UpdateCommand("UPDATE `accounts` SET {0} WHERE `accountId` = @accountId", conn))
 	/// {
-	/// 	cmd.AddParameter("@accountId", account.Id);
+	/// 	cmd.Parameters.AddWithValue("@accountId", account.Id);
 	/// 	cmd.Set("authority", (byte)account.Authority);
 	/// 	cmd.Set("lastlogin", account.LastLogin);
 	/// 	cmd.Set("banReason", account.BanReason);

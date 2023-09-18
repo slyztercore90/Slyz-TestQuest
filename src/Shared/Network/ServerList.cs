@@ -74,6 +74,17 @@ namespace Melia.Shared.Network
 			=> _servers.Where(a => a.Type == serverType).ToArray();
 
 		/// <summary>
+		/// Returns a list of social servers.
+		/// </summary>
+		/// <returns></returns>
+		public ServerInfo[] GetSocialServers()
+		{
+			var socialServers = _servers.Where(a => a.Type == ServerType.Social);
+
+			return socialServers.ToArray();
+		}
+
+		/// <summary>
 		/// Returns the zone server with the given index that serves the
 		/// given map via out. Returns false if no matching server was found.
 		/// </summary>
@@ -133,6 +144,11 @@ namespace Melia.Shared.Network
 		public int Port { get; }
 
 		/// <summary>
+		/// Returns the server's internal IP address.
+		/// </summary>
+		public string InterIp { get; }
+
+		/// <summary>
 		/// Returns the port the server is listening on internally.
 		/// </summary>
 		public int InterPort { get; }
@@ -168,6 +184,7 @@ namespace Melia.Shared.Network
 			this.Id = data.Id;
 			this.Ip = data.Ip;
 			this.Port = data.Port;
+			this.InterIp = data.InterIp;
 			this.InterPort = data.InterPort;
 			this.MapIds = data.MapIds;
 		}

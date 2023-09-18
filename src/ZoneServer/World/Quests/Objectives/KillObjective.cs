@@ -56,10 +56,10 @@ namespace Melia.Zone.World.Quests.Objectives
 		/// <param name="args"></param>
 		private void OnEntityKilled(object sender, CombatEventArgs args)
 		{
-			if (!(args.Target is IMonster monster))
+			if (args.Target is not IMonster monster)
 				return;
 
-			if (!(args.Attacker is Character character))
+			if (args.Attacker is not Character character)
 				return;
 
 			character.Quests.UpdateObjectives<KillObjective>((quest, objective, progress) =>
@@ -68,6 +68,10 @@ namespace Melia.Zone.World.Quests.Objectives
 				{
 					progress.Count = Math.Min(objective.TargetCount, progress.Count + 1);
 					progress.Done = progress.Count >= objective.TargetCount;
+
+					character.Quests.UpdateQuestProgress(quest.Data.Id, objective.Id);
+					if (progress.Done)
+						character.Quests.CompleteObjective(quest.Data.Id, objective.Ident);
 				}
 			});
 		}

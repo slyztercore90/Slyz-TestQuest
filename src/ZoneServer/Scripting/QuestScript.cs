@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Melia.Zone.Scripting.Hooking;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Quests;
+using Melia.Zone.World.Quests.Modifiers;
 using Melia.Zone.World.Quests.Prerequisites;
 using Yggdrasil.Scripting;
 
@@ -16,6 +17,7 @@ namespace Melia.Zone.Scripting
 		private readonly static object ScriptsSyncLock = new object();
 		private readonly static Dictionary<int, QuestScript> Scripts = new Dictionary<int, QuestScript>();
 		private readonly static Dictionary<Type, QuestObjective> Objectives = new Dictionary<Type, QuestObjective>();
+		private readonly static Dictionary<Type, QuestModifier> Modifiers = new Dictionary<Type, QuestModifier>();
 		private readonly static List<QuestScript> AutoReceiveQuests = new List<QuestScript>();
 
 		/// <summary>
@@ -24,9 +26,19 @@ namespace Melia.Zone.Scripting
 		public QuestData Data { get; } = new QuestData();
 
 		/// <summary>
+		/// Returns this script's quest track data.
+		/// </summary>
+		public QuestTrackData TrackData { get; } = new QuestTrackData();
+
+		/// <summary>
 		/// Returns the id of the quest this script created.
 		/// </summary>
 		public int QuestId => this.Data.Id;
+
+		/// <summary>
+		/// Returns the id of the track associated with this script.
+		/// </summary>
+		public string TrackId => this.TrackData.TrackName;
 
 		/// <summary>
 		/// Initializes script, creating the quest and saving it for
@@ -39,12 +51,15 @@ namespace Melia.Zone.Scripting
 
 			if (this.Data.Id == 0)
 				throw new MissingFieldException($"Quest '{this.GetType().Name}' has no id defined.");
-			if (this.Data.Name == null)
-				throw new MissingFieldException($"Quest '{this.GetType().Name}' has no name defined.");
-			if (this.Data.Description == null)
-				throw new MissingFieldException($"Quest '{this.GetType().Name}' has no description defined.");
-			if (this.Data.Objectives.Count == 0)
-				throw new MissingFieldException($"Quest '{this.GetType().Name}' has no objectives defined.");
+			if (!ZoneServer.Instance.Data.QuestDb.Contains(this.Data.Id))
+			{
+				if (this.Data.Name == null)
+					throw new MissingFieldException($"Quest '{this.GetType().Name}' has no name defined.");
+				if (this.Data.Description == null)
+					throw new MissingFieldException($"Quest '{this.GetType().Name}' has no description defined.");
+				if (this.Data.Objectives.Count == 0)
+					throw new MissingFieldException($"Quest '{this.GetType().Name}' has no objectives defined.");
+			}
 
 			lock (ScriptsSyncLock)
 			{
@@ -57,6 +72,16 @@ namespace Melia.Zone.Scripting
 					{
 						Objectives[type] = objective;
 						objective.Load();
+					}
+				}
+
+				foreach (var modifier in this.Data.Modifiers)
+				{
+					var type = modifier.GetType();
+					if (!Modifiers.ContainsKey(type))
+					{
+						Modifiers[type] = modifier;
+						modifier.Load();
 					}
 				}
 
@@ -120,6 +145,16 @@ namespace Melia.Zone.Scripting
 		}
 
 		/// <summary>
+		/// Check if the quest is active (Started but not Completed).
+		/// </summary>
+		/// <param name="character"></param>
+		/// <returns></returns>
+		public bool IsActive(Character character)
+		{
+			return character.Quests.IsActive(this.Data.Id);
+		}
+
+		/// <summary>
 		/// Cleans up saved quests and objectives.
 		/// </summary>
 		public void Dispose()
@@ -133,13 +168,21 @@ namespace Melia.Zone.Scripting
 
 			lock (ScriptsSyncLock)
 			{
-				if (Objectives.Count == 0)
-					return;
+				if (Objectives.Count != 0)
+				{
+					foreach (var objective in Objectives.Values)
+						objective.Unload();
 
-				foreach (var objective in Objectives.Values)
-					objective.Unload();
+					Objectives.Clear();
+				}
 
-				Objectives.Clear();
+				if (Modifiers.Count != 0)
+				{
+					foreach (var modifier in Modifiers.Values)
+						modifier.Unload();
+
+					Modifiers.Clear();
+				}
 			}
 		}
 
@@ -198,6 +241,48 @@ namespace Melia.Zone.Scripting
 		protected void SetDelay(TimeSpan startDelay)
 			=> this.Data.StartDelay = startDelay;
 
+		protected void SetTrack(QuestStatus onTrackStart, QuestStatus onTrackEnd, string track, int trackStartDelay = 0)
+		{
+			this.TrackData.QuestId = this.QuestId;
+			this.TrackData.TrackName = track;
+			this.TrackData.StartDelay = TimeSpan.FromMilliseconds(trackStartDelay);
+			this.TrackData.OnTrackStart = onTrackStart;
+			this.TrackData.OnTrackEnd = onTrackEnd;
+		}
+
+		protected void SetTrack(QuestStatus onTrackStart, QuestStatus onTrackEnd, string track, string effectName)
+		{
+			this.TrackData.QuestId = this.QuestId;
+			this.TrackData.TrackName = track;
+			this.TrackData.OnTrackStart = onTrackStart;
+			this.TrackData.OnTrackEnd = onTrackEnd;
+			this.TrackData.EffectName = effectName;
+		}
+
+		protected void AddDrop(string itemClassName, float dropChance, params string[] monsterIds)
+		{
+			if (!ZoneServer.Instance.Data.ItemDb.TryFind(itemClassName, out var itemData))
+				throw new ArgumentException($"AddDrop: Item '{itemClassName}' not found.");
+			this.AddDrop(new ItemDropModifier(itemData.Id, dropChance, monsterIds));
+		}
+
+		protected void AddDrop(string itemClassName, float dropChance, params int[] monsterIds)
+		{
+			if (!ZoneServer.Instance.Data.ItemDb.TryFind(itemClassName, out var itemData))
+				throw new ArgumentException($"AddDrop: Item '{itemClassName}' not found.");
+			this.AddDrop(new ItemDropModifier(itemData.Id, dropChance, monsterIds));
+		}
+
+		/// <summary>
+		/// Add an item drop modifier to a specific monster(s)
+		/// for the duration of an active quest.
+		/// </summary>
+		/// <param name="itemDrop"></param>
+		private void AddDrop(ItemDropModifier itemDrop)
+		{
+			this.Data.Modifiers.Add(itemDrop);
+		}
+
 		/// <summary>
 		/// Adds objective to quest, that needs to be completed to finish
 		/// the quest.
@@ -240,9 +325,10 @@ namespace Melia.Zone.Scripting
 		/// Adds prerequisite to the quest.
 		/// </summary>
 		/// <param name="prerequisite"></param>
-		protected void AddPrerequisite(QuestPrerequisite prerequisite)
+		protected void AddPrerequisite(params QuestPrerequisite[] prerequisites)
 		{
-			this.Data.Prerequisites.Add(prerequisite);
+			foreach (var prerequisite in prerequisites)
+				this.Data.Prerequisites.Add(prerequisite);
 		}
 
 		/// <summary>
@@ -275,6 +361,30 @@ namespace Melia.Zone.Scripting
 		/// </remarks>
 		public virtual void OnStart(Character character, Quest quest)
 		{
+		}
+
+		/// <summary>
+		/// Called when a character progresses in this quest.
+		/// </summary>
+		/// <param name="character"></param>
+		/// <param name="quest"></param>
+		public virtual void OnProgress(Character character, Quest quest, int key, int progress)
+		{
+		}
+
+		/// <summary>
+		/// Called when a character succeeded in quest objectives.
+		/// </summary>
+		/// <remarks>
+		/// Called after the quest was marked as completed, but before
+		/// it's removed from the quest log and the rewards were given.
+		/// </remarks>
+		public virtual void OnSuccess(Character character, Quest quest)
+		{
+			if (character.Tracks.ActiveTrack != null 
+				&& character.Tracks.ActiveTrack.Id == this.TrackData.TrackName 
+				&& this.TrackData?.OnTrackEnd == QuestStatus.Success)
+				character.Tracks.End(this.TrackData.TrackName);
 		}
 
 		/// <summary>

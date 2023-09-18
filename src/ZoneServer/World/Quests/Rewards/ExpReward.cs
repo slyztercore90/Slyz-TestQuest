@@ -11,12 +11,12 @@ namespace Melia.Zone.World.Quests.Rewards
 		/// <summary>
 		/// Returns the amount of EXP the player gets.
 		/// </summary>
-		public int ExpAmount { get; }
+		public long ExpAmount { get; }
 
 		/// <summary>
 		/// Returns the amount of class EXP the player gets.
 		/// </summary>
-		public int ClassExpAmount { get; }
+		public long ClassExpAmount { get; }
 
 		/// <summary>
 		/// Returns the icon to display for this reward.
@@ -28,7 +28,7 @@ namespace Melia.Zone.World.Quests.Rewards
 		/// </summary>
 		/// <param name="expAmount"></param>
 		/// <param name="classExpAmount"></param>
-		public ExpReward(int expAmount, int classExpAmount)
+		public ExpReward(long expAmount, long classExpAmount)
 		{
 			this.ExpAmount = expAmount;
 			this.ClassExpAmount = classExpAmount;

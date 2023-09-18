@@ -50,11 +50,8 @@ namespace Melia.Shared.ObjectProperties
 			if (!(variable is IProperty))
 				throw new ArgumentException($"The given variable '{variable.Ident}' is not a property.");
 
-			if (_checkNamespaceValidity)
-			{
-				if (!PropertyTable.Exists(this.Namespace, variable.Ident))
-					throw new ArgumentException($"The property '{variable.Ident}' doesn't exist in the namespace '{this.Namespace}'.");
-			}
+			if (_checkNamespaceValidity && !PropertyTable.Exists(this.Namespace, variable.Ident))
+				throw new ArgumentException($"The property '{variable.Ident}' doesn't exist in the namespace '{this.Namespace}'.");
 
 			return base.Create(variable);
 		}

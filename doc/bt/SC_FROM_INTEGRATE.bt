@@ -34,4 +34,13 @@ switch(type)
         lpString str; // WEEK
         int64 l1; // 1
         break;
+    case 0x1C:
+        int64 accountId1;
+        if (!checkCompression())
+        {
+            int64 l1; // 1
+            int64 l2; // 1
+            int i1; // 0
+        }
+        break;
 }

@@ -10,6 +10,7 @@ using Melia.Zone.Scripting;
 using Melia.Zone.Scripting.AI;
 using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.CombatEntities.Components;
+using Melia.Zone.World.Actors.Components;
 using Melia.Zone.World.Items;
 using Yggdrasil.Composition;
 using Yggdrasil.Logging;
@@ -57,6 +58,11 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// Monster ID in database.
 		/// </summary>
 		public int Id { get; set; }
+
+		/// <summary>
+		/// Monster Class Name in database.
+		/// </summary>
+		public string ClassName => this.Data.ClassName ?? null;
 
 		/// <summary>
 		/// ?
@@ -124,7 +130,11 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// <summary>
 		/// Gets or sets the mob's level.
 		/// </summary>
-		public int Level => (int)this.Properties.GetFloat(PropertyName.Level);
+		public int Level
+		{
+			get { return (int)this.Properties.GetFloat(PropertyName.Level); }
+			set { this.Properties.SetFloat(PropertyName.Level, value); }
+		}
 
 		/// <summary>
 		/// Gets or sets the mob's AoE Defense Ratio.
@@ -187,6 +197,37 @@ namespace Melia.Zone.World.Actors.Monsters
 		public int HpChangeCounter { get; private set; }
 
 		/// <summary>
+		/// Gets or sets whether the monster is a prop.
+		/// </summary>
+		public bool IsProp { get; set; }
+
+		/// <summary>
+		/// Show adventure book entry notification.
+		/// </summary>
+		public bool Journal { get; set; } = true;
+
+		/// <summary>
+		/// Custom drop list
+		/// </summary>
+		public string DropList { get; set; } = null;
+
+		/// <summary>
+		/// If set, an owner exists
+		/// </summary>
+		public int OwnerHandle
+		{ get; set; }
+
+		/// <summary>
+		/// If set, a handle is associated on ZC_ENTER_MONSTER
+		/// </summary>
+		public int AssociatedHandle { get; set; }
+
+		/// <summary>
+		/// If set, a spawn location is associated with this monster.
+		/// </summary>
+		public Location SpawnLocation { get; set; }
+
+		/// <summary>
 		/// Returns the monster's property collection.
 		/// </summary>
 		public MonsterProperties Properties { get; protected set; }
@@ -202,14 +243,14 @@ namespace Melia.Zone.World.Actors.Monsters
 		Properties IMonsterBase.Properties => this.Properties;
 
 		/// <summary>
-		/// Returns the monster's component collection.
-		/// </summary>
-		public ComponentCollection Components { get; } = new ComponentCollection();
-
-		/// <summary>
 		/// Monster's buffs.
 		/// </summary>
 		public BuffComponent Buffs { get; }
+
+		/// <summary>
+		/// Monster's effects.
+		/// </summary>
+		public EffectsComponent Effects { get; }
 
 		/// <summary>
 		/// Return the monster's temporary variables.
@@ -226,6 +267,8 @@ namespace Melia.Zone.World.Actors.Monsters
 
 			this.Components.Add(this.Buffs = new BuffComponent(this));
 			this.Components.Add(new CombatComponent(this));
+			this.Components.Add(new CooldownComponent(this));
+			this.Components.Add(new EffectsComponent(this));
 
 			this.LoadData();
 		}
@@ -244,6 +287,7 @@ namespace Melia.Zone.World.Actors.Monsters
 
 			this.Defense = this.Data.PhysicalDefense;
 			this.Faction = this.Data.Faction;
+			this.DialogName = this.Data.Dialog;
 
 			this.InitProperties();
 		}
@@ -308,6 +352,13 @@ namespace Melia.Zone.World.Actors.Monsters
 				this.GetExpToGive(out var exp, out var classExp);
 
 				this.DropItems(beneficiary);
+
+				var SCR_Get_MON_ExpPenalty = ScriptableFunctions.MonsterCharacter.Get("SCR_Get_MON_ExpPenalty");
+				var SCR_Get_MON_ClassExpPenalty = ScriptableFunctions.MonsterCharacter.Get("SCR_Get_MON_ClassExpPenalty");
+
+				exp = (long)(exp * SCR_Get_MON_ExpPenalty(this, beneficiary));
+				classExp = (long)(classExp * SCR_Get_MON_ClassExpPenalty(this, beneficiary));
+
 				beneficiary?.GiveExp(exp, classExp, this);
 			}
 
@@ -315,6 +366,12 @@ namespace Melia.Zone.World.Actors.Monsters
 			ZoneServer.Instance.ServerEvents.OnEntityKilled(this, killer);
 
 			Send.ZC_DEAD(this);
+
+			if (beneficiary != null && this.Data != null && this.Journal)
+			{
+				beneficiary.AddonMessage(AddonMessage.ADVENTURE_BOOK_NEW, this.Data.Name);
+				//Send.ZC_ADDON_MSG(beneficiary, "ADVENTURE_BOOK_NEW", string.Format("@dicID_^*${0}$*^", this.Data.LocalKey));
+			}
 		}
 
 		/// <summary>
@@ -325,6 +382,8 @@ namespace Melia.Zone.World.Actors.Monsters
 		/// <returns></returns>
 		private Character GetKillBeneficiary(ICombatEntity killer)
 		{
+			if (killer == null)
+				return null;
 			var beneficiary = killer;
 
 			var topAttacker = this.Components.Get<CombatComponent>()?.GetTopAttackerByDamage();
@@ -414,6 +473,56 @@ namespace Melia.Zone.World.Actors.Monsters
 			}
 
 			return dropChance;
+		}
+
+		/// <summary>
+		/// Drops an item.
+		/// </summary>
+		public void DropItem(Character killer, int itemId, float dropChance, int dropMinAmount = 1, int dropMaxAmount = 1)
+		{
+			var rnd = RandomProvider.Get();
+			var autoloot = killer?.Variables.Temp.Get("Autoloot", 0) ?? 0;
+
+			var dropSuccess = rnd.NextDouble() < dropChance / 100f;
+			if (!dropSuccess)
+				return;
+
+			if (!ZoneServer.Instance.Data.ItemDb.TryFind(itemId, out var itemData))
+			{
+				Log.Warning("Monster.Kill: Drop item '{0}' not found.", itemId);
+				return;
+			}
+
+			var dropItem = new Item(itemData.Id);
+			var minAmount = dropMinAmount;
+			var maxAmount = dropMaxAmount;
+
+			if (itemId == ItemId.Silver || itemId == ItemId.Gold)
+			{
+				minAmount = Math.Max(1, (int)(minAmount * (ZoneServer.Instance.Conf.World.SilverDropAmount / 100f)));
+				maxAmount = Math.Max(minAmount, (int)(maxAmount * (ZoneServer.Instance.Conf.World.SilverDropAmount / 100f)));
+			}
+
+			dropItem.Amount = rnd.Next(minAmount, maxAmount + 1);
+
+			if (killer == null || dropChance > autoloot)
+			{
+				var direction = new Direction(rnd.Next(0, 360));
+				var dropRadius = ZoneServer.Instance.Conf.World.DropRadius;
+				var distance = rnd.Next(dropRadius / 2, dropRadius + 1);
+
+				dropItem.SetLootProtection(killer, TimeSpan.FromSeconds(ZoneServer.Instance.Conf.World.LootPrectionSeconds));
+				dropItem.Drop(this.Map, this.Position, direction, distance, killer?.Layer ?? 0);
+			}
+			else
+			{
+				var party = killer.Connection.Party;
+
+				if (party != null)
+					party.GiveItem(killer, dropItem, InventoryAddType.PickUp);
+				else
+					killer.Inventory.Add(dropItem, InventoryAddType.PickUp);
+			}
 		}
 
 		/// <summary>
@@ -657,18 +766,6 @@ namespace Melia.Zone.World.Actors.Monsters
 		}
 
 		/// <summary>
-		/// Returns true if the character can attack others.
-		/// </summary>
-		/// <returns></returns>
-		public bool CanFight()
-		{
-			if (this.IsDead)
-				return false;
-
-			return true;
-		}
-
-		/// <summary>
 		/// Returns true if the monster can attack the entity.
 		/// </summary>
 		/// <param name="entity"></param>
@@ -698,10 +795,34 @@ namespace Melia.Zone.World.Actors.Monsters
 		}
 
 		/// <summary>
+		/// Returns true if the monster can attack others.
+		/// </summary>
+		/// <returns></returns>
+		public bool CanFight()
+		{
+			if (this.IsDead)
+				return false;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Returns true if the monster can move.
+		/// </summary>
+		/// <returns></returns>
+		public bool CanMove()
+		{
+			if (this.IsDead || this.IsBuffActive(BuffId.Stop_Debuff))
+				return false;
+
+			return true;
+		}
+
+		/// <summary>
 		/// Updates monster and its components.
 		/// </summary>
 		/// <param name="elapsed"></param>
-		public void Update(TimeSpan elapsed)
+		public virtual void Update(TimeSpan elapsed)
 		{
 			this.Components.Update(elapsed);
 		}

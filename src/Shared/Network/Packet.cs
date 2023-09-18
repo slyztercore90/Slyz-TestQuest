@@ -40,7 +40,10 @@ namespace Melia.Shared.Network
 			// [i339427]
 			// Unknown values that appeared in the header of
 			// all client packets at some point.
-			var extra = this.GetBin(12);
+			// Social server packets don't have the extra bin
+			// so we can skip reading it.
+			if (this.Op < Network.Op.CS_LOGIN)
+				this.GetBin(12);
 
 			_bodyStart = _buffer.Index;
 		}
@@ -301,6 +304,13 @@ namespace Melia.Shared.Network
 			=> _buffer.WriteFloat(val);
 
 		/// <summary>
+		/// Writes double to buffer.
+		/// </summary>
+		/// <param name="val"></param>
+		public void PutDouble(double val)
+			=> _buffer.WriteDouble(val);
+
+		/// <summary>
 		/// Writes fixed-sized string to packet, padding it with zeroes
 		/// to reach the given byte length.
 		/// </summary>
@@ -444,6 +454,22 @@ namespace Melia.Shared.Network
 		/// <param name="val"></param>
 		public void PutDate(DateTime val)
 			=> this.PutLong(val.ToFileTime());
+
+		/// <summary>
+		/// Convert DateTime to a series of shorts
+		/// </summary>
+		/// <param name="dateTime"></param>
+		public void PutShortDate(DateTime dateTime)
+		{
+			this.PutShort(dateTime.Year);
+			this.PutShort(dateTime.Month);
+			this.PutShort((short)dateTime.DayOfWeek);
+			this.PutShort(dateTime.Day);
+			this.PutShort(dateTime.Hour);
+			this.PutShort(dateTime.Minute);
+			this.PutShort(dateTime.Second);
+			this.PutShort(dateTime.Millisecond);
+		}
 
 		/// <summary>
 		/// Compresses value and write it to packet, prefixed with its

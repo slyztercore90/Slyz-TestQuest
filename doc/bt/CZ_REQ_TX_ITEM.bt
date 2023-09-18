@@ -19,3 +19,5 @@ TxItemType txItemType; // 121, 72
 int64 itemWorldId; // item Id?
 int64 l2; // 0
 int64 l3; // 0
+byte b1; // 1 (type?)
+int i1; // 1004 (cabinet_armor.ies class id)

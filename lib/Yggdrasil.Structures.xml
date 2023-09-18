@@ -1,0 +1,250 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Yggdrasil.Structures</name>
+    </assembly>
+    <members>
+        <member name="T:Yggdrasil.Structures.IQuadObject">
+            <summary>
+            Describes an object that be put into QuadTree.
+            </summary>
+        </member>
+        <member name="P:Yggdrasil.Structures.IQuadObject.Bounds">
+            <summary>
+            Returns the bounding box of the object.
+            </summary>
+        </member>
+        <member name="T:Yggdrasil.Structures.Direction">
+            <summary>
+            Specifies a direction.
+            </summary>
+        </member>
+        <member name="F:Yggdrasil.Structures.Direction.NW">
+            <summary>
+            North-west.
+            </summary>
+        </member>
+        <member name="F:Yggdrasil.Structures.Direction.NE">
+            <summary>
+            North-east.
+            </summary>
+        </member>
+        <member name="F:Yggdrasil.Structures.Direction.SW">
+            <summary>
+            South-west.
+            </summary>
+        </member>
+        <member name="F:Yggdrasil.Structures.Direction.SE">
+            <summary>
+            South-east.
+            </summary>
+        </member>
+        <member name="T:Yggdrasil.Structures.Quadtree`1">
+            <summary>
+            A quadtree.
+            </summary>
+            <typeparam name="TQuadObject"></typeparam>
+        </member>
+        <member name="P:Yggdrasil.Structures.Quadtree`1.Root">
+            <summary>
+            Returns the tree's root node.
+            </summary>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.#ctor(System.Drawing.Size,System.Int32)">
+            <summary>
+            Creates new instance.
+            </summary>
+            <param name="minLeafSize"></param>
+            <param name="maxObjectsPerLeaf"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.#ctor(System.Drawing.Size,System.Int32,System.Boolean)">
+            <summary>
+            
+            </summary>
+            <param name="minLeafSize">The smallest size a leaf will split into</param>
+            <param name="maxObjectsPerLeaf">Maximum number of objects per leaf before it forces a split into sub quadrants</param>
+            <param name="sort">Whether or not queries will return objects in the order in which they were added</param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.GetSortOrder(`0)">
+            <summary>
+            Returns the sort order of the given object.
+            </summary>
+            <param name="quadObject"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.Insert(`0)">
+            <summary>
+            Adds object to the tree.
+            </summary>
+            <param name="quadObject"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.Query(System.Drawing.RectangleF)">
+            <summary>
+            Returns a list of objects that intersect with the given bounds.
+            </summary>
+            <param name="bounds"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.Query(System.Drawing.RectangleF,Yggdrasil.Structures.Quadtree{`0}.QuadNode,System.Collections.Generic.List{`0})">
+            <summary>
+            Recursive method that writes the objects that intersect with
+            the given bounds in the node to the given list.
+            </summary>
+            <param name="bounds"></param>
+            <param name="node"></param>
+            <param name="results"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.ExpandRoot(System.Drawing.RectangleF)">
+            <summary>
+            Expands root node.
+            </summary>
+            <param name="newChildBounds"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.InsertNodeObject(Yggdrasil.Structures.Quadtree{`0}.QuadNode,`0)">
+            <summary>
+            Inserts object in the node.
+            </summary>
+            <param name="node"></param>
+            <param name="quadObject"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.RemoveQuadObjectFromNode(`0)">
+            <summary>
+            Removes object from its node.
+            </summary>
+            <param name="quadObject"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.AddQuadObjectToNode(Yggdrasil.Structures.Quadtree{`0}.QuadNode,`0)">
+            <summary>
+            Adds object to node.
+            </summary>
+            <param name="node"></param>
+            <param name="quadObject"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.QuadObject_BoundsChanged(System.Object,System.EventArgs)">
+            <summary>
+            Called when an object's bounds changed.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.SetupChildNodes(Yggdrasil.Structures.Quadtree{`0}.QuadNode)">
+            <summary>
+            Creates node's child nodes.
+            </summary>
+            <param name="node"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.Remove(`0)">
+            <summary>
+            Removes object from tree.
+            </summary>
+            <param name="quadObject"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.CheckChildNodes(Yggdrasil.Structures.Quadtree{`0}.QuadNode)">
+            <summary>
+            Reorganizes child nodes.
+            </summary>
+            <param name="node"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.GetChildObjects(Yggdrasil.Structures.Quadtree{`0}.QuadNode)">
+            <summary>
+            Returns the node's and the node's children's node's objects.
+            </summary>
+            <param name="node"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.GetQuadObjectCount">
+            <summary>
+            Returns the number of objects in the tree.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.GetQuadObjectCount(Yggdrasil.Structures.Quadtree{`0}.QuadNode)">
+            <summary>
+            Returns the number of objects in the node.
+            </summary>
+            <param name="node"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.GetQuadNodeCount">
+            <summary>
+            Returns the number of nodes in the tree.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.GetQuadNodeCount(Yggdrasil.Structures.Quadtree{`0}.QuadNode,System.Int32)">
+            <summary>
+            Returns the number of child nodes in the given node.
+            </summary>
+            <param name="node"></param>
+            <param name="count"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.GetAllNodes">
+            <summary>
+            Returns a list with all nodes in the tree.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.GetChildNodes(Yggdrasil.Structures.Quadtree{`0}.QuadNode,System.Collections.Generic.ICollection{Yggdrasil.Structures.Quadtree{`0}.QuadNode})">
+            <summary>
+            Recursive method that Writes all nodes and their children in
+            the given node to the list.
+            </summary>
+            <param name="node"></param>
+            <param name="results"></param>
+        </member>
+        <member name="T:Yggdrasil.Structures.Quadtree`1.QuadNode">
+            <summary>
+            Represents a note in a quad tree.
+            </summary>
+        </member>
+        <member name="P:Yggdrasil.Structures.Quadtree`1.QuadNode.Parent">
+            <summary>
+            Returns the node's parent.
+            </summary>
+        </member>
+        <member name="F:Yggdrasil.Structures.Quadtree`1.QuadNode.Nodes">
+            <summary>
+            Returns a list of the node's nodes.
+            </summary>
+        </member>
+        <member name="F:Yggdrasil.Structures.Quadtree`1.QuadNode.Objects">
+            <summary>
+            Returns a list of the node's objects.
+            </summary>
+        </member>
+        <member name="P:Yggdrasil.Structures.Quadtree`1.QuadNode.Bounds">
+            <summary>
+            Returns the node's bounds.
+            </summary>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.QuadNode.#ctor(System.Drawing.RectangleF)">
+            <summary>
+            Creates new instace.
+            </summary>
+            <param name="bounds"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.QuadNode.#ctor(System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Creates new instance.
+            </summary>
+            <param name="x"></param>
+            <param name="y"></param>
+            <param name="width"></param>
+            <param name="height"></param>
+        </member>
+        <member name="M:Yggdrasil.Structures.Quadtree`1.QuadNode.HasChildNodes">
+            <summary>
+            Returns true if the node has child nodes.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="P:Yggdrasil.Structures.Quadtree`1.QuadNode.Item(Yggdrasil.Structures.Direction)">
+            <summary>
+            Gets or sets the child node in the given direction.
+            </summary>
+            <param name="direction"></param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>

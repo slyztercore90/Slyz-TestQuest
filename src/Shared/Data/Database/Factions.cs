@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Melia.Shared.Tos.Const;
 using Newtonsoft.Json.Linq;
 using Yggdrasil.Data.JSON;
@@ -19,6 +20,18 @@ namespace Melia.Shared.Data.Database
 	/// </summary>
 	public class FactionDb : DatabaseJsonIndexed<FactionType, FactionData>
 	{
+		/// <summary>
+		/// Find faction by name.
+		/// </summary>
+		/// <param name="faction"></param>
+		/// <param name="data"></param>
+		/// <returns></returns>
+		public bool TryGet(string faction, out FactionData data)
+		{
+			data = this.Entries.Values.FirstOrDefault(a => a.Name == faction);
+			return data != null;
+		}
+
 		/// <summary>
 		/// Returns true if faction 1 is hostile towards faction 2.
 		/// </summary>

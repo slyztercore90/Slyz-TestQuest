@@ -15,6 +15,7 @@ using Melia.Zone.World.Actors.Characters;
 using Melia.Zone.World.Actors.Characters.Components;
 using Melia.Zone.World.Actors.CombatEntities.Components;
 using Yggdrasil.Util;
+using static Melia.Shared.Network.NormalOp;
 
 public class CharacterCalculationsScript : GeneralScript
 {
@@ -426,7 +427,7 @@ public class CharacterCalculationsScript : GeneralScript
 
 		var byLevel = Math.Floor(byJob + ((level - 1) * 18 * rateByJob));
 		var byStat = Math.Floor(((stat * 0.005f) + (Math.Floor(stat / 10.0f) * 0.015f)) * byLevel);
-		var byItem = character.Inventory.GetEquipProperties("MSP");
+		var byItem = character.Inventory.GetEquipProperties(PropertyName.MSP);
 		var byBonus = properties.GetFloat(PropertyName.MSP_Bonus);
 
 		var value = byLevel + byStat + byItem + byBonus;
@@ -594,7 +595,7 @@ public class CharacterCalculationsScript : GeneralScript
 		var jobHpRate = character.Job?.Data.RHpRate ?? 1;
 
 		var byDefault = Math.Floor(mhp / 100f * jobHpRate);
-		var byItems = character.Inventory.GetEquipProperties("RHP");
+		var byItems = character.Inventory.GetEquipProperties(PropertyName.RHP);
 		var byBuffs = properties.GetFloat(PropertyName.RHP_BM);
 
 		var value = (byDefault + byItems + byBuffs);
@@ -647,7 +648,7 @@ public class CharacterCalculationsScript : GeneralScript
 		var jobSpRate = character.Job?.Data.RSpRate ?? 1;
 
 		var byDefault = Math.Floor(mhp * 0.03f * jobSpRate);
-		var byItems = character.Inventory.GetEquipProperties("RSP");
+		var byItems = character.Inventory.GetEquipProperties(PropertyName.RSP);
 		var byBuffs = properties.GetFloat(PropertyName.RSP_BM);
 
 		var value = (byDefault + byItems + byBuffs);
@@ -846,7 +847,7 @@ public class CharacterCalculationsScript : GeneralScript
 
 		var byLevel = level / 2f;
 		var byStat = (stat * 2f) + ((float)Math.Floor(stat / 10f) * 5f);
-		var byItem = 0; // TODO: "MINATK" "PATK" "ADD_MINATK"
+		var byItem = 0f; // TODO: "MINATK" "PATK" "ADD_MINATK"
 
 		var value = baseValue + byLevel + byStat + byItem;
 
@@ -1005,11 +1006,16 @@ public class CharacterCalculationsScript : GeneralScript
 
 		var baseValue = 20;
 		var level = properties.GetFloat(PropertyName.Lv);
+		var stat = properties.GetFloat(PropertyName.CON, 1);
 
 		var byLevel = level;
-		var byItem = character.Inventory.GetEquipProperties(PropertyName.DEF);
+		var byStat = (stat * 2f) + (Math.Floor(stat / 10f) * (byLevel * 0.05f));
+		var byItem = 0f;
 
-		var value = baseValue + byLevel + byItem;
+		byItem += character.Inventory.GetEquipProperties(PropertyName.DEF);
+		byItem += character.Inventory.GetEquipProperties(PropertyName.ADD_DEF);
+
+		var value = baseValue + byLevel + byStat + byItem;
 
 		var byBuffs = properties.GetFloat(PropertyName.DEF_BM);
 
@@ -1018,7 +1024,13 @@ public class CharacterCalculationsScript : GeneralScript
 
 		value += byBuffs + byRateBuffs;
 
-		return (int)value;
+		var decRatio = properties.GetFloat(PropertyName.DEF_RATE_MUL_BM, 1);
+
+		if (decRatio < 0.5)
+			decRatio = 0.5f;
+		value = (float)Math.Floor(value * decRatio);
+
+		return (int)Math.Max(0, value);
 	}
 
 	/// <summary>
@@ -1062,12 +1074,14 @@ public class CharacterCalculationsScript : GeneralScript
 		var stat = properties.GetFloat(PropertyName.DEX);
 
 		var byStat = (stat * 4f) + ((float)Math.Floor(stat / 10f) * 10f);
-		var byItem = 0; // TODO
+		var byItem = 0f;
+
+		byItem += character.Inventory.GetEquipProperties(PropertyName.CRTATK);
 
 		var value = byStat + byItem;
 
 		// Buffs: "CRTATK_BM"
-		var byBuffs = 0;
+		var byBuffs = properties.GetFloat(PropertyName.CRTATK_BM);
 
 		// Rate buffs: Does Tos have something like CritATK +x%?
 		var rate = 0;
@@ -1147,16 +1161,22 @@ public class CharacterCalculationsScript : GeneralScript
 
 		var byLevel = level / 4f;
 		var byStat = (stat / 2f) + ((float)Math.Floor(stat / 15f) * 3f);
-		var byItem = 0; // HR, ADD_HR
+		var byItem = 0f; // HR, ADD_HR
 
+		byItem += character.Inventory.GetEquipProperties(PropertyName.HR);
+		byItem += character.Inventory.GetEquipProperties(PropertyName.ADD_HR);
 		var value = byLevel + byStat + byItem;
+
+		var byItemRareOption = properties.GetFloat(PropertyName.EnchantHitRate);
+
+		byItemRareOption = (float)Math.Floor(value * (byItemRareOption / 1000));
 
 		var byBuffs = character.Properties.GetFloat(PropertyName.HR_BM);
 
 		var rate = character.Properties.GetFloat(PropertyName.HR_RATE_BM);
 		var byRateBuffs = (float)Math.Floor(value * rate);
 
-		value += byBuffs + byRateBuffs;
+		value += byItemRareOption + byBuffs + byRateBuffs;
 
 		return (int)value;
 	}
@@ -1176,7 +1196,10 @@ public class CharacterCalculationsScript : GeneralScript
 
 		var byLevel = level / 4f;
 		var byStat = (stat / 2f) + ((float)Math.Floor(stat / 15f) * 3f);
-		var byItem = 0; // TODO
+		var byItem = 0f; // TODO
+
+		byItem += character.Inventory.GetEquipProperties(PropertyName.DR);
+		byItem += character.Inventory.GetEquipProperties(PropertyName.ADD_DR);
 
 		var value = byLevel + byStat + byItem;
 
@@ -1210,7 +1233,7 @@ public class CharacterCalculationsScript : GeneralScript
 
 		var byLevel = Level / 4f;
 		var byStat = (stat / 2f) + ((float)Math.Floor(stat / 15f) * 3f);
-		var byItem = 0f; // TODO
+		var byItem = character.Inventory.GetEquipProperties(PropertyName.BLK);
 
 		var value = byLevel + byStat + byItem;
 
@@ -1239,7 +1262,7 @@ public class CharacterCalculationsScript : GeneralScript
 
 		var byLevel = level / 4f;
 		var byStat = (stat / 2f) + ((float)Math.Floor(stat / 15f) * 3f);
-		var byItem = 0; // TODO
+		var byItem = character.Inventory.GetEquipProperties(PropertyName.BLK_BREAK);
 
 		var value = byLevel + byStat + byItem;
 

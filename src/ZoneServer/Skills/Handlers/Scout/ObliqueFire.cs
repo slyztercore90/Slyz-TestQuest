@@ -40,14 +40,14 @@ namespace Melia.Zone.Skills.Handlers.Scout
 
 			if (target == null)
 			{
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 
 			if (!caster.InSkillUseRange(skill, target))
 			{
 				caster.ServerMessage(Localization.Get("Too far away."));
-				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill, null);
+				Send.ZC_SKILL_FORCE_TARGET(caster, null, skill);
 				return;
 			}
 
@@ -93,7 +93,7 @@ namespace Melia.Zone.Skills.Handlers.Scout
 				var skillHitPost = new SkillHitInfo(caster, bounceTarget, skill, skillHitResultPost, damageDelay, skillHitDelay);
 				var hit = new HitInfo(caster, bounceTarget, skill, skillHitResult.Damage, skillHitResult.Result);
 
-				Send.ZC_HIT_INFO(caster, bounceTarget, skill, hit);
+				Send.ZC_HIT_INFO(caster, bounceTarget, hit);
 
 				if (applyDebuff)
 					bounceTarget.StartBuff(BuffId.ObliqueFire_Debuff, skill.Level, 0, TimeSpan.FromSeconds(10), caster);

@@ -19,6 +19,7 @@ namespace Melia.Shared.Data.Database
 		public ArmorMaterialType ArmorMaterial { get; set; }
 		public SizeType Size { get; set; }
 		public FactionType Faction { get; set; }
+		public MonsterRank Rank { get; set; }
 
 		public MoveType MoveType { get; set; }
 		public int WalkSpeed { get; set; }
@@ -43,6 +44,9 @@ namespace Melia.Shared.Data.Database
 		public int CritHitRate { get; set; }
 		public int CritDodgeRate { get; set; }
 		public int CritAttack { get; set; }
+
+		public string Ai { get; set; }
+		public string Dialog { get; set; }
 
 		public List<DropData> Drops { get; set; } = new List<DropData>();
 		public List<MonsterSkillData> Skills { get; set; } = new List<MonsterSkillData>();
@@ -129,7 +133,7 @@ namespace Melia.Shared.Data.Database
 		/// <param name="entry"></param>
 		protected override void ReadEntry(JObject entry)
 		{
-			entry.AssertNotMissing("monsterId", "className", "name", "level", "exp", "classExp", "element", "race", "armor", "size", "faction", "moveType", "walkSpeed", "runSpeed", "hp", "sp", "pAttackMin", "pAttackMax", "mAttackMin", "mAttackMax", "pDefense", "mDefense", "hitRate", "dodgeRate", "blockRate", "blockBreakRate", "critHitRate", "critDodgeRate", "critAttack");
+			entry.AssertNotMissing("monsterId", "className", "name", "level", "exp", "classExp", "element", "race", "armor", "size", "faction", "rank", "moveType", "walkSpeed", "runSpeed", "hp", "sp", "pAttackMin", "pAttackMax", "mAttackMin", "mAttackMax", "pDefense", "mDefense", "hitRate", "dodgeRate", "blockRate", "blockBreakRate", "critHitRate", "critDodgeRate", "critAttack");
 
 			var data = new MonsterData();
 
@@ -142,6 +146,7 @@ namespace Melia.Shared.Data.Database
 			data.ArmorMaterial = entry.ReadEnum<ArmorMaterialType>("armor");
 			data.Size = entry.ReadEnum<SizeType>("size");
 			data.Faction = entry.ReadEnum<FactionType>("faction");
+			data.Rank = entry.ReadEnum<MonsterRank>("rank");
 
 			data.MoveType = entry.ReadEnum<MoveType>("moveType");
 			data.WalkSpeed = entry.ReadInt("walkSpeed");
@@ -166,6 +171,9 @@ namespace Melia.Shared.Data.Database
 			data.CritHitRate = entry.ReadInt("critHitRate");
 			data.CritDodgeRate = entry.ReadInt("critDodgeRate");
 			data.CritAttack = entry.ReadInt("critAttack");
+
+			data.Ai = entry.ReadString("ai");
+			data.Dialog = entry.ReadString("dialog");
 
 			if (entry.ContainsKey("skills"))
 			{

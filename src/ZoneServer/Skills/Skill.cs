@@ -65,6 +65,11 @@ namespace Melia.Zone.Skills
 			=> (int)this.Properties.GetFloat(PropertyName.SpendSP);
 
 		/// <summary>
+		/// Returns the skill's cooldown.
+		/// </summary>
+		public TimeSpan Cooldown { get; set; } = TimeSpan.Zero;
+
+		/// <summary>
 		/// Returns the skill's overheat count. If this value reaches the
 		/// skill's maximum overheat, the skill goes on a cooldown.
 		/// </summary>
@@ -113,6 +118,12 @@ namespace Melia.Zone.Skills
 		public bool IsOnCooldown => this.Owner.Components.Get<CooldownComponent>().IsOnCooldown(this.Data.CooldownGroup);
 
 		/// <summary>
+		/// Get the Hit Time based off skill level
+		/// </summary>
+		/// <returns></returns>
+		public TimeSpan HitTime => (this.Level < this.Data.HitTime.Count) ? this.Data.HitTime[this.Level] : this.Data.HitTime[0];
+
+		/// <summary>
 		/// Creates a new instance.
 		/// </summary>
 		/// <param name="owner"></param>
@@ -151,10 +162,6 @@ namespace Melia.Zone.Skills
 		/// <returns
 		public bool IncreaseOverheat(int overheatMaxCount)
 		{
-			// No cooldowns for monsters
-			if (!(this.Owner is Character character))
-				return false;
-
 			// Increase counter regardless of whether the skill can
 			// overheat. In both cases we will eventually get over
 			// the overheat counter, in which case we reset the
@@ -174,7 +181,9 @@ namespace Melia.Zone.Skills
 
 			// Update the overheat after the max was checked so we reset it
 			// to 0 if we went into cooldown
-			Send.ZC_OVERHEAT_CHANGED(character, this);
+			// No cooldowns for monsters
+			if (this.Owner is Character character)
+				Send.ZC_OVERHEAT_CHANGED(character, this);
 
 			return overheated;
 		}

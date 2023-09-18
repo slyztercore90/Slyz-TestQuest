@@ -1,6 +1,8 @@
 ﻿using System;
+using Melia.Shared.Data.Database;
 using Melia.Shared.Tos.Const;
 using Melia.Zone.World.Actors;
+using Melia.Zone.World.Actors.Characters;
 
 namespace Melia.Zone.Skills.Combat
 {
@@ -42,7 +44,7 @@ namespace Melia.Zone.Skills.Combat
 		/// <summary>
 		/// Gets or sets the hit effect displayed on the target.
 		/// </summary>
-		public HitEffect HitEffect { get; set; } = HitEffect.Impact;
+		public HitEffect HitEffect { get; set; }
 
 		/// <summary>
 		/// Gets or sets the force id, which is used to synchronize
@@ -50,6 +52,23 @@ namespace Melia.Zone.Skills.Combat
 		/// Magic Missile and Multi Shot.
 		/// </summary>
 		public int ForceId { get; set; }
+
+		public SkillAttackType AttackType
+		{
+			get
+			{
+				var attribute = SkillAttackType.Melee;
+				if (this.Skill.Data.AttackType != SkillAttackType.None)
+					attribute = this.Skill.Data.AttackType;
+				else
+				{
+					if (this.Attacker is Character character && character.Inventory.GetEquip(EquipSlot.RightHand)?.Data.AttackType != SkillAttackType.None)
+						attribute = character.Inventory.GetEquip(EquipSlot.RightHand)?.Data.AttackType ?? SkillAttackType.Melee;
+
+				}
+				return attribute;
+			}
+		}
 
 		/// <summary>
 		/// Gets or sets the number of hits that are displayed. The damage

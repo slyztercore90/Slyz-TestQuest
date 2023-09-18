@@ -29,7 +29,7 @@ namespace Melia.Shared.Network.Helpers
 	/// <summary>
 	/// Common interface for accounts, for use with account helpers.
 	/// </summary>
-	public interface IAccount
+	public interface IAccount : IPropertyObject
 	{
 		/// <summary>
 		/// Returns the number of medals (TP) the account has.

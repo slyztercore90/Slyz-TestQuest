@@ -27,6 +27,19 @@ namespace Melia.Zone.World.Quests.Objectives
 		}
 
 		/// <summary>
+		/// Creates new instance.
+		/// </summary>
+		/// <param name="itemId"></param>
+		/// <param name="amount"></param>
+		public CollectItemObjective(string itemId, int amount)
+		{
+			if (!ZoneServer.Instance.Data.ItemDb.TryFind(itemId, out var data))
+				throw new ArgumentException($"Unknown item '{itemId}'.");
+			this.ItemId = data.Id;
+			this.TargetCount = amount;
+		}
+
+		/// <summary>
 		/// Sets up event subscriptions.
 		/// </summary>
 		public override void Load()

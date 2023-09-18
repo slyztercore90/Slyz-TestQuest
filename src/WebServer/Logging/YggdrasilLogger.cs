@@ -54,9 +54,12 @@ namespace Melia.Web.Logging
 			}
 
 			if (string.IsNullOrWhiteSpace(logEvent.Source))
-				Yggdrasil.Logging.Log.Debug("{1} >> {3}", logEvent.UtcDate.ToLocalTime(), type, logEvent.Source, logEvent.Message);
+				Yggdrasil.Logging.Log.Debug("{0}: {1} >> {3}", logEvent.UtcDate.ToLocalTime(), type, logEvent.Source, logEvent.Message);
 			else
-				Yggdrasil.Logging.Log.Debug("{1} >> [{2}] {3}", logEvent.UtcDate.ToLocalTime(), type, logEvent.Source, logEvent.Message);
+			{
+				if (logEvent.Source != "FileCache")
+					Yggdrasil.Logging.Log.Debug("{0}: {1} >> [{2}] {3}", logEvent.UtcDate.ToLocalTime(), type, logEvent.Source, logEvent.Message);
+			}
 		}
 
 		/// <summary>

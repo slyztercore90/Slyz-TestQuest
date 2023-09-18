@@ -6,6 +6,7 @@ using Melia.Shared.Tos.Const;
 using Melia.Zone.World.Actors;
 using Melia.Zone.World.Actors.CombatEntities.Components;
 using Melia.Zone.World.Actors.Monsters;
+using Melia.Zone.World.Maps;
 using Yggdrasil.Ai.Enumerable;
 using Yggdrasil.Scheduling;
 using Yggdrasil.Scripting;
@@ -47,6 +48,11 @@ namespace Melia.Zone.Scripting.AI
 		public ICombatEntity Entity { get; private set; }
 
 		/// <summary>
+		/// Returns the owner of the entity that this script is controlling.
+		/// </summary>
+		public ICombatEntity Owner { get; private set; }
+
+		/// <summary>
 		/// Returns the name of the currently running routine if it
 		/// was named.
 		/// </summary>
@@ -62,7 +68,9 @@ namespace Melia.Zone.Scripting.AI
 			this.Entity = combatEntity;
 
 			if (combatEntity is Mob mob)
+			{
 				this.SetTendency(mob.Tendency);
+			}
 
 			if (ZoneServer.Instance.Data.FactionDb.TryFind(this.Entity.Faction, out var factionData))
 				this.HatesFaction(factionData.Hostile);
@@ -85,6 +93,15 @@ namespace Melia.Zone.Scripting.AI
 
 			if (ZoneServer.Instance.Data.FactionDb.TryFind(faction, out var factionData))
 				this.HatesFaction(factionData.Hostile);
+		}
+
+		/// <summary>
+		/// Set the view range of AI.
+		/// </summary>
+		/// <param name="viewRange"></param>
+		public void SetViewRange(float viewRange)
+		{
+			this._viewRange = viewRange;
 		}
 
 		/// <summary>

@@ -2,6 +2,14 @@
 
 namespace Melia.Shared.World
 {
+	public enum CardinalDirection
+	{
+		South = 0,
+		West = 1,
+		North = 2,
+		East = 3,
+	}
+
 	/// <summary>
 	/// Describes the direction an entity is looking at.
 	/// </summary>
@@ -175,6 +183,52 @@ namespace Melia.Shared.World
 		public Direction GetNormal()
 			=> new Direction(this.NormalDegreeAngle);
 
+		public static Direction operator +(Direction direction)
+			=> direction;
+		public static Direction operator -(Direction direction)
+			=> new Direction(-direction.Cos, -direction.Sin);
+
+		public static Direction operator +(Direction dir1, Direction dir2)
+			=> new Direction(dir1.Cos + dir2.Cos, dir1.Sin + dir2.Sin);
+		public static Direction operator -(Direction dir1, Direction dir2)
+			=> dir1 + -(dir2);
+
+		/// <summary>
+		/// Converts Direction to a byte
+		/// </summary>
+		/// <returns>
+		/// 0 = South
+		/// 1 = West
+		/// 2 = North
+		/// 3 = East
+		/// </returns>
+		public CardinalDirection ToCardinalDirection()
+		{
+			if (this == Direction.South)
+				return CardinalDirection.South;
+			else if (this == Direction.West)
+				return CardinalDirection.West;
+			else if (this == Direction.North)
+				return CardinalDirection.North;
+			else
+				return CardinalDirection.East;
+		}
+
+		public static Direction FromCardinalDirection(CardinalDirection cardinalDirection)
+		{
+			switch (cardinalDirection)
+			{
+				case CardinalDirection.South:
+					return Direction.South;
+				case CardinalDirection.West:
+					return Direction.West;
+				case CardinalDirection.North:
+					return Direction.North;
+				default:
+					return Direction.East;
+			}
+		}
+
 		/// <summary>
 		/// Returns true if the directions have the same cos and sin
 		/// values.
@@ -220,6 +274,11 @@ namespace Melia.Shared.World
 			hashCode = hashCode * -1521134295 + this.Cos.GetHashCode();
 			hashCode = hashCode * -1521134295 + this.Sin.GetHashCode();
 			return hashCode;
+		}
+
+		public override string ToString()
+		{
+			return $"Cos: {Cos} Sin: {Sin} Angle: {DegreeAngle}";
 		}
 	}
 }

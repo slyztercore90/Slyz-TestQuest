@@ -30,7 +30,7 @@ namespace Melia.Zone.Network.Helpers
 
 			// [i11025 (2016-02-26)] ?
 			{
-				packet.PutShort(16832);
+				packet.PutShort(0);
 			}
 
 			// [i364857 (2022-10-22)] ?
@@ -48,8 +48,8 @@ namespace Melia.Zone.Network.Helpers
 			packet.PutInt(appearanceSize);
 			packet.PutShort(propertiesSize);
 
-			packet.PutInt(0);
-			packet.PutInt(0);
+			packet.PutInt(monster.AssociatedHandle);
+			packet.PutInt(monster.OwnerHandle);
 
 			packet.PutShort(0);
 			packet.PutByte(0);
